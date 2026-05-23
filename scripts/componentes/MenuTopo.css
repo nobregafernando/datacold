@@ -6,31 +6,50 @@
 .menu-topo{
   position: fixed;
   top: 0;
-  left: 280px;            /* depois da sidebar */
+  left: 280px;            /* depois da sidebar (desktop) */
   right: 0;
-  z-index: 50;
+  z-index: 30;            /* abaixo do hamburger (50) e do menu lateral (20+) */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 14px 40px;
+  padding: 14px 40px 14px 70px;  /* padding-left maior pra dar espaço pro hamburger */
   background: rgba(255,255,255,.82);
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   border-bottom: 1px solid var(--borda);
   box-shadow: 0 1px 0 rgba(11,29,58,.04);
+  transition: left 220ms ease;   /* acompanha a animação do menu lateral */
+}
+
+/* Quando o menu lateral fecha, a barra superior desliza pra esquerda
+   junto com o conteúdo principal — preenche a tela toda. */
+.layout-admin.menu-fechado .menu-topo{
+  left: 0;
 }
 
 @media (max-width: 900px){
-  .menu-topo{ left: 240px; }
+  .menu-topo{ left: 260px; }
+  .layout-admin.menu-fechado .menu-topo{ left: 0; }
 }
 @media (max-width: 720px){
-  .menu-topo{ left: 0; padding: 12px 16px 12px 60px; }
-  /* deixa espaço pro hamburger sem sobrepor o título */
+  /* Mobile: menu vira overlay, então a barra superior já fica em left:0
+     independente do estado do menu lateral. */
+  .menu-topo,
+  .layout-admin.menu-fechado .menu-topo,
+  .layout-admin:not(.menu-fechado) .menu-topo{
+    left: 0;
+    padding: 12px 16px 12px 64px;
+  }
   .mt-titulo{ font-size: 12px; }
 }
 @media (max-width: 420px){
-  .menu-topo{ padding: 10px 12px 10px 56px; gap: 10px; }
+  .menu-topo,
+  .layout-admin.menu-fechado .menu-topo,
+  .layout-admin:not(.menu-fechado) .menu-topo{
+    padding: 10px 12px 10px 60px;
+    gap: 10px;
+  }
   .mt-direita{ gap: 8px; }
   /* esconde o texto do status — fica só o pontinho colorido + sino */
   .mt-status{ padding: 6px 8px; }

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+  }
+  // 2) Apaga todas as caches da Cache API
+  if ('caches' in window) {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
+  try {
+    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        if (anterior && anterior !== v.build_id) {
+          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
+          });
+        }
+        localStorage.setItem('__build_id', v.build_id);
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Protótipo</title>
+<link rel="icon" href="/favicon.ico?v=1779576265330" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779576265330">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779576265330">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779576265330">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779576265330">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779576265330">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779576265330">
+<link rel="stylesheet" href="estilo.css?v=1779576265330">
+</head>
+<body>
+
+<div class="layout-admin">
+
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="proto-main">
+
+    <div id="menu-topo"></div>
+
+    <header class="proto-header">
+      <span class="olho">Visão de engenharia</span>
+      <h1>Protótipo de arquitetura</h1>
+      <p>Como os dados saem do chão de fábrica e chegam até o app, com resiliência contra queda de internet.</p>
+    </header>
+
+    <!-- ============ Seção 1: Diagrama de arquitetura ============ -->
+    <section class="proto-secao">
+      <header class="proto-secao-head">
+        <h2>Fluxo ponta-a-ponta · do sensor ao app</h2>
+        <p>5 estágios: chão de fábrica · rede local · resiliência MQTT · nuvem · acesso.</p>
+      </header>
+
+      <!-- Cabeçalhos das colunas -->
+      <div class="diag-colunas-head">
+        <div class="dch dch-fabrica">FÁBRICA / CHÃO DE FÁBRICA</div>
+        <div class="dch dch-rede">REDE LOCAL</div>
+        <div class="dch dch-resil">RESILIÊNCIA / MQTT</div>
+        <div class="dch dch-nuvem">NUVEM</div>
+        <div class="dch dch-acesso">ACESSO</div>
+      </div>
+
+      <!-- Grade principal de blocos -->
+      <div class="diag-grade">
+
+        <!-- COLUNA 1: FÁBRICA -->
+        <div class="col col-fabrica">
+          <article class="bloco bloco-fabrica">
+            <header class="bloco-head"><span class="bloco-num">1</span> Equipamento da fábrica</header>
+            <div class="bloco-ico ico-grande">
+              <!-- ícone: máquina industrial -->
+              <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+                <rect x="6" y="14" width="34" height="36" rx="3"/>
+                <rect x="10" y="18" width="14" height="10" rx="1" fill="currentColor" fill-opacity=".15"/>
+                <circle cx="32" cy="22" r="1.5" fill="currentColor"/>
+                <circle cx="36" cy="22" r="1.5" fill="currentColor"/>
+                <rect x="10" y="32" width="26" height="14" rx="1" fill="currentColor" fill-opacity=".08"/>
+                <rect x="40" y="22" width="18" height="22" rx="2"/>
+                <line x1="44" y1="28" x2="54" y2="28"/>
+                <line x1="44" y1="34" x2="54" y2="34"/>
+                <line x1="44" y1="40" x2="54" y2="40"/>
+                <line x1="14" y1="50" x2="14" y2="56"/>
+                <line x1="32" y1="50" x2="32" y2="56"/>
+                <line x1="8" y1="56" x2="38" y2="56"/>
+              </svg>
+            </div>
+          </article>
+
+          <div class="seta-vert"></div>
+
+          <article class="bloco bloco-fabrica seta-direita-azul">
+            <header class="bloco-head"><span class="bloco-num">2</span> Sensores</header>
+            <ul class="lista-sensores">
+              <li class="ls-item">
+                <span class="ls-ico ls-temp">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4 4 0 1 0 5 0z"/></svg>
+                </span>
+                Temperatura
+              </li>
+              <li class="ls-item">
+                <span class="ls-ico ls-energia">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </span>
+                Energia
+              </li>
+              <li class="ls-item">
+                <span class="ls-ico ls-porta">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M6 20V4h10v16"/><circle cx="13" cy="12" r="1" fill="currentColor"/></svg>
+                </span>
+                Porta
+              </li>
+            </ul>
+          </article>
+        </div>
+
+        <!-- COLUNA 2: REDE LOCAL -->
+        <div class="col col-rede">
+          <article class="bloco bloco-rede">
+            <header class="bloco-head"><span class="bloco-num">3</span> Logger (DCLogger)</header>
+            <div class="bloco-ico">
+              <!-- ícone: logger industrial -->
+              <svg viewBox="0 0 64 48" width="80" height="60" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                <rect x="4" y="6" width="56" height="36" rx="3" fill="currentColor" fill-opacity=".06"/>
+                <rect x="10" y="12" width="44" height="14" rx="2" fill="#0f172a" fill-opacity=".85"/>
+                <circle cx="16" cy="19" r="1.6" fill="#ef4444"/>
+                <circle cx="22" cy="19" r="1.6" fill="#22c55e"/>
+                <circle cx="28" cy="19" r="1.6" fill="#f59e0b"/>
+                <rect x="38" y="16" width="12" height="6" rx="1" fill="#f59e0b"/>
+                <g stroke="currentColor" stroke-width="1.5">
+                  <line x1="12" y1="36" x2="12" y2="42"/>
+                  <line x1="20" y1="36" x2="20" y2="42"/>
+                  <line x1="28" y1="36" x2="28" y2="42"/>
+                  <line x1="36" y1="36" x2="36" y2="42"/>
+                  <line x1="44" y1="36" x2="44" y2="42"/>
+                  <line x1="52" y1="36" x2="52" y2="42"/>
+                </g>
+              </svg>
+            </div>
+            <p class="bloco-sub">Coleta os dados dos sensores</p>
+          </article>
+
+          <div class="conexao-dupla">
+            <div class="conexao-linha">
+              <span class="conexao-rotulo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                Wi-Fi
+              </span>
+            </div>
+            <div class="conexao-linha solida">
+              <span class="conexao-rotulo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="20" height="6" rx="1"/><circle cx="7" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="17" cy="12" r="1" fill="currentColor"/></svg>
+                Cabo (Ethernet)
+              </span>
+            </div>
+          </div>
+
+          <div class="seta-vert-cima" aria-hidden="true"></div>
+
+          <article class="bloco bloco-rede seta-direita-roxa">
+            <header class="bloco-head"><span class="bloco-num">4</span> Switch / Rede local</header>
+            <div class="bloco-ico">
+              <!-- ícone: switch de rede -->
+              <svg viewBox="0 0 80 36" width="90" height="40" fill="none" stroke="currentColor" stroke-width="1.6">
+                <rect x="2" y="6" width="76" height="20" rx="2" fill="currentColor" fill-opacity=".08"/>
+                <g fill="#0f172a" fill-opacity=".7">
+                  <rect x="8" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="15" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="22" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="29" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="36" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="43" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="50" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="57" y="12" width="5" height="8" rx=".5"/>
+                  <rect x="64" y="12" width="5" height="8" rx=".5"/>
+                </g>
+                <circle cx="73" cy="16" r="1.2" fill="#22c55e"/>
+                <circle cx="73" cy="20" r="1.2" fill="#f59e0b"/>
+              </svg>
+            </div>
+            <p class="bloco-sub">Mantém a comunicação interna</p>
+          </article>
+        </div>
+
+        <!-- COLUNA 3: RESILIÊNCIA / MQTT -->
+        <div class="col col-resil">
+          <article class="bloco-grande bloco-resil seta-direita-ciano">
+            <header class="bloco-head"><span class="bloco-num">5</span> Servidor / Gateway local</header>
+
+            <div class="sub-bloco">
+              <div class="sub-ico">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+              </div>
+              <div>
+                <strong>Broker MQTT</strong>
+                <span>Recebe os dados dos loggers</span>
+              </div>
+            </div>
+
+            <div class="sub-bloco">
+              <div class="sub-ico">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+              </div>
+              <div>
+                <strong>Fila / Buffer local</strong>
+                <span>Armazena os dados temporariamente</span>
+              </div>
+            </div>
+
+            <div class="sub-bloco">
+              <div class="sub-ico">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/><circle cx="7" cy="16" r="1" fill="currentColor"/><circle cx="17" cy="16" r="1" fill="currentColor"/></svg>
+              </div>
+              <div>
+                <strong>Backup HD1 + HD2</strong>
+                <span>Protege os dados contra falhas locais</span>
+              </div>
+            </div>
+
+            <p class="bloco-rodape">Recebe dados via MQTT, armazena temporariamente e protege contra perda</p>
+          </article>
+        </div>
+
+        <!-- COLUNA 4: NUVEM (blocos 6 e 7 lado a lado, alerta acima) -->
+        <div class="col col-nuvem">
+          <div class="alerta-internet">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Internet instável?</span>
+          </div>
+
+          <div class="nuvem-pair">
+            <article class="bloco bloco-nuvem seta-direita-tracejada">
+              <header class="bloco-head"><span class="bloco-num">6</span> Sincronização automática</header>
+              <div class="bloco-ico">
+                <svg viewBox="0 0 64 48" width="70" height="54" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 36c-6 0-10-4-10-9s4-9 10-9c1-7 7-12 14-12s13 5 14 12c6 0 10 4 10 9s-4 9-10 9H16z" fill="currentColor" fill-opacity=".10"/>
+                  <path d="M32 40v-14"/>
+                  <polyline points="26 32 32 26 38 32"/>
+                </svg>
+              </div>
+              <p class="bloco-sub">Envia os dados pendentes quando houver internet</p>
+            </article>
+
+            <article class="bloco bloco-nuvem bloco-com-fork">
+              <header class="bloco-head"><span class="bloco-num">7</span> Banco de dados na nuvem</header>
+              <div class="bloco-ico">
+                <svg viewBox="0 0 64 48" width="70" height="54" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 38c-6 0-10-4-10-9s4-9 10-9c1-7 7-12 14-12s13 5 14 12c6 0 10 4 10 9s-4 9-10 9z" fill="currentColor" fill-opacity=".15"/>
+                  <ellipse cx="32" cy="32" rx="9" ry="3"/>
+                  <path d="M23 32v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/>
+                </svg>
+              </div>
+              <p class="bloco-sub">Centraliza o histórico para consulta</p>
+              <!-- Fork verde pra os 2 blocos da coluna Acesso (8 cima + 9 baixo) -->
+              <svg class="fork-acesso" viewBox="0 0 60 120" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <marker id="setaVerde" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+                </defs>
+                <path d="M0 60 L25 60 L25 18 L58 18" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#setaVerde)"/>
+                <path d="M0 60 L25 60 L25 102 L58 102" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#setaVerde)"/>
+              </svg>
+            </article>
+          </div>
+        </div>
+
+        <!-- COLUNA 5: ACESSO -->
+        <div class="col col-acesso">
+          <article class="bloco bloco-acesso">
+            <header class="bloco-head"><span class="bloco-num">8</span> Sistema Web</header>
+            <div class="bloco-ico">
+              <svg viewBox="0 0 64 52" width="90" height="70" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="56" height="36" rx="2" fill="currentColor" fill-opacity=".08"/>
+                <rect x="10" y="10" width="20" height="10" rx="1" fill="#1E6FD6" fill-opacity=".50"/>
+                <rect x="34" y="10" width="20" height="10" rx="1" fill="#1E6FD6" fill-opacity=".25"/>
+                <path d="M10 32 L20 24 L28 28 L40 18 L54 22" stroke="#1E6FD6" stroke-width="2" fill="none"/>
+                <line x1="22" y1="48" x2="42" y2="48"/>
+                <line x1="32" y1="40" x2="32" y2="48"/>
+              </svg>
+            </div>
+            <p class="bloco-sub">Acessa os dados em tempo real</p>
+          </article>
+
+          <article class="bloco bloco-acesso">
+            <header class="bloco-head"><span class="bloco-num">9</span> Aplicativo móvel</header>
+            <div class="bloco-ico">
+              <svg viewBox="0 0 48 64" width="58" height="78" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="2" width="36" height="60" rx="5" fill="currentColor" fill-opacity=".08"/>
+                <rect x="10" y="10" width="28" height="42" rx="1" fill="currentColor" fill-opacity=".05"/>
+                <circle cx="24" cy="32" r="10" fill="none" stroke="#16a34a" stroke-width="2"/>
+                <path d="M24 22 A10 10 0 0 1 33 35 L24 32 Z" fill="#16a34a" fill-opacity=".4"/>
+                <circle cx="24" cy="58" r="1.5" fill="currentColor"/>
+              </svg>
+            </div>
+            <p class="bloco-sub">Acessa os dados de onde estiver</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- Banner de garantia -->
+      <div class="proto-garantia">
+        <div class="garantia-escudo">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </div>
+        <div class="garantia-texto">
+          <strong>SEM PERDA DE DADOS</strong>
+          <span>MQTT com fila local garante que nenhum dado seja perdido, mesmo com a internet fora do ar.</span>
+        </div>
+      </div>
+
+      <!-- Dois cenários: queda × retorno -->
+      <div class="cenarios">
+        <div class="cenario cen-down">
+          <div class="cen-cabecalho">
+            <span class="cen-ico vermelho">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </span>
+            <strong>Se a internet cair:</strong>
+          </div>
+          <ul>
+            <li>A rede local continua funcionando</li>
+            <li>O logger segue enviando para o broker MQTT local</li>
+            <li>Os dados ficam na fila / buffer local</li>
+            <li class="destaque-vermelho">Nada é perdido</li>
+          </ul>
+        </div>
+
+        <div class="cenario cen-up">
+          <div class="cen-cabecalho">
+            <span class="cen-ico verde">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </span>
+            <strong>Quando a internet voltar:</strong>
+          </div>
+          <ul>
+            <li>A sincronização é retomada automaticamente</li>
+            <li>Os dados pendentes sobem para o banco de dados</li>
+            <li>Web e app voltam a enxergar tudo atualizado</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Fluxo numerado horizontal -->
+      <div class="fluxo-num">
+        <div class="fn-item">
+          <span class="fn-bola">1</span>
+          <span class="fn-ico"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4 4 0 1 0 5 0z"/></svg></span>
+          <span class="fn-txt">Sensor coleta dados do equipamento</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola">2</span>
+          <span class="fn-ico"><svg viewBox="0 0 32 22" width="32" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="28" height="14" rx="1.5" fill="currentColor" fill-opacity=".10"/><circle cx="8" cy="9" r="1" fill="currentColor"/><circle cx="13" cy="9" r="1" fill="currentColor"/><circle cx="18" cy="9" r="1" fill="currentColor"/></svg></span>
+          <span class="fn-txt">Logger reúne as leituras</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola">3</span>
+          <span class="fn-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          <span class="fn-txt">Dados entram na rede local</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola">4</span>
+          <span class="fn-ico"><svg viewBox="0 0 36 16" width="36" height="16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="2" width="34" height="12" rx="1" fill="currentColor" fill-opacity=".10"/><g fill="currentColor" fill-opacity=".55"><rect x="4" y="5" width="3" height="6"/><rect x="8" y="5" width="3" height="6"/><rect x="12" y="5" width="3" height="6"/><rect x="16" y="5" width="3" height="6"/><rect x="20" y="5" width="3" height="6"/><rect x="24" y="5" width="3" height="6"/><rect x="28" y="5" width="3" height="6"/></g></svg></span>
+          <span class="fn-txt">Switch distribui internamente</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola roxa">5</span>
+          <span class="fn-ico roxo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          <span class="fn-txt">Broker MQTT local recebe os dados</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola roxa">6</span>
+          <span class="fn-ico roxo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg></span>
+          <span class="fn-txt">Fila / buffer guarda dados sem perda</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola ciano">7</span>
+          <span class="fn-ico ciano"><svg viewBox="0 0 32 24" width="32" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18c-3 0-5-2-5-4.5s2-4.5 5-4.5c.5-3.5 3.5-6 7-6s6.5 2.5 7 6c3 0 5 2 5 4.5S25 18 22 18z" fill="currentColor" fill-opacity=".10"/><polyline points="13 14 16 11 19 14"/><line x1="16" y1="11" x2="16" y2="18"/></svg></span>
+          <span class="fn-txt">Sincronização envia quando houver internet</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola ciano">8</span>
+          <span class="fn-ico ciano"><svg viewBox="0 0 32 24" width="32" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 18c-3 0-5-2-5-4.5s2-4.5 5-4.5c.5-3.5 3.5-6 7-6s6.5 2.5 7 6c3 0 5 2 5 4.5S25 18 22 18z" fill="currentColor" fill-opacity=".15"/><ellipse cx="16" cy="15" rx="4.5" ry="1.5" stroke="currentColor"/><path d="M11.5 15v3c0 .8 2 1.5 4.5 1.5s4.5-.7 4.5-1.5v-3" stroke="currentColor"/></svg></span>
+          <span class="fn-txt">Banco de dados na nuvem consolida as informações</span>
+        </div>
+        <span class="fn-seta">→</span>
+        <div class="fn-item">
+          <span class="fn-bola verde">9</span>
+          <span class="fn-ico verde">
+            <svg viewBox="0 0 36 24" width="36" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="22" height="16" rx="1.5" fill="currentColor" fill-opacity=".10"/><rect x="26" y="4" width="8" height="14" rx="1.5" fill="currentColor" fill-opacity=".10"/></svg>
+          </span>
+          <span class="fn-txt">Sistema web e aplicativo acessam os dados</span>
+        </div>
+      </div>
+
+      <!-- Legenda -->
+      <div class="proto-legenda">
+        <strong>LEGENDA</strong>
+        <span class="leg-it"><span class="leg-linha leg-azul-cheia"></span> Fluxo de dados normal</span>
+        <span class="leg-it"><span class="leg-linha leg-azul-tracejada"></span> Rede local (Wi-Fi / Ethernet)</span>
+        <span class="leg-it"><span class="leg-linha leg-verde-tracejada"></span> Sincronização pela internet</span>
+        <span class="leg-it"><span class="leg-linha leg-roxa"></span> Fila / Buffer / Proteção local</span>
+        <span class="leg-it"><span class="leg-linha leg-verde-cheia"></span> Acesso aos dados</span>
+      </div>
+
+    </section>
+
+    <!-- ============ Seção 2: Reconexão automática ============ -->
+    <section class="proto-secao">
+      <header class="proto-secao-head">
+        <h2>Onde mora a reconexão automática?</h2>
+        <p>A regra de ouro: quem segura o dado é o ponto mais próximo do sensor que tem memória e fila. Sempre dois pontos: <strong>logger</strong> e <strong>servidor/gateway local</strong>.</p>
+      </header>
+
+      <div class="reconex-grade">
+        <article class="reconex-card sim">
+          <header><span class="rx-tag">✓ FAZ</span><h4>Logger</h4></header>
+          <p>Recebe leituras dos sensores e tenta entregar pro broker MQTT. Se falhar, guarda na fila local e tenta de novo com <strong>backoff exponencial</strong> (5s → 15s → 30s → 1min).</p>
+          <p class="rx-nota">É a primeira linha de defesa contra perda de rede local.</p>
+        </article>
+
+        <article class="reconex-card sim">
+          <header><span class="rx-tag">✓ FAZ</span><h4>Servidor / Gateway local</h4></header>
+          <p>Mantém duas reconexões: uma com os <em>loggers</em> (detecta logger mudo) e outra com a <em>nuvem</em> (segura dados em fila enquanto a internet estiver fora e sincroniza quando voltar).</p>
+          <p class="rx-nota">É o ponto mais importante — garante histórico completo na nuvem.</p>
+        </article>
+
+        <article class="reconex-card talvez">
+          <header><span class="rx-tag warn">~ ÀS VEZES</span><h4>Sensor inteligente</h4></header>
+          <p>Só se for sensor com Wi-Fi/4G e firmware próprio (raro em câmara fria industrial). Sensor "burro" só mede — não sabe que a internet caiu.</p>
+        </article>
+
+        <article class="reconex-card nao">
+          <header><span class="rx-tag err">✗ NÃO FAZ</span><h4>Switch</h4></header>
+          <p>Switch só comuta pacotes. Não sabe que aquele tráfego é leitura de temperatura, não tem buffer de aplicação, não reenvia nada.</p>
+        </article>
+      </div>
+
+      <div class="reconex-fluxo">
+        <strong>Sequência típica de retry no logger:</strong>
+        <div class="rx-passos">
+          <span class="rx-passo">tentar envio</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo fail">falhou</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo">guarda na fila</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo">espera 5s</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo">tenta de novo</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo ok">conexão voltou</span>
+          <span class="rx-arrow">→</span>
+          <span class="rx-passo ok">drena a fila em ordem</span>
+        </div>
+        <p class="rx-explica">O intervalo cresce a cada falha (<strong>backoff exponencial</strong>) pra não martelar a rede caída. Quando reconecta, envia tudo que ficou represado, na ordem original.</p>
+      </div>
+    </section>
+
+    <!-- ============ Seção 3: Fila / Buffer local ============ -->
+    <section class="proto-secao">
+      <header class="proto-secao-head">
+        <h2>Como funciona a fila / buffer local</h2>
+        <p>É o que separa "tem MQTT" de "tem MQTT à prova de queda de internet". A fila persiste em disco; o backup duplo (HD1 + HD2) protege contra falha física.</p>
+      </header>
+
+      <div class="fila-grade">
+        <article class="fila-passo">
+          <span class="fp-num">1</span>
+          <h4>Sensor entrega</h4>
+          <p>Logger recebe a leitura crua pelo barramento (Modbus, 4-20mA, pulso).</p>
+        </article>
+        <article class="fila-passo">
+          <span class="fp-num">2</span>
+          <h4>Publica no broker</h4>
+          <p>Logger publica via MQTT com QoS 1 ou 2 — exige confirmação do broker antes de marcar como "entregue".</p>
+        </article>
+        <article class="fila-passo">
+          <span class="fp-num">3</span>
+          <h4>Broker enfileira</h4>
+          <p>Servidor local guarda a mensagem em disco persistente (não só RAM). Sobrevive a reboot.</p>
+        </article>
+        <article class="fila-passo">
+          <span class="fp-num">4</span>
+          <h4>Replica em HD2</h4>
+          <p>Cada mensagem é gravada em dois HDs em paralelo. Falha de disco não derruba o histórico.</p>
+        </article>
+        <article class="fila-passo">
+          <span class="fp-num">5</span>
+          <h4>Sincroniza na nuvem</h4>
+          <p>Worker independente lê da fila e envia pro banco central. Marca como sincronizado só depois da confirmação 200 OK.</p>
+        </article>
+        <article class="fila-passo">
+          <span class="fp-num">6</span>
+          <h4>Limpa a fila</h4>
+          <p>Mensagens confirmadas saem da fila local após X dias (retenção configurável — padrão 30 dias).</p>
+        </article>
+      </div>
+
+      <div class="fila-comparativo">
+        <div class="fc-cenario">
+          <strong>Sem fila local</strong>
+          <ul>
+            <li>Internet cai → leituras se perdem em RAM</li>
+            <li>Reboot do servidor → dado vai pro lixo</li>
+            <li>Auditoria fica com furos</li>
+          </ul>
+        </div>
+        <div class="fc-cenario destaque">
+          <strong>Com fila local + backup duplo</strong>
+          <ul>
+            <li>Internet pode cair por horas — nada perdido</li>
+            <li>Servidor reinicia — fila persistente recupera tudo</li>
+            <li>Disco queima — HD2 mantém histórico</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="fila-nota">
+        <strong>Conceito-chave:</strong> a fila local só é "esvaziada" depois que o destino final (banco na nuvem) confirma o recebimento. Isso garante <em>entrega exatamente uma vez</em> mesmo com retries.
+      </p>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- Scripts -->
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779576265330"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779576265330"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779576265330"></script>
+<script src="pagina.js?v=1779576265330"></script>
+
+</body>
+</html>

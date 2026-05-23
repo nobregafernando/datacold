@@ -241,19 +241,43 @@ class PaginaSensor {
   // =================================================================
 
   /**
-   * Busca histórico estendido (7d) em background, cacheado por 60s.
-   * Usado pelo AgenteReconstrutor pra fazer SPLC com ciclos de 24h e 7d
-   * — assim a reconstrução tem dados pra olhar em qualquer janela.
+   * Calcula um limite de pontos suficiente pra cobrir a janela escolhida,
+   * assumindo cadência conservadora de 30s (pior caso, sensor de energia).
+   * Evita o bug antigo de truncar 24h/3d/7d em 1000 pontos.
+   */
+  _limitePorJanela(janela) {
+    const m = /^-(\d+(?:\.\d+)?)([smhd])$/.exec(janela);
+    if (!m) return 1000;
+    const n = parseFloat(m[1]);
+    const seg = m[2] === "s" ? n
+              : m[2] === "m" ? n * 60
+              : m[2] === "h" ? n * 3600
+              : n * 86400;
+    // Cadência mais densa = energia (30s). Margem 10%.
+    const estimado = Math.ceil(seg / 30 * 1.1);
+    // Mínimo 500, máximo 25 000 (Chart.js fica lento acima disso)
+    return Math.min(25000, Math.max(500, estimado));
+  }
+
+  /**
+   * Busca histórico estendido (30 dias) em background, cacheado por 5 min.
+   * Esse histórico alimenta o AgenteReconstrutor pra fazer SPLC com
+   * ciclos de 24h, 7d e 30d. Sem 30d carregado, o ciclo 30d sempre falha.
+   *
+   * Tamanho típico: ~40k pontos por sensor (cadência 60s × 30 dias).
+   * Cache de 5 min é suficiente — histórico não muda na escala de segundos.
    */
   async _garantirHistoricoEstendido() {
     const agora = Date.now();
     const idadeCache = agora - (this._historicoEstendidoEm || 0);
-    if (idadeCache < 60_000 && this._historicoEstendido) return;
+    if (idadeCache < 5 * 60_000 && this._historicoEstendido) return;
     if (this._historicoEstendidoCarregando) return;
     this._historicoEstendidoCarregando = true;
     try {
       const r = await this.api.buscarDados(this.sensorId, {
-        inicio: "-167h", fim: "now", limite: 50000
+        inicio: "-720h",          // 30 dias
+        fim: "now",
+        limite: 100000,
       });
       this._historicoEstendido = r?.points || [];
       this._historicoEstendidoEm = agora;
@@ -276,9 +300,13 @@ class PaginaSensor {
         fim    = "-30d";
       }
 
+      // Limite dinâmico baseado na janela escolhida — pra que janelas
+      // grandes (24h, 3d, 7d) NÃO sejam truncadas em 1000 pontos.
+      const limiteDinamico = this._limitePorJanela(inicio);
+
       // Busca dados e incidentes ativos em paralelo
       const [dados, incidentes] = await Promise.all([
-        this.api.buscarDados(this.sensorId, { inicio, fim, limite: 1000 }),
+        this.api.buscarDados(this.sensorId, { inicio, fim, limite: limiteDinamico }),
         this.api.incidentesAtivos(this.sensorId),
       ]);
       this.dados = dados;
@@ -485,7 +513,9 @@ class PaginaSensor {
       else if (intMedio > 0 && diff > intMedio * 3)  { status = "instavel"; titulo = "Instável"; }
 
       info = `Última leitura ${this._formatarTempoAbs(diff)} · ~${this._formatarIntervalo(intMedio)} entre leituras`;
-      pontosBadge = `<span class="conectividade-pontos">${dados.points.length} pontos · ${this.janela}</span>`;
+      const ds = this._downsampleInfo;
+      const sufixoDS = ds ? ` · gráfico condensado em ${ds.depois} pts (LTTB)` : "";
+      pontosBadge = `<span class="conectividade-pontos">${dados.points.length} pontos · ${this.janela}${sufixoDS}</span>`;
     }
 
     el.className = `conectividade conectividade-${status}`;
@@ -932,8 +962,20 @@ class PaginaSensor {
     const recon = (typeof AgenteReconstrutor !== "undefined")
       ? new AgenteReconstrutor(this.sensor).reconstruir(dados.points, this._historicoEstendido)
       : { pontos: dados.points, gaps: [] };
-    const pontos = recon.pontos;
+    let pontos = recon.pontos;
     this._ultimoRecon = recon;
+
+    // Downsample LTTB: reduz oscilações visuais em janelas longas
+    // preservando picos/vales/tendência. Janelas curtas passam intactas.
+    // A tabela e a análise continuam vendo os pontos ORIGINAIS — só o
+    // gráfico recebe o subconjunto visualmente representativo.
+    const _totalAntes = pontos.length;
+    if (typeof Downsample !== "undefined") {
+      pontos = Downsample.aplicarPorJanela(pontos, this.sensor.tipo, this.janela);
+    }
+    this._downsampleInfo = pontos.length < _totalAntes
+      ? { antes: _totalAntes, depois: pontos.length }
+      : null;
 
     const labels = pontos.map(p => new Date(p.time).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
 
@@ -944,22 +986,34 @@ class PaginaSensor {
     // Também devolve `metaRec`: array paralelo com o objeto _meta de cada
     // ponto reconstruído, pra o tooltip do gráfico mostrar a base.
     const split = (get) => {
-      const real = [], rec = [], metaRec = [];
+      const real = [], rec = [], vazio = [], metaRec = [];
       for (let i = 0; i < pontos.length; i++) {
         const p = pontos[i];
         const v = get(p);
         if (p._reconstruido) {
           real.push(null);
           rec.push(v);
+          vazio.push(null);
           metaRec.push(p._meta || null);
+        } else if (p._vazio) {
+          // Gap ativo: linha morta no zero, série separada
+          real.push(null);
+          rec.push(null);
+          vazio.push(v ?? 0);
+          metaRec.push(null);
         } else {
           real.push(v);
+          // Bridge: vizinho de trecho reconstruído entra também na série rec
           const vizRec = pontos[i+1]?._reconstruido || pontos[i-1]?._reconstruido;
           rec.push(vizRec ? v : null);
+          // Bridge: último ponto real antes do gap ativo entra na vazio
+          // (no valor REAL dele) pra dar a impressão da linha "caindo" pro zero
+          const vizVazio = pontos[i+1]?._vazio || pontos[i-1]?._vazio;
+          vazio.push(vizVazio ? v : null);
           metaRec.push(null);
         }
       }
-      return { real, rec, metaRec };
+      return { real, rec, vazio, metaRec };
     };
 
     // Helper: dataset principal (linha sólida) + overlay reconstruído.
@@ -977,8 +1031,9 @@ class PaginaSensor {
     const corRecFundo = `rgba(124, 58, 237, ${(alphaRec * 0.12).toFixed(2)})`;
 
     const par = (label, get, color) => {
-      const { real, rec, metaRec } = split(get);
-      return [
+      const { real, rec, vazio, metaRec } = split(get);
+      const temVazio = vazio.some(v => v !== null && v !== undefined);
+      const ds = [
         { label, data: real, borderColor: color },
         {
           label: `${label} (reconstruído · ${Math.round(confMediaRec * 100)}%)`,
@@ -996,6 +1051,23 @@ class PaginaSensor {
           recInfo: metaRec,
         },
       ];
+      // Linha "morta" (gap em curso): vermelho pontilhado avançando no zero.
+      // Só aparece quando há gap ativo (offlineAgora=true no agente).
+      if (temVazio) {
+        ds.push({
+          label: `${label} (sem sinal · ao vivo)`,
+          data: vazio,
+          borderColor: "rgba(220,38,38,.85)",
+          backgroundColor: "transparent",
+          borderDash: [3, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: false,
+          tension: 0,
+        });
+      }
+      return ds;
     };
 
     if (this.sensor.tipo === "energia") {

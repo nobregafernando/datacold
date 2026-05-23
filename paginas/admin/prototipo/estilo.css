@@ -1,0 +1,793 @@
+/* =====================================================================
+   DataCold · Página Protótipo (diagrama de arquitetura)
+   ===================================================================== */
+
+body{
+  background: linear-gradient(180deg, #eaf4ff 0%, #ffffff 60%);
+  min-height: 100vh;
+  font-family: Inter, system-ui, sans-serif;
+  color: #0f172a;
+}
+.layout-admin{ min-height: 100vh; padding-left: 280px; }
+.proto-main{ min-width: 0; padding: 96px 32px 60px; overflow-x: hidden; }
+
+/* ---- Header da página ---- */
+.proto-header{
+  margin-bottom: 28px;
+}
+.proto-header .olho{
+  display: inline-block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 1.4px; color: #1E6FD6; font-weight: 700; margin-bottom: 6px;
+}
+.proto-header h1{
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  margin: 0 0 8px; color: #0b1d3a; letter-spacing: -.4px;
+}
+.proto-header p{
+  color: #475569; font-size: 14px; max-width: 760px; margin: 0;
+}
+
+/* ---- Seção que envolve o diagrama ---- */
+.proto-secao{
+  background: #fff;
+  border: 1px solid #e5e9f2;
+  border-radius: 14px;
+  padding: 28px 28px 32px;
+  box-shadow: 0 6px 22px rgba(15,23,42,.05);
+}
+.proto-secao + .proto-secao{ margin-top: 40px; }
+.proto-secao-head{ margin-bottom: 22px; }
+.proto-secao-head h2{
+  font-size: 1.3rem; margin: 0 0 4px; color: #0b1d3a;
+}
+.proto-secao-head p{
+  font-size: 13px; color: #64748b; margin: 0;
+}
+
+/* ============ Paleta por coluna ============ */
+:root{
+  --c-fabrica: #1a3a8a;
+  --c-rede:    #1E6FD6;
+  --c-resil:   #6b3eb8;
+  --c-nuvem:   #0e8a96;
+  --c-acesso:  #16a34a;
+}
+
+/* ---- Cabeçalhos das 5 colunas ---- */
+.diag-colunas-head{
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.dch{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  padding: 8px 4px;
+  border-bottom: 3px solid currentColor;
+  text-align: left;
+}
+.dch-fabrica{ color: var(--c-fabrica); }
+.dch-rede   { color: var(--c-rede); }
+.dch-resil  { color: var(--c-resil); }
+.dch-nuvem  { color: var(--c-nuvem); }
+.dch-acesso { color: var(--c-acesso); }
+
+/* ---- Grade principal ---- */
+.diag-grade{
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 44px;            /* gap maior pra acomodar setas horizontais */
+  margin-bottom: 28px;
+}
+.col{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ---- Blocos genéricos ---- */
+.bloco, .bloco-grande{
+  background: #fff;
+  border: 1.5px solid currentColor;
+  border-radius: 10px;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  position: relative;   /* base para setas absolutas */
+}
+
+/* ============ Setas entre blocos (pseudo-elementos) ============
+   Cada bloco com .seta-direita-* projeta uma seta horizontal
+   pra dentro do gap, apontando pra coluna seguinte.            */
+.seta-direita-azul::after,
+.seta-direita-roxa::after,
+.seta-direita-ciano::after,
+.seta-direita-tracejada::after{
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 34px;
+  height: 2px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+.seta-direita-azul::before,
+.seta-direita-roxa::before,
+.seta-direita-ciano::before,
+.seta-direita-tracejada::before{
+  content: "";
+  position: absolute;
+  left: calc(100% + 30px);
+  top: 50%;
+  width: 0; height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 4;
+}
+/* Cores por estágio */
+.seta-direita-azul::after  { background: var(--c-rede); }
+.seta-direita-azul::before { border-left: 10px solid var(--c-rede); }
+
+.seta-direita-roxa::after  { background: var(--c-resil); }
+.seta-direita-roxa::before { border-left: 10px solid var(--c-resil); }
+
+.seta-direita-ciano::after { background: var(--c-nuvem); }
+.seta-direita-ciano::before{ border-left: 10px solid var(--c-nuvem); }
+
+/* Seta tracejada (sincronização → banco, indica link pela internet) */
+.seta-direita-tracejada::after{
+  background: transparent;
+  border-top: 2px dashed var(--c-nuvem);
+}
+.seta-direita-tracejada::before{ border-left: 10px solid var(--c-nuvem); }
+.bloco-head{
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+}
+.bloco-num{
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: currentColor;
+  color: #fff;
+  font-size: 12px; font-weight: 800;
+  flex-shrink: 0;
+}
+.bloco-num::after{
+  content: attr(data-num);
+}
+.bloco-ico{
+  display: grid; place-items: center;
+  padding: 8px 0;
+  color: inherit;
+}
+.bloco-ico.ico-grande{ padding: 12px 0; }
+.bloco-sub{
+  font-size: 11.5px;
+  color: #475569;
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
+}
+.bloco-rodape{
+  font-size: 11.5px;
+  color: #475569;
+  text-align: center;
+  margin: 4px 0 0;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+/* Cor por coluna nos blocos */
+.bloco-fabrica { color: var(--c-fabrica); background: linear-gradient(180deg, #fff, #f4f8ff); }
+.bloco-rede    { color: var(--c-rede);    background: linear-gradient(180deg, #fff, #eef5ff); }
+.bloco-resil   { color: var(--c-resil);   background: linear-gradient(180deg, #fff, #f5efff); }
+.bloco-nuvem   { color: var(--c-nuvem);   background: linear-gradient(180deg, #fff, #ebf8f9); }
+.bloco-acesso  { color: var(--c-acesso);  background: linear-gradient(180deg, #fff, #ecfbf0); }
+
+/* ---- Bloco grande (servidor / gateway) ---- */
+.bloco-grande{
+  padding: 16px 16px 18px;
+  gap: 10px;
+}
+.sub-bloco{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 8px;
+}
+.sub-bloco .sub-ico{
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 12%, white);
+  color: var(--c-resil);
+}
+.sub-bloco strong{
+  display: block; font-size: 12.5px; color: #0b1d3a; font-weight: 700;
+}
+.sub-bloco span{
+  display: block; font-size: 11px; color: #64748b; line-height: 1.4;
+}
+
+/* ---- Lista de sensores (na coluna fábrica) ---- */
+.lista-sensores{
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.ls-item{
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(26,58,138,.04);
+  font-size: 12px; font-weight: 600; color: #0b1d3a;
+}
+.ls-ico{
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.ls-temp   { background: rgba(0,184,240,.18);  color: #0a83b8; }
+.ls-energia{ background: rgba(245,158,11,.18); color: #b45309; }
+.ls-porta  { background: rgba(22,163,74,.18);  color: #15803d; }
+
+/* ---- Seta vertical entre máquina e sensores ---- */
+.seta-vert{
+  width: 2px; height: 24px;
+  background: linear-gradient(180deg, var(--c-fabrica), transparent);
+  margin: -4px auto;
+  position: relative;
+}
+.seta-vert::after{
+  content: "";
+  position: absolute;
+  bottom: -2px; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--c-fabrica);
+}
+
+/* Variante UP (seta apontando pra cima) — usada do Switch pro Logger */
+.seta-vert-cima{
+  width: 2px; height: 28px;
+  background: linear-gradient(0deg, var(--c-rede), transparent);
+  margin: 2px auto 4px;
+  position: relative;
+}
+.seta-vert-cima::after{
+  content: "";
+  position: absolute;
+  top: -2px; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--c-rede);
+}
+
+/* ---- Conexão dupla (Wi-Fi e Ethernet entre logger e switch) ---- */
+.conexao-dupla{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px;
+}
+.conexao-linha{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--c-rede);
+  font-weight: 600;
+  position: relative;
+  padding-left: 26px;
+}
+.conexao-linha::before{
+  content: "";
+  position: absolute;
+  top: 50%; left: 0;
+  width: 22px; height: 0;
+  border-top: 2px dashed var(--c-rede);
+  transform: translateY(-50%);
+}
+.conexao-linha.solida::before{
+  border-top: 2px solid var(--c-rede);
+}
+.conexao-rotulo{
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--c-rede) 30%, transparent);
+}
+
+/* ---- Alerta de internet (acima da nuvem-pair) ---- */
+.alerta-internet{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border: 1.5px dashed #dc2626;
+  border-radius: 999px;
+  background: rgba(220,38,38,.04);
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* ---- Nuvem: blocos 6 e 7 empilhados (coluna estreita) ---- */
+.col-nuvem{ align-items: stretch; }
+.nuvem-pair{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+  position: relative;
+}
+.nuvem-pair > .bloco{ width: auto; }
+
+/* No layout vertical, a seta horizontal entre 6 e 7 não cabe — esconde
+   e desenha uma vertical tracejada via pseudo-elemento no container.   */
+.nuvem-pair .seta-direita-tracejada::after,
+.nuvem-pair .seta-direita-tracejada::before{ display: none; }
+.nuvem-pair::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 8px);
+  height: 16px;
+  width: 0;
+  border-left: 2px dashed var(--c-nuvem);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.nuvem-pair::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 6px);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--c-nuvem);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+/* ---- Bloco 7 com fork de 2 setas verdes (sai pra blocos 8 e 9) ---- */
+.bloco-com-fork{ overflow: visible; }
+.fork-acesso{
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 50px;
+  height: 130%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+
+/* ============ Banner de garantia ============ */
+.proto-garantia{
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 24px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, rgba(22,163,74,.08), rgba(22,163,74,.02));
+  border: 2px solid rgba(22,163,74,.40);
+  border-radius: 12px;
+}
+.garantia-escudo{
+  width: 56px; height: 56px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(22,163,74,.30);
+  flex-shrink: 0;
+}
+.garantia-texto strong{
+  display: block;
+  font-size: 18px;
+  letter-spacing: .08em;
+  font-weight: 800;
+  color: #15803d;
+  margin-bottom: 4px;
+}
+.garantia-texto span{
+  font-size: 13px;
+  color: #475569;
+}
+
+/* ============ Cenários (down / up) ============ */
+.cenarios{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid #e5e9f2;
+  border-radius: 10px;
+}
+.cenario{
+  display: flex; flex-direction: column; gap: 8px;
+}
+.cen-cabecalho{
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px;
+}
+.cen-ico{
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.cen-ico.vermelho{ background: #dc2626; }
+.cen-ico.verde   { background: #16a34a; }
+.cenario ul{
+  list-style: none;
+  padding: 0 0 0 42px;
+  margin: 0;
+  font-size: 12.5px;
+  color: #475569;
+}
+.cenario li{
+  padding: 3px 0;
+  position: relative;
+  padding-left: 12px;
+}
+.cenario li::before{
+  content: "•";
+  position: absolute; left: 0; top: 0;
+  color: #94a3b8;
+  font-weight: 700;
+}
+.destaque-vermelho{
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
+/* ============ Fluxo numerado horizontal ============ */
+.fluxo-num{
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-top: 22px;
+  padding: 18px 12px;
+  background: #fff;
+  border: 1px solid #e5e9f2;
+  border-radius: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.fn-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  text-align: center;
+  padding: 0 4px;
+  color: var(--c-rede);
+}
+.fn-bola{
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--c-rede);
+  color: #fff;
+  font-size: 12px; font-weight: 800;
+  flex-shrink: 0;
+}
+.fn-bola.roxa { background: var(--c-resil); }
+.fn-bola.ciano{ background: var(--c-nuvem); }
+.fn-bola.verde{ background: var(--c-acesso); }
+.fn-ico{
+  height: 28px;
+  display: grid; place-items: center;
+  color: var(--c-rede);
+}
+.fn-ico.roxo { color: var(--c-resil); }
+.fn-ico.ciano{ color: var(--c-nuvem); }
+.fn-ico.verde{ color: var(--c-acesso); }
+.fn-txt{
+  font-size: 10.5px;
+  color: #475569;
+  line-height: 1.3;
+  font-weight: 500;
+}
+.fn-seta{
+  align-self: center;
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+/* ============ Legenda ============ */
+.proto-legenda{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 1px solid #e5e9f2;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #475569;
+}
+.proto-legenda strong{
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: #0b1d3a;
+  font-weight: 800;
+  margin-right: 4px;
+}
+.leg-it{ display: inline-flex; align-items: center; gap: 8px; }
+.leg-linha{
+  display: inline-block;
+  width: 36px; height: 0;
+  border-top: 2.5px solid;
+}
+.leg-azul-cheia     { border-color: var(--c-rede); }
+.leg-azul-tracejada { border-top-style: dashed; border-color: var(--c-rede); }
+.leg-verde-tracejada{ border-top-style: dashed; border-color: var(--c-nuvem); }
+.leg-roxa           { border-color: var(--c-resil); }
+.leg-verde-cheia    { border-color: var(--c-acesso); }
+
+/* =====================================================================
+   Seção · Reconexão automática (onde mora)
+   ===================================================================== */
+.reconex-grade{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.reconex-card{
+  background: #fff;
+  border: 1px solid #e5e9f2;
+  border-left: 4px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reconex-card.sim   { border-left-color: #16a34a; }
+.reconex-card.talvez{ border-left-color: #f59e0b; }
+.reconex-card.nao   { border-left-color: #94a3b8; background: #f8fafc; }
+.reconex-card header{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reconex-card h4{
+  font-size: 14px;
+  color: #0b1d3a;
+  margin: 0;
+  font-weight: 700;
+}
+.rx-tag{
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(22,163,74,.12);
+  color: #15803d;
+  white-space: nowrap;
+}
+.rx-tag.warn{ background: rgba(245,158,11,.14); color: #b45309; }
+.rx-tag.err { background: rgba(148,163,184,.18); color: #475569; }
+.reconex-card p{
+  font-size: 12.5px;
+  color: #475569;
+  margin: 0;
+  line-height: 1.5;
+}
+.reconex-card p strong{ color: #0b1d3a; }
+.reconex-card p em    { color: #6b3eb8; font-style: normal; font-weight: 600; }
+.rx-nota{
+  font-size: 11px !important;
+  font-style: italic;
+  color: #64748b !important;
+  margin-top: 2px !important;
+}
+
+/* Fluxo horizontal de retry */
+.reconex-fluxo{
+  background: linear-gradient(135deg, rgba(30,111,214,.04), rgba(30,111,214,.01));
+  border: 1px solid rgba(30,111,214,.20);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.reconex-fluxo > strong{
+  display: block;
+  font-size: 12.5px;
+  color: #0b1d3a;
+  margin-bottom: 12px;
+}
+.rx-passos{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.rx-passo{
+  display: inline-block;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+.rx-passo.fail{ border-color: #fca5a5; color: #b91c1c; background: rgba(220,38,38,.05); }
+.rx-passo.ok  { border-color: #86efac; color: #15803d; background: rgba(22,163,74,.06); }
+.rx-arrow{ color: #94a3b8; font-weight: 700; }
+.rx-explica{
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.55;
+}
+.rx-explica strong{ color: var(--c-resil); }
+
+/* =====================================================================
+   Seção · Fila / Buffer local
+   ===================================================================== */
+.fila-grade{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.fila-passo{
+  background: linear-gradient(180deg, #fff, #f7f5fc);
+  border: 1px solid rgba(107,62,184,.20);
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fp-num{
+  position: absolute;
+  top: -10px; left: 14px;
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--c-resil);
+  color: #fff;
+  font-size: 12px; font-weight: 800;
+}
+.fila-passo h4{
+  font-size: 13px;
+  color: #0b1d3a;
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+.fila-passo p{
+  font-size: 11.5px;
+  color: #475569;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fila-comparativo{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.fc-cenario{
+  background: #fff;
+  border: 1px solid #e5e9f2;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.fc-cenario > strong{
+  display: block;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #e5e9f2;
+}
+.fc-cenario ul{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fc-cenario li{
+  padding-left: 16px;
+  position: relative;
+}
+.fc-cenario li::before{
+  content: "•";
+  position: absolute; left: 0; top: 0;
+  color: #cbd5e1;
+}
+.fc-cenario.destaque{
+  background: linear-gradient(135deg, rgba(22,163,74,.06), rgba(22,163,74,.01));
+  border-color: rgba(22,163,74,.40);
+}
+.fc-cenario.destaque > strong{ color: #15803d; }
+.fc-cenario.destaque li::before{ color: #16a34a; }
+
+.fila-nota{
+  font-size: 12.5px;
+  color: #475569;
+  background: #fffbf0;
+  border-left: 3px solid #f59e0b;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  margin: 0;
+  line-height: 1.55;
+}
+.fila-nota strong{ color: #0b1d3a; }
+.fila-nota em    { color: #b45309; font-style: normal; font-weight: 700; }
+
+/* ============ Responsivo ============ */
+@media (max-width: 1200px){
+  .diag-colunas-head, .diag-grade{
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  /* Em layout 2 colunas, as setas horizontais não fazem mais sentido */
+  .diag-grade .seta-direita-azul::after,
+  .diag-grade .seta-direita-azul::before,
+  .diag-grade .seta-direita-roxa::after,
+  .diag-grade .seta-direita-roxa::before,
+  .diag-grade .seta-direita-ciano::after,
+  .diag-grade .seta-direita-ciano::before{ display: none; }
+  .fork-acesso{ display: none; }
+  .dch, .col{ min-width: 0; }
+  .fluxo-num{ justify-content: flex-start; }
+  .fn-item{ flex: 0 0 auto; min-width: 88px; }
+}
+@media (max-width: 720px){
+  .layout-admin{ padding-left: 0; }
+  .proto-main{ padding: 84px 16px 40px; }
+  .diag-colunas-head, .diag-grade{ grid-template-columns: 1fr; }
+  .cenarios{ grid-template-columns: 1fr; }
+  .fila-comparativo{ grid-template-columns: 1fr; }
+  .nuvem-pair{ grid-template-columns: 1fr; }
+}

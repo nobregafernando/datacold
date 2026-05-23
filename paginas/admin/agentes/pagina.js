@@ -314,7 +314,199 @@ class PaginaAgentes {
         <div class="ag-regras">
           ${itens.map(r => this._htmlRegra(r, t)).join("")}
         </div>
+
+        ${t._especial === "reconstrutor" ? this._htmlGuiaReconstrutor() : ""}
       </article>
+    `;
+  }
+
+  /** Guia lúdico expansível — só renderizado dentro do card do Reconstrutor. */
+  _htmlGuiaReconstrutor() {
+    return `
+      <details class="ag-guia">
+        <summary>
+          <span class="ag-guia-ico">🎓</span>
+          <span class="ag-guia-titulo">Como funciona? Clique pra ver passo a passo</span>
+          <span class="ag-guia-seta">▾</span>
+        </summary>
+        <div class="ag-guia-corpo">
+          <p class="ag-guia-intro">
+            O Agente Reconstrutor entra em ação quando o sensor <strong>perde
+            conexão</strong> e depois <strong>volta</strong>. O objetivo é
+            preencher o "buraco" no gráfico da forma mais fiel possível ao
+            que provavelmente aconteceu — sem fingir certeza quando não tem.
+          </p>
+
+          <div class="ag-guia-tecnico">
+            <div class="ag-tec-item">
+              <span class="ag-tec-rotulo">Biblioteca usada</span>
+              <span class="ag-tec-valor">Nenhuma — JavaScript puro</span>
+              <p>O algoritmo é implementação própria em <code>scripts/agentes/AgenteReconstrutor.js</code>
+              (~250 linhas). Não usa TensorFlow.js, Prophet ou similares —
+              eles pesam MB, exigem treinamento e geram resultado de "caixa
+              preta". Aqui o método é <strong>explicável passo a passo</strong>
+              e roda em milissegundos no navegador.</p>
+            </div>
+            <div class="ag-tec-item">
+              <span class="ag-tec-rotulo">Algoritmo</span>
+              <span class="ag-tec-valor">SPLC (Same Period Last Cycle)</span>
+              <p>O mesmo método que <strong>Grafana, Prometheus, Datadog e
+              CloudWatch</strong> usam pra séries temporais com sazonalidade.
+              Versão melhorada: multi-ciclo ponderado + filtro de outliers +
+              correção de offset nas pontas pra fechar suave.</p>
+            </div>
+            <div class="ag-tec-item">
+              <span class="ag-tec-rotulo">Janela de histórico</span>
+              <span class="ag-tec-valor">Últimos <strong>30 dias</strong> do sensor</span>
+              <p>O front carrega <strong>30 dias</strong> de leituras desse
+              sensor em segundo plano (atualizado a cada 5 min). Esses dados
+              ficam em memória pro reconstrutor olhar quando precisar.
+              Cobre os 3 ciclos: 24 horas, 7 dias e 30 dias atrás.</p>
+            </div>
+            <div class="ag-tec-item">
+              <span class="ag-tec-rotulo">Quando recalcula</span>
+              <span class="ag-tec-valor">A cada 3 segundos (refresh do gráfico)</span>
+              <p>Reconstruções <strong>não são salvas no banco</strong>. São
+              calculadas em memória a cada refresh — então se um ponto real
+              chegar atrasado depois, ele substitui automaticamente a estimativa.
+              Dado real sempre prevalece.</p>
+            </div>
+          </div>
+
+          <ol class="ag-passos">
+            <li>
+              <div class="ag-passo-num">1</div>
+              <div>
+                <h4>Detecta o gap</h4>
+                <p>Compara o tempo entre dois pontos consecutivos. Se passou
+                de <strong>1,6×</strong> a cadência esperada do tipo
+                (energia 30s, temperatura/porta 60s), considera lacuna.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">2</div>
+              <div>
+                <h4>Pega o contexto adjacente</h4>
+                <p>Olha os <strong>5 últimos pontos antes</strong> do gap e
+                os <strong>5 primeiros depois</strong>. Calcula a média de
+                cada campo nos dois lados — assim a estimativa não fica
+                refém de um ponto isolado possivelmente ruidoso.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">3</div>
+              <div>
+                <h4>Busca o mesmo horário em ciclos passados (SPLC)</h4>
+                <p>Pra cada ponto faltante, procura no histórico carregado
+                (7 dias) o ponto correspondente em três janelas atrás:</p>
+                <ul class="ag-ciclos">
+                  <li><strong>24 horas atrás</strong> — peso 50% (padrão diário)</li>
+                  <li><strong>7 dias atrás</strong> — peso 30% (dia da semana)</li>
+                  <li><strong>30 dias atrás</strong> — peso 20% (tendência mensal)</li>
+                </ul>
+                <p>É o mesmo algoritmo usado pelo Grafana, Prometheus e Datadog
+                pra séries temporais com sazonalidade.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">4</div>
+              <div>
+                <h4>Filtra outliers no histórico</h4>
+                <p>Antes de usar um valor do "mesmo horário ontem", verifica
+                se ele é coerente com a vizinhança no próprio ciclo
+                (<strong>z-score &gt; 3 = descarta</strong>). Picos anômalos
+                do passado não são copiados pro presente.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">5</div>
+              <div>
+                <h4>Estratégia por CAMPO, não só por sensor</h4>
+                <p>Cada métrica usa o método mais apropriado:</p>
+                <table class="ag-tabela-estrategias">
+                  <thead><tr><th>Campo</th><th>Estratégia</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>tensao_*</code></td><td>Média estável (sinal quase constante)</td></tr>
+                    <tr><td><code>corrente_*</code></td><td>SPLC multi-ciclo (padrão diário forte)</td></tr>
+                    <tr><td><code>fator_potencia_*</code></td><td>Média do contexto</td></tr>
+                    <tr><td><code>temperatura</code> (câmara)</td><td>SPLC + correção local</td></tr>
+                    <tr><td><code>temperatura</code> (ambiente)</td><td>SPLC 24h dominante (ciclo dia/noite)</td></tr>
+                    <tr><td><code>abertura_porta</code></td><td>Step (mantém último estado)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">6</div>
+              <div>
+                <h4>Combina via média ponderada + correção de offset</h4>
+                <p>Junta os valores dos ciclos com seus pesos. Depois aplica
+                uma correção linear pra "fechar" suavemente nas pontas — sem
+                aquele salto feio entre dado real e reconstruído.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">7</div>
+              <div>
+                <h4>Calcula a confiança honesta</h4>
+                <p>A confiança final reflete: tamanho do gap, quantos ciclos
+                conseguiram contribuir, tamanho do contexto. Se for baixa,
+                a <strong>linha roxa fica mais apagada</strong> no gráfico —
+                pra você reparar que aquele trecho é especulativo.</p>
+              </div>
+            </li>
+            <li>
+              <div class="ag-passo-num">8</div>
+              <div>
+                <h4>Marca cada ponto</h4>
+                <p>Cada ponto reconstruído leva <code>_reconstruido = true</code>
+                e a meta completa (método, ciclos usados, confiança por campo).
+                O gráfico desenha em <strong>ROXO tracejado</strong> e o tooltip
+                mostra a explicação ao passar o mouse.</p>
+              </div>
+            </li>
+          </ol>
+
+          <h3 class="ag-guia-h3">Quando ele NÃO age</h3>
+          <ul class="ag-lista-bullet">
+            <li><strong>Gap ainda em curso</strong> (sensor offline AGORA, sem
+              ponto-âncora depois): NÃO inventa. Em vez disso, o gráfico mostra
+              "linha morta" (vazio) até o sinal voltar.</li>
+            <li><strong>Incidentes spike, drift, valor_impossivel</strong>:
+              os pontos chegam ao banco normalmente, só com valor alterado.
+              Não há gap, então o reconstrutor não interfere.</li>
+            <li><strong>Sem dado real depois</strong>: precisa de pelo menos
+              um ponto antes E um ponto depois pra interpolar com segurança.</li>
+          </ul>
+
+          <h3 class="ag-guia-h3">Limitações honestas</h3>
+          <ul class="ag-lista-bullet">
+            <li>Gap &gt; 6h: confiança baixa porque o ciclo de 24h cobre só
+              uma "fatia" do que pode ter mudado.</li>
+            <li>Sensor com falha crônica: a reconstrução assume que o padrão
+              histórico continua válido. Se o sensor mudou de comportamento
+              recentemente, a estimativa pode ficar enviesada.</li>
+            <li>Pontos reconstruídos <strong>NUNCA são gravados no banco</strong>.
+              São calculados em memória a cada refresh do gráfico. Dado real
+              sempre prevalece.</li>
+          </ul>
+
+          <h3 class="ag-guia-h3">Todos os parâmetros</h3>
+          <table class="ag-tabela-params">
+            <thead><tr><th>Parâmetro</th><th>Valor</th><th>O que faz</th></tr></thead>
+            <tbody>
+              <tr><td><code>GAP_MULT</code></td><td>1,6×</td><td>Multiplicador da cadência que define "lacuna". Menor = detecta gap mais rápido.</td></tr>
+              <tr><td><code>N_CONTEXTO</code></td><td>5</td><td>Quantos pontos vizinhos compõem a âncora de cada lado do gap.</td></tr>
+              <tr><td><code>Z_OUTLIER</code></td><td>3</td><td>Z-score acima disso = outlier no histórico, descartar.</td></tr>
+              <tr><td><code>Ciclo 24h</code></td><td>peso 50%</td><td>Padrão diário, dominante (ex: turno comercial).</td></tr>
+              <tr><td><code>Ciclo 7d</code></td><td>peso 30%</td><td>Dia da semana (segunda diferente de domingo).</td></tr>
+              <tr><td><code>Ciclo 30d</code></td><td>peso 20%</td><td>Tendência mensal (ex: clima ou demanda sazonal).</td></tr>
+              <tr><td><code>Cadência energia</code></td><td>30s</td><td>Frequência esperada de leituras de motor.</td></tr>
+              <tr><td><code>Cadência temp/porta</code></td><td>60s</td><td>Frequência esperada de leituras térmicas e de porta.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
     `;
   }
 

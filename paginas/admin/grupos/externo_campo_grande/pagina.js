@@ -325,19 +325,30 @@ class PaginaGrupo {
     }
   }
 
+  /**
+   * Reduz a quantidade de pontos para visualização preservando o shape
+   * da curva (LTTB). Aplica o alvo derivado da janela ativa.
+   */
+  _reduzir(pares) {
+    if (typeof Downsample === "undefined") return pares;
+    const alvo = Downsample.alvoPorJanela(this.janela);
+    return Downsample.aplicarXY(pares, alvo);
+  }
+
   _chartEnergia(box, sensores) {
     // 1) Potência ativa total — uma série por sensor
     const datasets = sensores.map(s => {
       const d = this.dadosPorSensor[s.id];
       if (!d?.points?.length) return null;
+      const dados = d.points.map(p => ({
+        x: new Date(p.time).getTime(),
+        y: ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
+            (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
+            (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000,
+      }));
       return {
         label: s.rotulo,
-        data: d.points.map(p => ({
-          x: new Date(p.time).getTime(),
-          y: ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
-              (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
-              (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000,
-        })),
+        data: this._reduzir(dados),
         borderColor: this.coresPorSensor[s.id],
         backgroundColor: this.coresPorSensor[s.id] + "20",
       };
@@ -348,18 +359,20 @@ class PaginaGrupo {
     const dsFP = sensores.map(s => {
       const d = this.dadosPorSensor[s.id];
       if (!d?.points?.length) return null;
+      const dados = d.points.map(p => ({
+        x: new Date(p.time).getTime(),
+        y: ((p.fator_potencia_a || 0) + (p.fator_potencia_b || 0) + (p.fator_potencia_c || 0)) / 3,
+      }));
       return {
         label: s.rotulo,
-        data: d.points.map(p => ({
-          x: new Date(p.time).getTime(),
-          y: ((p.fator_potencia_a || 0) + (p.fator_potencia_b || 0) + (p.fator_potencia_c || 0)) / 3,
-        })),
+        data: this._reduzir(dados),
         borderColor: this.coresPorSensor[s.id],
       };
     }).filter(Boolean);
     if (dsFP.length) {
-      // adiciona linha de referência ANEEL
-      const ref = dsFP[0]?.data.map(p => ({ x: p.x, y: 0.92 }));
+      // adiciona linha de referência ANEEL (só nos extremos — Chart.js extrapola)
+      const xs = dsFP[0].data;
+      const ref = xs.length ? [{ x: xs[0].x, y: 0.92 }, { x: xs[xs.length - 1].x, y: 0.92 }] : [];
       dsFP.push({ label: "Limite ANEEL (0,92)", data: ref, borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 });
       this._novoChart(box, "Fator de potência composto — sobreposto", dsFP);
     }
@@ -369,9 +382,10 @@ class PaginaGrupo {
     const datasets = sensores.map(s => {
       const d = this.dadosPorSensor[s.id];
       if (!d?.points?.length) return null;
+      const dados = d.points.map(p => ({ x: new Date(p.time).getTime(), y: p.temperatura }));
       return {
         label: s.rotulo,
-        data: d.points.map(p => ({ x: new Date(p.time).getTime(), y: p.temperatura })),
+        data: this._reduzir(dados),
         borderColor: this.coresPorSensor[s.id],
         backgroundColor: this.coresPorSensor[s.id] + "20",
       };
@@ -383,9 +397,10 @@ class PaginaGrupo {
     const datasets = sensores.map(s => {
       const d = this.dadosPorSensor[s.id];
       if (!d?.points?.length) return null;
+      const dados = d.points.map(p => ({ x: new Date(p.time).getTime(), y: p.abertura_porta }));
       return {
         label: s.rotulo,
-        data: d.points.map(p => ({ x: new Date(p.time).getTime(), y: p.abertura_porta })),
+        data: this._reduzir(dados),
         borderColor: this.coresPorSensor[s.id],
         stepped: true,
       };

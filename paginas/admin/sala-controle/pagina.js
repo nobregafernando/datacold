@@ -86,7 +86,15 @@
   ligarToolbar();
   renderizarGrade();
   await atualizar();
-  setInterval(atualizar, 8000);
+  setInterval(atualizar, 5000);   // polling mais ágil
+
+  // === Sync entre abas (BroadcastChannel) ===
+  const broadcast = ("BroadcastChannel" in window) ? new BroadcastChannel("datacold-sala-controle") : null;
+  if (broadcast) broadcast.onmessage = (ev) => { if (ev.data?.tipo === "mudanca-incidente") atualizar(); };
+  window.__avisarOutrasAbas = () => broadcast?.postMessage({ tipo: "mudanca-incidente", t: Date.now() });
+
+  // === Tempo real do banco (Supabase Realtime via WS nativo) ===
+  conectarRealtime();
 
   ligarEventosTopo();
 
@@ -755,6 +763,7 @@
           await api.cancelarIncidente(btn.dataset.cancelar);
           toast("Incidente cancelado", btn.dataset.cancelar, "info");
           atualizar();
+          window.__avisarOutrasAbas?.();
         } catch (e) { toast("Erro ao cancelar", e.message, "erro"); }
       };
     });
@@ -806,6 +815,7 @@
           "ok"
         );
         atualizar();
+        window.__avisarOutrasAbas?.();
       } catch (e) { toast("Erro ao injetar", e.message, "erro"); }
     };
   }
@@ -826,6 +836,7 @@
       }
       toast("Todos os incidentes cancelados", "", "ok");
       atualizar();
+      window.__avisarOutrasAbas?.();
     };
   }
 

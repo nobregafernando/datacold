@@ -226,6 +226,50 @@ AgenteEnergia.REGRAS = [
   }),
 
   new Regra({
+    id: "corrente-fora-nominal",
+    categoria: "Carga",
+    label: "A corrente está dentro da faixa nominal do equipamento?",
+    fonte: "Folha de dados do equipamento (corrente_nominal_a no perfil)",
+    avaliar(ctx) {
+      const nominal = Number(ctx.sensor?.parametros?.corrente_nominal_a) || 0;
+      if (!nominal) {
+        return { status: "info", resumo: "Sem corrente nominal cadastrada", detalhe: "Defina `corrente_nominal_a` no perfil pra ativar esta regra." };
+      }
+      const Im = (ctx.correntes[0] + ctx.correntes[1] + ctx.correntes[2]) / 3;
+      const pct = (Im / nominal) * 100;
+      if (Im < nominal * 0.20) return {
+        status: "crit",
+        resumo: `Corrente = ${Im.toFixed(0)} A (${pct.toFixed(0)}% do nominal)`,
+        detalhe: `Corrente média de ${Im.toFixed(1)} A é apenas ${pct.toFixed(0)}% da nominal (${nominal} A). Equipamento pode estar caindo ou desligado.`,
+        diagnostico: "Queda anormal de carga: contator desarmou, motor parou, fase ausente intermitente ou medidor com defeito.",
+        valorMedido: `${Im.toFixed(1)} A`, valorIdeal: `${(nominal*0.7).toFixed(0)}-${(nominal*1.1).toFixed(0)} A`,
+      };
+      if (Im > nominal * 1.30) return {
+        status: "crit",
+        resumo: `Corrente = ${Im.toFixed(0)} A (${pct.toFixed(0)}% do nominal)`,
+        detalhe: `Corrente média de ${Im.toFixed(1)} A está ${pct.toFixed(0)}% do nominal (${nominal} A). Equipamento sobrecarregado.`,
+        diagnostico: "Sobrecarga sustentada: carga acima do projeto, rolamento travando, ou ambiente quente demais. Risco de queima do motor.",
+        valorMedido: `${Im.toFixed(1)} A`, valorIdeal: `${(nominal*0.7).toFixed(0)}-${(nominal*1.1).toFixed(0)} A`,
+      };
+      if (Im < nominal * 0.50 || Im > nominal * 1.15) return {
+        status: "warn",
+        resumo: `Corrente = ${Im.toFixed(0)} A (${pct.toFixed(0)}% do nominal)`,
+        detalhe: `Corrente fora da faixa típica (50-115% do nominal). Atual: ${pct.toFixed(0)}%.`,
+        diagnostico: Im < nominal * 0.50
+          ? "Subcarga sustentada — verificar processo a montante ou abertura de contator."
+          : "Sobrecarga moderada — vigiar temperatura do motor e qualidade da rede.",
+        valorMedido: `${Im.toFixed(1)} A`, valorIdeal: `${(nominal*0.7).toFixed(0)}-${(nominal*1.1).toFixed(0)} A`,
+      };
+      return {
+        status: "ok",
+        resumo: `Corrente = ${Im.toFixed(0)} A (${pct.toFixed(0)}% do nominal)`,
+        detalhe: `Corrente dentro da faixa típica do equipamento (50-115% do nominal).`,
+        valorMedido: `${Im.toFixed(1)} A`, valorIdeal: `${(nominal*0.7).toFixed(0)}-${(nominal*1.1).toFixed(0)} A`,
+      };
+    },
+  }),
+
+  new Regra({
     id: "phantom-load",
     categoria: "Phantom load",
     label: "O equipamento consome em horário ocioso?",

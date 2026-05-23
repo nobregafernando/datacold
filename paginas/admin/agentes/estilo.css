@@ -435,3 +435,175 @@ body{
   .ag-stats{ width: 100%; }
   .modal-card{ max-width: 100%; }
 }
+
+/* =========================================================
+   GUIA LÚDICO DO RECONSTRUTOR (expansível dentro do card)
+   ========================================================= */
+.ag-guia{
+  margin: 18px 30px 24px;
+  background: linear-gradient(180deg, rgba(124,58,237,.04), rgba(124,58,237,.01));
+  border: 1px solid rgba(124,58,237,.20);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ag-guia summary{
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px;
+  cursor: pointer; user-select: none;
+  list-style: none;
+  font-size: 14px; font-weight: 600;
+  color: #5b21b6;
+  transition: background .15s;
+}
+.ag-guia summary::-webkit-details-marker{ display: none; }
+.ag-guia summary:hover{ background: rgba(124,58,237,.06); }
+.ag-guia-ico{ font-size: 18px; }
+.ag-guia-titulo{ flex: 1; }
+.ag-guia-seta{
+  font-size: 14px; color: #7c3aed;
+  transition: transform .2s;
+}
+.ag-guia[open] .ag-guia-seta{ transform: rotate(180deg); }
+
+.ag-guia-corpo{
+  padding: 4px 22px 22px;
+  border-top: 1px dashed rgba(124,58,237,.20);
+}
+.ag-guia-intro{
+  font-size: 14px; line-height: 1.6; color: #475569;
+  margin: 18px 0 18px;
+}
+.ag-guia-intro strong{ color: #0f172a; font-weight: 600; }
+
+/* Bloco técnico (biblioteca, algoritmo, janela, etc) */
+.ag-guia-tecnico{
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.ag-tec-item{
+  background: #fff;
+  border: 1px solid rgba(124,58,237,.22);
+  border-left: 4px solid #7c3aed;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.ag-tec-rotulo{
+  display: block;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px;
+  color: #7c3aed; font-weight: 700; margin-bottom: 4px;
+}
+.ag-tec-valor{
+  display: block;
+  font-size: 15px; color: #0f172a; font-weight: 700;
+  margin-bottom: 8px; line-height: 1.3;
+}
+.ag-tec-valor strong{ color: #5b21b6; }
+.ag-tec-item p{
+  font-size: 12.5px; line-height: 1.55;
+  color: #475569; margin: 0;
+}
+.ag-tec-item p strong{ color: #0f172a; font-weight: 700; }
+.ag-tec-item p code{
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 11.5px;
+  color: #5b21b6;
+}
+
+/* Passos numerados */
+.ag-passos{
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ag-passos > li{
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e9f2; border-radius: 10px;
+}
+.ag-passo-num{
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+  box-shadow: 0 4px 10px rgba(124,58,237,.30);
+}
+.ag-passos h4{
+  font-size: 14.5px; margin: 0 0 6px; color: #0f172a;
+  font-weight: 700;
+}
+.ag-passos p{
+  font-size: 13px; line-height: 1.55; color: #475569;
+  margin: 0;
+}
+.ag-passos strong{ color: #0f172a; font-weight: 700; }
+.ag-passos code{
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 11.5px;
+  color: #5b21b6;
+}
+
+.ag-ciclos{
+  list-style: none; padding: 0; margin: 8px 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.ag-ciclos li{
+  padding: 6px 10px;
+  background: rgba(124,58,237,.06);
+  border-left: 3px solid #7c3aed;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: #475569;
+}
+
+/* Tabelas */
+.ag-tabela-estrategias, .ag-tabela-params{
+  width: 100%; border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+.ag-tabela-estrategias th, .ag-tabela-params th{
+  text-align: left; padding: 8px 10px;
+  background: #f8fafc; border-bottom: 2px solid #e5e9f2;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: #475569; font-weight: 700;
+}
+.ag-tabela-estrategias td, .ag-tabela-params td{
+  padding: 7px 10px; border-bottom: 1px solid #f1f5f9;
+  color: #475569; line-height: 1.4;
+}
+.ag-tabela-estrategias td:first-child, .ag-tabela-params td:first-child{
+  width: 25%; color: #0f172a; font-weight: 600;
+}
+.ag-tabela-params td:nth-child(2){
+  font-family: ui-monospace, monospace;
+  color: #5b21b6; font-weight: 700;
+  white-space: nowrap;
+}
+
+.ag-guia-h3{
+  font-size: 14px; margin: 24px 0 10px;
+  color: #5b21b6; font-weight: 700;
+  padding-bottom: 6px; border-bottom: 1px solid rgba(124,58,237,.15);
+}
+
+.ag-lista-bullet{
+  margin: 8px 0 16px; padding-left: 20px;
+}
+.ag-lista-bullet li{
+  font-size: 13px; line-height: 1.6; color: #475569;
+  margin-bottom: 6px;
+}
+.ag-lista-bullet strong{ color: #0f172a; font-weight: 700; }
+.ag-lista-bullet code{
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 11.5px;
+}
+
+@media (max-width: 720px){
+  .ag-guia{ margin: 14px 16px 18px; }
+  .ag-guia-corpo{ padding: 4px 14px 18px; }
+  .ag-passos > li{ flex-direction: column; gap: 8px; }
+  .ag-tabela-estrategias, .ag-tabela-params{ font-size: 11.5px; }
+}

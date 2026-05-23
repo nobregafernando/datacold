@@ -75,7 +75,7 @@ class MenuLateral {
     this.raizEl.innerHTML = `
       <div class="ml-topo">
         <a href="${this.raiz}index.html" class="ml-marca" aria-label="DataCold">
-          <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
+          <img src="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/01-primary-logo.png" alt="DataCold">
         </a>
       </div>
 
@@ -117,6 +117,11 @@ class MenuLateral {
         <a href="${this.raiz}paginas/admin/agentes/" class="ml-nav-item ${this.paginaAtiva === "agentes" ? "ativo" : ""}" data-nav="agentes">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Agentes</span>
+        </a>
+
+        <a href="${this.raiz}paginas/admin/ambiente/" class="ml-nav-item ${this.paginaAtiva === "ambiente" ? "ativo" : ""}" data-nav="ambiente">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 0 0-20 0z"></path><path d="M2 12h20"></path><path d="M12 2a15 15 0 0 1 0 20"></path><path d="M12 2a15 15 0 0 0 0 20"></path></svg>
+          <span>Ambiente controlado</span>
         </a>
 
         <a href="${this.raiz}paginas/admin/prototipo/" class="ml-nav-item ${this.paginaAtiva === "prototipo" ? "ativo" : ""}" data-nav="prototipo">
