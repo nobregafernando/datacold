@@ -1,0 +1,117 @@
+body{
+  min-height: 100vh;
+  background: var(--azul-gelo);
+  color: var(--texto);
+  overflow-x: hidden;
+}
+
+.erro-fundo{
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(0,184,240,.30), transparent 34%),
+    radial-gradient(circle at 82% 76%, rgba(30,111,214,.28), transparent 32%),
+    linear-gradient(135deg, #f7fbff 0%, var(--azul-gelo) 100%);
+}
+
+.erro-grade{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(30,111,214,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,111,214,.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 78%);
+  pointer-events: none;
+}
+
+.erro404{
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  padding: 48px 24px;
+}
+
+.erro-marca img{
+  width: min(260px, 70vw);
+  height: auto;
+  filter: drop-shadow(0 12px 28px rgba(11,29,58,.12));
+}
+
+.erro-card{
+  width: min(680px, 100%);
+  text-align: center;
+  padding: clamp(34px, 6vw, 58px);
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(30,111,214,.16);
+  border-radius: var(--raio-xl);
+  box-shadow: var(--sombra-lg);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+
+.erro-codigo{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  height: 48px;
+  margin-bottom: 22px;
+  border-radius: var(--raio-pill);
+  color: var(--branco);
+  background: var(--grad-vibrante);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  box-shadow: 0 12px 30px rgba(0,184,240,.32);
+}
+
+.erro-card h1{
+  color: var(--azul-noite);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin-bottom: 18px;
+}
+
+.erro-card p{
+  max-width: 54ch;
+  margin: 0 auto;
+  color: var(--texto-suave);
+  font-size: clamp(1rem, 2vw, 1.12rem);
+  line-height: 1.7;
+}
+
+.erro-acoes{
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 34px;
+}
+
+@media (max-width: 560px){
+  .erro404{
+    justify-content: flex-start;
+    padding-top: 42px;
+  }
+
+  .erro-card{
+    padding: 30px 20px;
+  }
+
+  .erro-acoes{
+    flex-direction: column;
+  }
+
+  .erro-acoes .btn{
+    width: 100%;
+  }
+}
