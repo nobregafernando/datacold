@@ -14,50 +14,66 @@
       "**/*.db",
       "**/*.db-*",
       "**/*.sql",
-      "estudos/**",
+      "scripts/build/**",
+      "estudos/explorador-api.html",
       "simulador/**",
       "supabase/**"
     ],
     "cleanUrls": false,
     "trailingSlash": false,
-    "headers": [
-      {
-        "source": "**/*.@(html|js|css)",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-store, max-age=0" }
-        ]
-      }
+    "predeploy": [
+      "node scripts/build/versionar.js"
     ],
     "redirects": [
+      { "source": "/paginas/admin",        "destination": "/paginas/admin/admin.html", "type": 301 },
+      { "source": "/paginas/admin/",       "destination": "/paginas/admin/admin.html", "type": 301 },
+      { "source": "/paginas/admin/admin",  "destination": "/paginas/admin/admin.html", "type": 301 },
+      { "source": "/paginas/admin/admin/", "destination": "/paginas/admin/admin.html", "type": 301 },
+      { "source": "/paginas/login",        "destination": "/paginas/login/login.html", "type": 301 },
+      { "source": "/paginas/login/",       "destination": "/paginas/login/login.html", "type": 301 },
+      { "source": "/paginas/login/login",  "destination": "/paginas/login/login.html", "type": 301 },
+      { "source": "/paginas/login/login/", "destination": "/paginas/login/login.html", "type": 301 },
+
+      { "source": "/paginas/admin/agentes",       "destination": "/paginas/admin/agentes/index.html",       "type": 301 },
+      { "source": "/paginas/admin/agentes/",      "destination": "/paginas/admin/agentes/index.html",       "type": 301 },
+      { "source": "/paginas/admin/sala-controle",  "destination": "/paginas/admin/sala-controle/index.html","type": 301 },
+      { "source": "/paginas/admin/sala-controle/", "destination": "/paginas/admin/sala-controle/index.html","type": 301 },
+
+      { "source": "/paginas/admin/sensores/:sensor",  "destination": "/paginas/admin/sensores/:sensor/index.html", "type": 301 },
+      { "source": "/paginas/admin/sensores/:sensor/", "destination": "/paginas/admin/sensores/:sensor/index.html", "type": 301 },
+      { "source": "/paginas/admin/grupos/:grupo",     "destination": "/paginas/admin/grupos/:grupo/index.html",    "type": 301 },
+      { "source": "/paginas/admin/grupos/:grupo/",    "destination": "/paginas/admin/grupos/:grupo/index.html",    "type": 301 },
+
+      { "source": "/apresentacao",  "destination": "/apresentacao/index.html",  "type": 301 },
+      { "source": "/apresentacao/", "destination": "/apresentacao/index.html",  "type": 301 },
+
+      { "source": "/estudos/conectividade",  "destination": "/estudos/conectividade.html", "type": 301 },
+      { "source": "/estudos/conectividade/", "destination": "/estudos/conectividade.html", "type": 301 }
+    ],
+    "headers": [
       {
-        "source": "/paginas/admin/sensores/:sensor",
-        "destination": "/paginas/admin/sensores/:sensor/index.html",
-        "type": 301
+        "source": "**/*.@(html|js|css|json)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" }
+        ]
       },
       {
-        "source": "/paginas/admin/sensores/:sensor/",
-        "destination": "/paginas/admin/sensores/:sensor/index.html",
-        "type": 301
+        "source": "**/*.@(png|jpg|jpeg|gif|webp|svg|ico)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" }
+        ]
       },
       {
-        "source": "/paginas/admin",
-        "destination": "/paginas/admin/admin.html",
-        "type": 301
-      },
-      {
-        "source": "/paginas/admin/",
-        "destination": "/paginas/admin/admin.html",
-        "type": 301
-      },
-      {
-        "source": "/paginas/login",
-        "destination": "/paginas/login/login.html",
-        "type": 301
-      },
-      {
-        "source": "/paginas/login/",
-        "destination": "/paginas/login/login.html",
-        "type": 301
+        "source": "**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" }
+        ]
       }
     ]
   }

@@ -1,5 +1,5 @@
 /* =========================================================
-   DATACOLD · Admin (layout principal interno)
+   DATACOLD · Admin (layout principal interno) — DENSO + LÚDICO
    ========================================================= */
 
 body{
@@ -10,344 +10,576 @@ body{
 
 .layout-admin{
   min-height: 100vh;
-  padding-left: 280px;   /* reserva espaço pro menu lateral fixo */
+  padding-left: 264px;
 }
 
 .admin-main{
   min-width: 0;
-  padding: 96px 40px 60px;     /* 96px topo: dá espaço pro menu-topo fixo (~68px) + respiro */
+  padding: 80px 24px 24px;
   overflow-x: hidden;
 }
 
-@media (max-width: 900px){
-  .layout-admin{ padding-left: 240px; }
-}
-@media (max-width: 720px){
-  .layout-admin{ padding-left: 0; }
-}
+@media (max-width: 900px){ .layout-admin{ padding-left: 240px; } }
+@media (max-width: 720px){ .layout-admin{ padding-left: 0; } }
 
-/* ============ Header ============ */
-.admin-topo{
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
+/* =========================================================
+   FAIXA SUPERIOR (saudação + KPIs + atualizar + legenda)
+   ========================================================= */
+.painel-faixa{
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  grid-template-areas: "saudacao kpis acoes legenda";
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 12px 18px;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra-sm);
 }
-.admin-topo h1{
-  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+.pf-saudacao{ grid-area: saudacao; min-width: 0; }
+.pf-kpis    { grid-area: kpis;     display: flex; gap: 8px; }
+.pf-acoes   { grid-area: acoes; }
+.pf-legenda { grid-area: legenda;  display: flex; gap: 12px; flex-wrap: wrap; }
+
+.pf-eyebrow{
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--azul-medio);
+  font-weight: 700;
+}
+.painel-faixa h1{
+  font-size: 1.05rem;
   color: var(--azul-noite);
-  margin: 6px 0 4px;
-  letter-spacing: -.02em;
+  margin: 2px 0 0;
+  letter-spacing: -.01em;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.admin-topo .destaque{
+.painel-faixa .destaque{
   background: var(--grad-vibrante);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.admin-topo .legenda{
-  color: var(--texto-suave);
-  font-size: .95rem;
-  margin: 0;
-}
 
-.admin-acoes{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ============ KPIs ============ */
-.admin-kpis{
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 28px;
-}
-.kpi-card{
-  background: var(--branco);
-  border: 1px solid var(--borda);
-  border-radius: var(--raio-lg);
-  padding: 22px 24px;
-  position: relative;
-  overflow: hidden;
-  transition: transform var(--t-media), box-shadow var(--t-media);
-}
-.kpi-card:hover{
-  transform: translateY(-3px);
-  box-shadow: var(--sombra-md);
-}
-.kpi-card .kpi-ico{
-  width: 38px; height: 38px;
-  border-radius: 10px;
-  display: grid; place-items: center;
-  color: var(--branco);
-  background: var(--grad-vibrante);
-  margin-bottom: 14px;
-  box-shadow: 0 6px 14px rgba(0,184,240,.25);
-}
-.kpi-card.azul     .kpi-ico{ background: linear-gradient(135deg, var(--azul-profundo), var(--azul-medio)); box-shadow: 0 6px 14px rgba(30,111,214,.30); }
-.kpi-card.ciano    .kpi-ico{ background: linear-gradient(135deg, var(--azul-medio), var(--ciano));         box-shadow: 0 6px 14px rgba(0,184,240,.30); }
-.kpi-card.claro    .kpi-ico{ background: linear-gradient(135deg, var(--ciano), var(--azul-claro));         box-shadow: 0 6px 14px rgba(142,219,255,.45); }
-.kpi-card.alerta   .kpi-ico{ background: linear-gradient(135deg, #e89324, #f3b558);                       box-shadow: 0 6px 14px rgba(217,119,6,.25); }
-
-.kpi-card .kpi-rotulo{
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  color: var(--texto-suave);
-  font-weight: 700;
-}
-.kpi-card .kpi-valor{
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -.025em;
-  color: var(--azul-noite);
-  line-height: 1.1;
-  margin-top: 6px;
-}
-.kpi-card .kpi-sub{
-  font-size: 12px;
-  color: var(--texto-suave);
-  margin-top: 4px;
-}
-
-/* skeleton enquanto carrega */
-.kpi-skel{
-  background:
-    linear-gradient(90deg, transparent, rgba(30,111,214,.08), transparent) 0/200% 100%,
-    var(--branco);
-  height: 130px;
-  animation: skel 1.4s linear infinite;
-}
-@keyframes skel{
-  to { background-position: -200% 0, 0 0; }
-}
-
-/* ============ Grade principal ============ */
-.admin-grade{
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 20px;
-  align-items: start;
-}
-.admin-coluna-larga{
+.pf-kpi{
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-}
-.admin-coluna-estreita{
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ============ Cartões ============ */
-.cartao-painel{
-  background: var(--branco);
-  border: 1px solid var(--borda);
-  border-radius: var(--raio-lg);
-  padding: 24px;
-  box-shadow: var(--sombra-sm);
-}
-.cartao-painel header{
-  margin-bottom: 18px;
-}
-.cartao-painel h3{
-  font-size: 1.05rem;
-  color: var(--azul-noite);
-  margin: 0 0 4px;
-}
-.cartao-painel header p{
-  margin: 0;
-  font-size: 13px;
-  color: var(--texto-suave);
-}
-
-.cartao-painel.gradiente{
-  background:
-    radial-gradient(ellipse at top right, rgba(0,184,240,.18), transparent 65%),
-    linear-gradient(135deg, var(--azul-profundo) 0%, var(--azul-noite) 100%);
-  color: var(--branco);
-  border: none;
-  overflow: hidden;
-  position: relative;
-}
-.cartao-painel.gradiente h3{ color: var(--branco); margin-bottom: 18px; }
-.cartao-painel.gradiente .atalho{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  margin: 0 -6px;
-  border-radius: var(--raio-sm);
-  color: var(--branco);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background var(--t-rapida);
-}
-.cartao-painel.gradiente .atalho:hover{
-  background: rgba(255,255,255,.10);
-}
-
-/* ============ Distribuição por tipo ============ */
-.distribuicao{
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-.dist-item{
-  padding: 16px;
-  border-radius: var(--raio-md);
-  border: 1px solid var(--borda);
+  align-items: flex-start;
+  padding: 6px 14px;
   background: var(--painel-soft);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-md);
+  min-width: 80px;
 }
-.dist-item .tag{
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  padding: 3px 8px;
-  border-radius: var(--raio-pill);
-  display: inline-block;
-  margin-bottom: 8px;
-  color: var(--branco);
-}
-.dist-item.energia     .tag{ background: linear-gradient(135deg, var(--azul-profundo), var(--azul-medio)); }
-.dist-item.temperatura .tag{ background: linear-gradient(135deg, var(--azul-medio), var(--ciano)); }
-.dist-item.porta       .tag{ background: linear-gradient(135deg, var(--ciano), var(--azul-claro)); color: var(--azul-noite); }
-
-.dist-item .qtd{
-  font-size: 1.8rem;
+.pf-kpi .pfk-v{
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--azul-noite);
+  line-height: 1;
   letter-spacing: -.02em;
 }
-.dist-item .nota{
-  font-size: 11px;
-  color: var(--texto-suave);
-  margin-top: 4px;
-}
-
-/* ============ Detalhe sensor ============ */
-.placeholder-detalhe{
-  text-align: center;
-  padding: 40px 0;
-  color: var(--texto-suave);
-}
-.placeholder-detalhe svg{
-  color: var(--azul-claro);
-  margin-bottom: 14px;
-  opacity: .6;
-}
-.placeholder-detalhe p{
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.detalhe-conteudo{ display: grid; gap: 16px; }
-.detalhe-cabecalho{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.detalhe-cabecalho h2{
-  font-size: 1.4rem;
-  margin: 0;
-  color: var(--azul-noite);
-}
-.detalhe-cabecalho .meta{
-  font-size: 12px;
-  color: var(--texto-suave);
-  font-family: var(--fonte-mono);
-}
-.tag-tipo-detalhe{
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  padding: 4px 10px;
-  border-radius: var(--raio-pill);
-  color: var(--branco);
-}
-.tag-tipo-detalhe.energia     { background: linear-gradient(135deg, var(--azul-profundo), var(--azul-medio)); }
-.tag-tipo-detalhe.temperatura { background: linear-gradient(135deg, var(--azul-medio), var(--ciano)); }
-.tag-tipo-detalhe.porta       { background: linear-gradient(135deg, var(--ciano), var(--azul-claro)); color: var(--azul-noite); }
-
-.detalhe-grade-info{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-.detalhe-info{
-  padding: 14px 16px;
-  background: var(--painel-soft);
-  border-radius: var(--raio-md);
-  border: 1px solid var(--borda);
-}
-.detalhe-info .l{
+.pf-kpi .pfk-l{
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .12em;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--texto-suave);
-}
-.detalhe-info .v{
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--azul-noite);
-  margin-top: 4px;
-}
-
-/* ============ Atividade ============ */
-.lista-atividade{
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.lista-atividade li{
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--borda);
-}
-.lista-atividade li:last-child{ border-bottom: none; }
-.ponto-atividade{
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-.ponto-atividade.ok   { background: var(--ok);     box-shadow: 0 0 0 4px rgba(22,163,74,.15); }
-.ponto-atividade.info { background: var(--ciano);  box-shadow: 0 0 0 4px rgba(0,184,240,.18); }
-.ponto-atividade.warn { background: var(--alerta); box-shadow: 0 0 0 4px rgba(217,119,6,.15); }
-.lista-atividade strong{
-  display: block;
-  font-size: 13px;
-  color: var(--azul-noite);
-}
-.lista-atividade span{
-  display: block;
-  font-size: 12px;
   color: var(--texto-suave);
   margin-top: 2px;
 }
+.pf-kpi.pfk-ok   .pfk-v{ color: var(--ok); }
+.pf-kpi.pfk-warn .pfk-v{ color: var(--alerta); }
+.pf-kpi.pfk-crit .pfk-v{ color: var(--erro); }
+.pf-kpi.pfk-crit{ background: rgba(220,38,38,.06); border-color: rgba(220,38,38,.30); }
 
-/* ============ Responsivo ============ */
+.kpi-skel{
+  background:
+    linear-gradient(90deg, transparent, rgba(30,111,214,.08), transparent) 0/200% 100%,
+    var(--painel-soft);
+  width: 80px;
+  height: 44px;
+  border-radius: var(--raio-md);
+  animation: skel 1.4s linear infinite;
+}
+@keyframes skel{ to { background-position: -200% 0, 0 0; } }
+
+.pf-legenda .leg-item{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+.leg-dot{
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.leg-dot.saudavel  { background: var(--ok);     box-shadow: 0 0 0 3px rgba(22,163,74,.16); }
+.leg-dot.atencao   { background: var(--alerta); box-shadow: 0 0 0 3px rgba(217,119,6,.16); }
+.leg-dot.critico   { background: var(--erro);   box-shadow: 0 0 0 3px rgba(220,38,38,.18); animation: pulsar-dot 1.4s ease-in-out infinite; }
+.leg-dot.historico { background: #cdb27a;       box-shadow: 0 0 0 3px rgba(205,178,122,.20); }
+.leg-dot.offline   { background: #94a3b8; }
+@keyframes pulsar-dot{
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .7; transform: scale(.85); }
+}
+
 @media (max-width: 1100px){
-  .admin-kpis{ grid-template-columns: repeat(2, 1fr); }
-  .admin-grade{ grid-template-columns: 1fr; }
+  .painel-faixa{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "saudacao acoes"
+      "kpis kpis"
+      "legenda legenda";
+  }
 }
-@media (max-width: 720px){
-  .admin-main{ padding: 84px 20px 40px; }
-  .distribuicao{ grid-template-columns: 1fr; }
+
+/* =========================================================
+   MAPA DA PLANTA (6 colunas de ambientes)
+   ========================================================= */
+/* =========================================================
+   FILTROS DE AMBIENTE (chips no topo)
+   ========================================================= */
+.planta-filtros{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
 }
+.chip-filtro{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--borda);
+  background: var(--branco);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: all var(--t-rapida);
+  font-family: var(--fonte);
+}
+.chip-filtro:hover{
+  border-color: var(--azul-medio);
+  color: var(--azul-noite);
+  background: var(--azul-gelo);
+}
+.chip-filtro.ativo{
+  background: var(--azul-noite);
+  color: var(--branco);
+  border-color: var(--azul-noite);
+}
+.chip-filtro .cf-ico{
+  display: grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  border-radius: 5px;
+  background: var(--painel-soft);
+  color: var(--azul-profundo);
+}
+.chip-filtro.ativo .cf-ico{ background: rgba(255,255,255,.18); color: var(--branco); }
+.chip-filtro .cf-ico[data-amb="extrusao"]              { background: #fff0e6; color: #b25410; }
+.chip-filtro .cf-ico[data-amb="camara_congelados"]     { background: #e6f6ff; color: #0a83b8; }
+.chip-filtro .cf-ico[data-amb="camara_estoque"]        { background: #eef2fb; color: #2a4ea0; }
+.chip-filtro .cf-ico[data-amb="graxaria"]              { background: #f4ecff; color: #6b3eb8; }
+.chip-filtro .cf-ico[data-amb="externo_campo_grande"]  { background: #e8f7ec; color: #1f7a3a; }
+.chip-filtro .cf-ico[data-amb="externo_tres_lagoas"]   { background: #fff5e0; color: #9a6a00; }
+.chip-filtro.ativo .cf-ico[data-amb]{ background: rgba(255,255,255,.18); color: var(--branco); }
+.chip-filtro .cf-count{
+  background: var(--painel-soft);
+  color: var(--texto-suave);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--borda);
+}
+.chip-filtro.ativo .cf-count{ background: rgba(255,255,255,.16); color: var(--branco); border-color: transparent; }
+
+/* =========================================================
+   GRADE PLANA DE SENSORES (todos os cards do mesmo tamanho)
+   ========================================================= */
+.planta-grade{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+.planta-loading,
+.placeholder-amb{
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+/* card "bento" — denso, mesma altura/largura */
+.sensor-bento{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-md);
+  padding: 10px 12px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-decoration: none;
+  min-height: 104px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--t-media);
+  box-shadow: var(--sombra-sm);
+}
+.sensor-bento:hover{
+  transform: translateY(-2px);
+  border-color: var(--azul-medio);
+  box-shadow: 0 8px 24px rgba(11,29,58,.10);
+}
+.sensor-bento::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--azul-medio);
+  opacity: 0;
+  transition: opacity var(--t-rapida);
+}
+.sensor-bento:hover::before{ opacity: 1; }
+
+.sb-topo{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sb-ico-tipo{
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+.sb-ico-tipo svg{ width: 12px; height: 12px; }
+
+/* Indicador de conectividade (verdinho/amarelinho/cinza) — dado real do agente */
+.sb-conn{
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #cbd2dc;
+  flex-shrink: 0;
+}
+.sb-conn.conn-online{
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  animation: pulsar-conn 1.8s ease-in-out infinite;
+}
+.sb-conn.conn-atraso{
+  background: var(--alerta);
+  box-shadow: 0 0 0 3px rgba(217,119,6,.18);
+}
+.sb-conn.conn-mudo{
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148,163,184,.18);
+}
+@keyframes pulsar-conn{
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .55; transform: scale(.85); }
+}
+.sb-ico-tipo.tipo-energia    { background: rgba(30,111,214,.12);  color: #1E6FD6; }
+.sb-ico-tipo.tipo-temperatura{ background: rgba(0,184,240,.14);   color: #0a93c4; }
+.sb-ico-tipo.tipo-porta      { background: rgba(142,219,255,.30); color: #2a4ea0; }
+
+.sb-nome{
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  flex: 1;
+}
+
+.sb-rodape{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--borda);
+}
+.sb-amb{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  min-width: 0;
+  max-width: 100%;
+}
+.sb-amb-ico{
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.sb-amb-ico[data-amb="extrusao"]              { background: #fff0e6; color: #b25410; }
+.sb-amb-ico[data-amb="camara_congelados"]     { background: #e6f6ff; color: #0a83b8; }
+.sb-amb-ico[data-amb="camara_estoque"]        { background: #eef2fb; color: #2a4ea0; }
+.sb-amb-ico[data-amb="graxaria"]              { background: #f4ecff; color: #6b3eb8; }
+.sb-amb-ico[data-amb="externo_campo_grande"]  { background: #e8f7ec; color: #1f7a3a; }
+.sb-amb-ico[data-amb="externo_tres_lagoas"]   { background: #fff5e0; color: #9a6a00; }
+.sb-amb-ico svg{ width: 9px; height: 9px; }
+.sb-amb-nome{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* destaque por saúde */
+.sensor-bento.saude-critico{
+  border-color: rgba(220,38,38,.40);
+  background: linear-gradient(180deg, rgba(220,38,38,.03), var(--branco) 30%);
+}
+.sensor-bento.saude-critico::before{ background: var(--erro); opacity: 1; }
+.sensor-bento.saude-atencao{
+  border-color: rgba(217,119,6,.40);
+  background: linear-gradient(180deg, rgba(217,119,6,.03), var(--branco) 30%);
+}
+.sensor-bento.saude-atencao::before{ background: var(--alerta); opacity: 1; }
+.sensor-bento.saude-historico{ opacity: .75; }
+.sensor-bento.saude-offline  { opacity: .5; }
+.planta-col:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-md);
+}
+
+/* cabeçalho da coluna */
+.pc-head{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed var(--borda);
+}
+.pc-ico{
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--azul-gelo);
+  color: var(--azul-profundo);
+  flex-shrink: 0;
+}
+.pc-ico[data-amb="extrusao"]              { background: #fff0e6; color: #b25410; }
+.pc-ico[data-amb="camara_congelados"]     { background: #e6f6ff; color: #0a83b8; }
+.pc-ico[data-amb="camara_estoque"]        { background: #eef2fb; color: #2a4ea0; }
+.pc-ico[data-amb="graxaria"]              { background: #f4ecff; color: #6b3eb8; }
+.pc-ico[data-amb="externo_campo_grande"]  { background: #e8f7ec; color: #1f7a3a; }
+.pc-ico[data-amb="externo_tres_lagoas"]   { background: #fff5e0; color: #9a6a00; }
+
+.pc-titulo{ min-width: 0; flex: 1; }
+.pc-nome{
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  /* permite 2 linhas */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.pc-count{
+  font-size: 10px;
+  color: var(--texto-suave);
+  margin-top: 2px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* lista de sensores em pílulas */
+.pc-lista{ display: flex; flex-direction: column; gap: 6px; }
+
+/* Cartão vertical compacto — funciona bem mesmo em 6 colunas estreitas */
+.sensor-pill{
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--raio-sm);
+  background: var(--painel-soft);
+  border: 1px solid var(--borda);
+  text-decoration: none;
+  transition: all var(--t-rapida);
+  position: relative;
+  overflow: hidden;
+}
+.sensor-pill:hover{
+  background: var(--branco);
+  border-color: var(--azul-medio);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30,111,214,.10);
+}
+.sensor-pill::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--azul-medio);
+  opacity: 0;
+  transition: opacity var(--t-rapida);
+}
+.sensor-pill:hover::before{ opacity: 1; }
+
+.sp-ico{
+  width: 22px; height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+  grid-row: 1;
+  grid-column: 1;
+}
+.sp-ico.tipo-energia    { background: rgba(30,111,214,.12);  color: #1E6FD6; }
+.sp-ico.tipo-temperatura{ background: rgba(0,184,240,.14);   color: #0a93c4; }
+.sp-ico.tipo-porta      { background: rgba(142,219,255,.30); color: #2a4ea0; }
+
+.sp-conteudo{
+  min-width: 0;
+  grid-row: 2;
+  grid-column: 1 / -1;     /* ocupa largura toda na linha 2 */
+}
+.sp-nome{
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  line-height: 1.2;
+  /* permite até 2 linhas */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.sp-tipo{
+  font-size: 9px;
+  color: var(--texto-suave);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-top: 2px;
+}
+
+/* badge vai na linha 1 coluna 2 (canto sup. direito) */
+.saude-badge{
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+}
+
+/* ===== Badge de saúde (destaque) ===== */
+.saude-badge{
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.saude-badge.saudavel{
+  background: rgba(22,163,74,.12);
+  color: var(--ok);
+  border-color: rgba(22,163,74,.35);
+}
+.saude-badge.atencao{
+  background: rgba(217,119,6,.12);
+  color: var(--alerta);
+  border-color: rgba(217,119,6,.35);
+}
+.saude-badge.critico{
+  background: rgba(220,38,38,.12);
+  color: var(--erro);
+  border-color: rgba(220,38,38,.40);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.08);
+  animation: pulsar-critico 1.6s ease-in-out infinite;
+}
+.saude-badge.historico{
+  background: rgba(205,178,122,.18);
+  color: #806524;
+  border-color: rgba(205,178,122,.50);
+}
+.saude-badge.offline{
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: var(--borda);
+}
+@keyframes pulsar-critico{
+  0%, 100% { box-shadow: 0 0 0 3px rgba(220,38,38,.08); }
+  50%      { box-shadow: 0 0 0 6px rgba(220,38,38,.18); }
+}
+
+/* contorno do pill ganha cor da saúde */
+.sensor-pill.saude-critico  { border-color: rgba(220,38,38,.40); background: rgba(220,38,38,.04); }
+.sensor-pill.saude-critico::before{ background: var(--erro); opacity: 1; }
+.sensor-pill.saude-atencao  { border-color: rgba(217,119,6,.40); background: rgba(217,119,6,.04); }
+.sensor-pill.saude-atencao::before{ background: var(--alerta); opacity: 1; }
+.sensor-pill.saude-historico{ opacity: .75; border-style: dashed; }
+.sensor-pill.saude-offline  { opacity: .5; }
+
+/* =========================================================
+   INDICADOR DE SINAL (4 barrinhas)
+   ========================================================= */
+.sinal{
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.sinal i{
+  display: block;
+  width: 2.5px;
+  background: #cdd5e3;
+  border-radius: 1px;
+}
+.sinal i:nth-child(1){ height: 25%; }
+.sinal i:nth-child(2){ height: 50%; }
+.sinal i:nth-child(3){ height: 75%; }
+.sinal i:nth-child(4){ height: 100%; }
+
+.sinal.nivel-4 i,
+.sinal.nivel-3 i:nth-child(-n+3){ background: var(--ok); }
+.sinal.nivel-2 i:nth-child(-n+2){ background: var(--alerta); }
+.sinal.nivel-1 i:nth-child(1)    { background: var(--erro); }
+
+/* pulse no sinal "ao vivo" pra dar vida */
+.sensor-pill.nivel-4 .sinal i:nth-child(4),
+.sensor-pill.nivel-3 .sinal i:nth-child(3){
+  animation: pulsar-sinal 1.8s ease-in-out infinite;
+}
+@keyframes pulsar-sinal{
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+/* legenda no topo (formato compacto) */
+.pf-legenda .sinal{ height: 10px; }
+.pf-legenda .sinal i{ width: 2px; }

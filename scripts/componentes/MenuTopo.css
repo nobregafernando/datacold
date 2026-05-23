@@ -25,7 +25,17 @@
   .menu-topo{ left: 240px; }
 }
 @media (max-width: 720px){
-  .menu-topo{ left: 0; padding: 12px 20px; }
+  .menu-topo{ left: 0; padding: 12px 16px 12px 60px; }
+  /* deixa espaço pro hamburger sem sobrepor o título */
+  .mt-titulo{ font-size: 12px; }
+}
+@media (max-width: 420px){
+  .menu-topo{ padding: 10px 12px 10px 56px; gap: 10px; }
+  .mt-direita{ gap: 8px; }
+  /* esconde o texto do status — fica só o pontinho colorido + sino */
+  .mt-status{ padding: 6px 8px; }
+  .mt-status [data-mt-status-texto]{ display: none; }
+  .mt-titulo{ max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 .mt-esquerda{

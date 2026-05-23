@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+  }
+  // 2) Apaga todas as caches da Cache API
+  if ('caches' in window) {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
+  try {
+    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        if (anterior && anterior !== v.build_id) {
+          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
+          });
+        }
+        localStorage.setItem('__build_id', v.build_id);
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Agentes</title>
+
+<link rel="icon" type="image/png" href="../../../logo/04-icon-standalone.png?v=1779567436477">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779567436477">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779567436477">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779567436477">
+<link rel="stylesheet" href="estilo.css?v=1779567436477">
+</head>
+<body>
+
+<div class="layout-admin">
+
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="agentes-main">
+
+    <div id="menu-topo"></div>
+
+    <header class="agentes-header">
+      <span class="olho">Inteligência automática</span>
+      <h1>Os 3 cérebros que cuidam dos sensores</h1>
+      <p>Cada tipo de sensor (energia, temperatura, porta) é avaliado por um
+      <strong>agente especializado</strong> que aplica regras baseadas em normas
+      técnicas reconhecidas — PRODIST/ANEEL, NEMA, ANVISA, Codex. Cada agente
+      vigia o sensor e dispara alertas quando algo sai do padrão.</p>
+
+      <div class="ag-resumo" id="resumoTopo"></div>
+    </header>
+
+    <section class="ag-grade" id="agentesGrade"></section>
+
+    <!-- Modal de customização de parâmetro -->
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+        <header class="modal-head">
+          <div>
+            <span class="olho">Customizar parâmetro</span>
+            <h3 id="modalTitulo">
+              <span id="modalParamRotulo">—</span>
+            </h3>
+            <p class="modal-subtitulo">
+              <code id="modalParamId">—</code> · padrão da norma: <strong id="modalDefault">—</strong>
+            </p>
+          </div>
+          <button class="modal-close" id="modalFechar" aria-label="Fechar">×</button>
+        </header>
+
+        <form id="formCustomizar" class="modal-body">
+          <p class="modal-intro">
+            Cada equipamento pode ter seu próprio limite. O valor abaixo
+            sobrescreve o default <strong>somente para o sensor escolhido</strong>.
+          </p>
+
+          <label class="modal-campo">
+            <span>Sensor</span>
+            <select id="modalSensor" required></select>
+          </label>
+
+          <label class="modal-campo">
+            <span>Novo valor</span>
+            <input type="text" id="modalNovoValor" inputmode="decimal" required>
+          </label>
+
+          <div id="modalAviso" class="modal-aviso"></div>
+
+          <div class="modal-acoes">
+            <button type="button" class="btn-fantasma" id="modalFechar2"
+                    onclick="document.getElementById('modalBackdrop').hidden = true">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primario" id="modalSalvar">
+              Aplicar customização
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="ag-rodape">
+      <h3>Legenda de severidades</h3>
+      <div class="ag-leg">
+        <span class="ag-sev ok">🟢 OK</span>
+        <span class="ag-sev info">🔵 Informativo</span>
+        <span class="ag-sev warn">🟡 Atenção</span>
+        <span class="ag-sev crit">🔴 Crítico</span>
+      </div>
+      <p class="ag-fonte">
+        Cada regra cita a fonte técnica que serve de referência. Pra mudar um
+        limite só pra um sensor específico, edite a coluna <code>parametros</code>
+        (jsonb) da tabela <code>sensores</code> no Supabase — o agente respeita
+        o override automaticamente.
+      </p>
+    </footer>
+
+  </main>
+</div>
+
+<!-- Dependências ApiBEM (só pra menu lateral / topo) -->
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779567436477"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779567436477"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779567436477"></script>
+
+<!-- Agentes (mesma ordem que nas páginas dos sensores) -->
+<script src="../../../scripts/agentes/normas.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/Regra.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/verificacoesComuns.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/AgenteBase.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/AgenteEnergia.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/AgenteTemperatura.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/AgentePorta.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/FabricaAgente.js?v=1779567436477"></script>
+
+<script src="pagina.js?v=1779567436477"></script>
+</body>
+</html>

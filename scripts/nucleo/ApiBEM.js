@@ -77,6 +77,14 @@ class ApiBEM {
       }
     }
     this._chave = chave ?? chaveSalva;
+    // GARANTIA: nunca deixar _chave vazia/null — sempre cai no padrão.
+    // Assim toda página funciona sem o usuário precisar configurar nada.
+    if (!this._chave) {
+      this._chave = this._chavePadrao();
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(ApiBEM.CHAVE_STORAGE, this._chave);
+      }
+    }
   }
 
   // ===================================================================
@@ -193,6 +201,51 @@ class ApiBEM {
       p_valor:     valor,
       p_descricao: descricao,
     });
+  }
+
+  /**
+   * Atualiza (merge) os parâmetros de um sensor específico no Supabase.
+   * Os campos passados sobrescrevem; os existentes não passados ficam.
+   *   ex: atualizarParametrosSensor("extrusora_1", { limite_critico: 0.70 })
+   */
+  async atualizarParametrosSensor(sensor, parametros) {
+    if (!this._ehSupabase) {
+      throw new Error("Customização por sensor disponível apenas no backend Supabase.");
+    }
+    return this._rpc("atualizar_parametros_sensor", {
+      p_sensor: sensor,
+      p_parametros: parametros,
+    });
+  }
+
+  /**
+   * Lê os parâmetros (jsonb) de um sensor. Devolve `{}` se não existir
+   * ou se o backend não for Supabase.
+   *   ex: const p = await api.obterParametrosSensor("extrusora_1");
+   */
+  async obterParametrosSensor(sensorId) {
+    if (!this._ehSupabase) return {};
+    try {
+      return await this._rpc("obter_parametros_sensor", { p_sensor: sensorId }) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Devolve incidentes ATIVOS de um sensor (gap, offline, spike, drift,
+   * valor_impossivel). Sem incidente ativo → []. Usado pra refletir na
+   * página do sensor o que foi disparado na Sala de Controle.
+   *   ex: const ativos = await api.incidentesAtivos("extrusora_1");
+   */
+  async incidentesAtivos(sensorId = null) {
+    if (!this._ehSupabase) return [];
+    try {
+      const r = await this._rpc("incidentes_ativos", { p_sensor: sensorId });
+      return Array.isArray(r) ? r : [];
+    } catch {
+      return [];
+    }
   }
 
   async cancelarIncidente(id) {
