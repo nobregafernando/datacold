@@ -39,7 +39,7 @@ class PaginaGrupo {
   // =================================================================
 
   async iniciar() {
-    if (!Autenticacao.protegerPagina("../../../login/login/")) return;
+    if (!Autenticacao.protegerPagina("../../../login/")) return;
 
     this.menu = new MenuLateral({ paginaAtiva: "grupo", raiz: "../../../../" });
     await this.menu.montar("#menu-lateral");

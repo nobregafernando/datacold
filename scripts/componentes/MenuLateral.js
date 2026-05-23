@@ -75,7 +75,7 @@ class MenuLateral {
     this.raizEl.innerHTML = `
       <div class="ml-topo">
         <a href="${this.raiz}index.html" class="ml-marca" aria-label="DataCold">
-          <img src="${this.raiz}logo/01-primary-logo.png" alt="DataCold">
+          <img src="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/01-primary-logo.png" alt="DataCold">
         </a>
       </div>
 
@@ -87,7 +87,7 @@ class MenuLateral {
       </div>
 
       <nav class="ml-nav-primaria">
-        <a href="${this.raiz}paginas/admin/admin/" class="ml-nav-item ${this.paginaAtiva === "admin" ? "ativo" : ""}" data-nav="admin">
+        <a href="${this.raiz}paginas/admin/" class="ml-nav-item ${this.paginaAtiva === "admin" ? "ativo" : ""}" data-nav="admin">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
           <span>Dashboard</span>
         </a>
@@ -119,7 +119,12 @@ class MenuLateral {
           <span>Agentes</span>
         </a>
 
-        <a href="${this.raiz}apresentacao/" class="ml-nav-item ${this.paginaAtiva === "apresentacao" ? "ativo" : ""}" data-nav="apresentacao">
+        <a href="${this.raiz}paginas/admin/prototipo/" class="ml-nav-item ${this.paginaAtiva === "prototipo" ? "ativo" : ""}" data-nav="prototipo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v4h-7z"/><path d="M14 11h7v10h-7z"/><path d="M3 14h7v7H3z"/></svg>
+          <span>Protótipo</span>
+        </a>
+
+        <a href="${this.raiz}paginas/admin/apresentacao/" class="ml-nav-item ${this.paginaAtiva === "apresentacao" ? "ativo" : ""}" data-nav="apresentacao">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
           <span>Apresentação</span>
         </a>
@@ -144,7 +149,7 @@ class MenuLateral {
       if (acao === "sair") {
         ev.preventDefault();
         Autenticacao.logout();
-        window.location.href = `${this.raiz}paginas/login/login.html`;
+        window.location.href = `${this.raiz}paginas/login/`;
       }
       if (acao === "toggle-sensores") {
         ev.preventDefault();

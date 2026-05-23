@@ -97,7 +97,7 @@ class PaginaSensor {
   // =================================================================
 
   async iniciar() {
-    if (!Autenticacao.protegerPagina("../../../login/login.html")) return;
+    if (!Autenticacao.protegerPagina("../../../login//")) return;
 
     this.menu = new MenuLateral({ paginaAtiva: "sensor", raiz: "../../../../" });
     await this.menu.montar("#menu-lateral");
@@ -239,6 +239,30 @@ class PaginaSensor {
   // =================================================================
   //  Carregamento de dados
   // =================================================================
+
+  /**
+   * Busca histórico estendido (7d) em background, cacheado por 60s.
+   * Usado pelo AgenteReconstrutor pra fazer SPLC com ciclos de 24h e 7d
+   * — assim a reconstrução tem dados pra olhar em qualquer janela.
+   */
+  async _garantirHistoricoEstendido() {
+    const agora = Date.now();
+    const idadeCache = agora - (this._historicoEstendidoEm || 0);
+    if (idadeCache < 60_000 && this._historicoEstendido) return;
+    if (this._historicoEstendidoCarregando) return;
+    this._historicoEstendidoCarregando = true;
+    try {
+      const r = await this.api.buscarDados(this.sensorId, {
+        inicio: "-167h", fim: "now", limite: 50000
+      });
+      this._historicoEstendido = r?.points || [];
+      this._historicoEstendidoEm = agora;
+    } catch (e) {
+      // silencioso — reconstrutor cai pra fallback de interpolação
+    } finally {
+      this._historicoEstendidoCarregando = false;
+    }
+  }
 
   async _carregarDados() {
     if (this.carregando) return;
@@ -538,17 +562,34 @@ class PaginaSensor {
     secao.hidden = false;
 
     const ultimo = dados.points[dados.points.length - 1];
+
+    // Detecta se o sensor está offline (último ponto antigo demais).
+    // Cadência energia=30s, temp/porta=60s; consideramos offline se
+    // não chega nada há mais que 4× a cadência.
+    const cadencia = (typeof AgenteReconstrutor !== "undefined")
+      ? AgenteReconstrutor.CADENCIA_S[this.sensor.tipo] || 60
+      : 60;
+    const segDesde = (Date.now() - new Date(ultimo.time).getTime()) / 1000;
+    this._estaOffline = segDesde > cadencia * 4;
+    this._segDesde = segDesde;
+    secao.classList.toggle("offline", this._estaOffline);
+
     this._renderizarBannerStatus(dados, ultimo);
 
     const visual = document.querySelector("[data-ludico-visual]");
     if (!visual) return;
 
+    // Quando offline, passamos um ponto NULO em vez do último valor antigo —
+    // assim os velocímetros/termômetro/porta zeram visualmente (e o CSS
+    // .offline aplica grayscale + badge "sem sinal" por cima).
+    const pontoExibir = this._estaOffline ? null : ultimo;
+
     if (this.sensor.tipo === "energia") {
-      this._renderizarVelocimetrosEnergia(visual, ultimo);
+      this._renderizarVelocimetrosEnergia(visual, pontoExibir);
     } else if (this.sensor.tipo === "temperatura") {
-      this._renderizarTermometro(visual, dados, ultimo);
+      this._renderizarTermometro(visual, dados, pontoExibir);
     } else if (this.sensor.tipo === "porta") {
-      this._renderizarPorta(visual, dados, ultimo);
+      this._renderizarPorta(visual, dados, pontoExibir);
     }
   }
 
@@ -557,7 +598,25 @@ class PaginaSensor {
     const el = document.querySelector("[data-ludico-status]");
     if (!el) return;
 
-    const { sev, emoji, titulo, sub, valor } = this._avaliarStatus(dados, ultimo);
+    // Se o sensor está offline, o banner inteiro vira o aviso de offline.
+    let bannerData;
+    if (this._estaOffline) {
+      const tempo = this._segDesde < 60
+        ? `${Math.round(this._segDesde)}s`
+        : this._segDesde < 3600
+          ? `${Math.floor(this._segDesde / 60)} min`
+          : `${(this._segDesde / 3600).toFixed(1)}h`;
+      bannerData = {
+        sev: "crit",
+        emoji: "📡",
+        titulo: "SENSOR OFFLINE",
+        sub: `Sem leitura há ${tempo}. Velocímetros/termômetro abaixo refletem o último valor lido — não está mais ativo.`,
+        valor: "OFFLINE",
+      };
+    } else {
+      bannerData = this._avaliarStatus(dados, ultimo);
+    }
+    const { sev, emoji, titulo, sub, valor } = bannerData;
 
     // Upsert (não recria DOM se já existe — evita flash)
     if (!el.querySelector(".banner-status")) {
@@ -656,6 +715,19 @@ class PaginaSensor {
           <div class="gauge-unidade">amperes (A)</div>
         </div>`).join("");
     }
+    // OFFLINE: zera tudo e mostra "—"
+    if (ultimo == null) {
+      ["a","b","c"].forEach(f => {
+        const card = visual.querySelector(`[data-gauge="${f}"]`);
+        const arco   = card.querySelector(".gauge-arco");
+        const agulha = card.querySelector(".gauge-agulha");
+        arco.setAttribute("stroke-dashoffset", "251.3");
+        arco.setAttribute("class", "gauge-arco");
+        agulha.style.transform = "rotate(-90deg)";
+        card.querySelector("[data-valor]").textContent = "—";
+      });
+      return;
+    }
     // Escala honesta: usa a corrente nominal do equipamento (do parametros)
     // quando disponível; senão cai num default genérico de 250A. Como cada
     // motor tem sua nominal, a cor passa a refletir carga relativa real.
@@ -717,6 +789,17 @@ class PaginaSensor {
     const faixaEl  = card.querySelector("[data-faixa-ideal]");
     const infoFaixa= card.querySelector("[data-info-faixa]");
     const infoTend = card.querySelector("[data-info-tend]");
+
+    // OFFLINE: zera tudo
+    if (ultimo == null) {
+      mercurio.style.height = "0";
+      mercurio.className = "term-mercurio";
+      leitura.innerHTML = `—<span class="unid">°C</span>`;
+      leitura.className = "term-leitura";
+      infoFaixa.innerHTML = "Sem leitura no momento";
+      infoTend.textContent = "";
+      return;
+    }
 
     // Escala visual: -30°C a +40°C (cobre câmara congelados e ambiente externo)
     const escMin = -30, escMax = 40, escRange = escMax - escMin;
@@ -784,6 +867,15 @@ class PaginaSensor {
         </div>`;
     }
     const card = visual.querySelector(".porta-card");
+
+    // OFFLINE: estado desconhecido
+    if (ultimo == null) {
+      card.className = "porta-card";
+      card.querySelector("[data-icone]").textContent = "❓";
+      card.querySelector("[data-estado]").textContent = "ESTADO DESCONHECIDO";
+      card.querySelector("[data-timer]").innerHTML = "Sensor não está respondendo.";
+      return;
+    }
     const aberta = (ultimo.abertura_porta || 0) > 0;
 
     // Procura quanto tempo está no estado atual (último ponto que mudou)
@@ -832,46 +924,117 @@ class PaginaSensor {
       return;
     }
 
-    const labels = dados.points.map(p => new Date(p.time).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+    // Passa pelo AgenteReconstrutor: detecta gaps e gera pontos sintéticos
+    // pra preencher (marcados com _reconstruido=true).
+    // Dispara busca do histórico estendido em background (cacheado por 60s).
+    // O reconstrutor usa esse histórico pra fazer SPLC em ciclos de 24h e 7d.
+    this._garantirHistoricoEstendido();
+    const recon = (typeof AgenteReconstrutor !== "undefined")
+      ? new AgenteReconstrutor(this.sensor).reconstruir(dados.points, this._historicoEstendido)
+      : { pontos: dados.points, gaps: [] };
+    const pontos = recon.pontos;
+    this._ultimoRecon = recon;
+
+    const labels = pontos.map(p => new Date(p.time).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+
+    // Helper: pra cada métrica, devolve 2 séries paralelas — "real" e
+    // "reconstruída" — com os null nas posições opostas. O ponto real
+    // imediatamente antes/depois de um trecho reconstruído entra também
+    // na série reconstruída pra ligar visualmente.
+    // Também devolve `metaRec`: array paralelo com o objeto _meta de cada
+    // ponto reconstruído, pra o tooltip do gráfico mostrar a base.
+    const split = (get) => {
+      const real = [], rec = [], metaRec = [];
+      for (let i = 0; i < pontos.length; i++) {
+        const p = pontos[i];
+        const v = get(p);
+        if (p._reconstruido) {
+          real.push(null);
+          rec.push(v);
+          metaRec.push(p._meta || null);
+        } else {
+          real.push(v);
+          const vizRec = pontos[i+1]?._reconstruido || pontos[i-1]?._reconstruido;
+          rec.push(vizRec ? v : null);
+          metaRec.push(null);
+        }
+      }
+      return { real, rec, metaRec };
+    };
+
+    // Helper: dataset principal (linha sólida) + overlay reconstruído.
+    // Roxo (#7c3aed) = identidade do Agente Reconstrutor.
+    // `recInfo` é prop customizada do dataset — o tooltip lê dela.
+    // A OPACIDADE da linha roxa varia conforme a confiança média da janela:
+    // alta confiança = mais opaca (vívida); baixa confiança = quase apagada.
+    const confMediaRec = (() => {
+      const confs = recon.gaps?.map(g => g.confianca).filter(Number.isFinite) || [];
+      return confs.length ? confs.reduce((s, x) => s + x, 0) / confs.length : 0.6;
+    })();
+    // Mapeia confiança 0..1 pra alpha 0.30..1.0 (sempre visível, mas escala)
+    const alphaRec = (0.30 + 0.70 * confMediaRec).toFixed(2);
+    const corRecBorda = `rgba(124, 58, 237, ${alphaRec})`;
+    const corRecFundo = `rgba(124, 58, 237, ${(alphaRec * 0.12).toFixed(2)})`;
+
+    const par = (label, get, color) => {
+      const { real, rec, metaRec } = split(get);
+      return [
+        { label, data: real, borderColor: color },
+        {
+          label: `${label} (reconstruído · ${Math.round(confMediaRec * 100)}%)`,
+          data: rec,
+          borderColor: corRecBorda,
+          backgroundColor: corRecFundo,
+          borderDash: [6, 4],
+          borderWidth: 2.4,
+          pointRadius: ctx => ctx.raw == null ? 0 : 2,
+          pointBackgroundColor: corRecBorda,
+          pointBorderColor: "#fff",
+          pointHoverRadius: 6,
+          fill: false,
+          tension: 0.25,
+          recInfo: metaRec,
+        },
+      ];
+    };
 
     if (this.sensor.tipo === "energia") {
       this._upsertChart("corrente", box, "Corrente por fase (A)", labels, [
-        { label: "Fase A", data: dados.points.map(p => p.corrente_fase_a), borderColor: "#123B7A" },
-        { label: "Fase B", data: dados.points.map(p => p.corrente_fase_b), borderColor: "#1E6FD6" },
-        { label: "Fase C", data: dados.points.map(p => p.corrente_fase_c), borderColor: "#00B8F0" },
+        ...par("Fase A", p => p.corrente_fase_a, "#123B7A"),
+        ...par("Fase B", p => p.corrente_fase_b, "#1E6FD6"),
+        ...par("Fase C", p => p.corrente_fase_c, "#00B8F0"),
       ]);
       this._upsertChart("tensao", box, "Tensão por fase (V)", labels, [
-        { label: "Fase A", data: dados.points.map(p => p.tensao_fase_a), borderColor: "#123B7A" },
-        { label: "Fase B", data: dados.points.map(p => p.tensao_fase_b), borderColor: "#1E6FD6" },
-        { label: "Fase C", data: dados.points.map(p => p.tensao_fase_c), borderColor: "#00B8F0" },
+        ...par("Fase A", p => p.tensao_fase_a, "#123B7A"),
+        ...par("Fase B", p => p.tensao_fase_b, "#1E6FD6"),
+        ...par("Fase C", p => p.tensao_fase_c, "#00B8F0"),
       ]);
       this._upsertChart("fp", box, "Fator de potência", labels, [
-        { label: "Fase A", data: dados.points.map(p => p.fator_potencia_a), borderColor: "#123B7A" },
-        { label: "Fase B", data: dados.points.map(p => p.fator_potencia_b), borderColor: "#1E6FD6" },
-        { label: "Fase C", data: dados.points.map(p => p.fator_potencia_c), borderColor: "#00B8F0" },
-        { label: "Limite ANEEL (0,92)", data: dados.points.map(() => 0.92), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 },
+        ...par("Fase A", p => p.fator_potencia_a, "#123B7A"),
+        ...par("Fase B", p => p.fator_potencia_b, "#1E6FD6"),
+        ...par("Fase C", p => p.fator_potencia_c, "#00B8F0"),
+        { label: "Limite ANEEL (0,92)", data: pontos.map(() => 0.92), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 },
       ]);
-      const pot = dados.points.map(p =>
+      const pot = (p) =>
         ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
          (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
-         (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000
-      );
+         (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000;
       this._upsertChart("potencia", box, "Potência ativa total (kW)", labels, [
-        { label: "P", data: pot, borderColor: "#1E6FD6", fill: true, backgroundColor: "rgba(30,111,214,.10)" },
+        ...par("P", pot, "#1E6FD6"),
       ]);
     }
     else if (this.sensor.tipo === "temperatura") {
       const faixa = PaginaSensor.FAIXAS_TERMICAS[this.sensor.grupo];
-      const ds = [{ label: "Temperatura", data: dados.points.map(p => p.temperatura), borderColor: "#00B8F0", fill: true, backgroundColor: "rgba(0,184,240,.10)" }];
+      const ds = [...par("Temperatura", p => p.temperatura, "#00B8F0")];
       if (faixa) {
-        ds.push({ label: `Mínima ideal (${faixa.min}°C)`, data: dados.points.map(() => faixa.min), borderColor: "#16a34a", borderDash: [6,4], pointRadius: 0 });
-        ds.push({ label: `Máxima ideal (${faixa.max}°C)`, data: dados.points.map(() => faixa.max), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 });
+        ds.push({ label: `Mínima ideal (${faixa.min}°C)`, data: pontos.map(() => faixa.min), borderColor: "#16a34a", borderDash: [6,4], pointRadius: 0 });
+        ds.push({ label: `Máxima ideal (${faixa.max}°C)`, data: pontos.map(() => faixa.max), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 });
       }
       this._upsertChart("temperatura", box, "Temperatura (°C)", labels, ds);
     }
     else if (this.sensor.tipo === "porta") {
       this._upsertChart("porta", box, "Sinal de abertura", labels, [
-        { label: "abertura_porta", data: dados.points.map(p => p.abertura_porta), borderColor: "#1E6FD6", stepped: true, fill: true, backgroundColor: "rgba(30,111,214,.08)" },
+        ...par("abertura_porta", p => p.abertura_porta, "#1E6FD6"),
       ]);
     }
   }
@@ -949,6 +1112,49 @@ class PaginaSensor {
             displayColors: true,
             boxPadding: 6,
             usePointStyle: true,
+            callbacks: {
+              // Mostra info de reconstrução quando o ponto é estimado pelo agente
+              afterBody: (items) => {
+                if (!items?.length) return "";
+                for (const it of items) {
+                  const meta = it.dataset?.recInfo?.[it.dataIndex];
+                  if (meta && meta.reconstruido) {
+                    const conf = Math.round((meta.confianca || 0) * 100);
+                    const dur = meta.duracao_s < 60
+                      ? `${Math.round(meta.duracao_s)}s`
+                      : meta.duracao_s < 3600
+                        ? `${Math.round(meta.duracao_s/60)} min`
+                        : `${(meta.duracao_s/3600).toFixed(1)}h`;
+                    const linhas = [];
+                    linhas.push("");
+                    linhas.push(`🧩 PONTO RECONSTRUÍDO PELO AGENTE`);
+                    linhas.push(`Confiança agregada: ${conf}%`);
+                    linhas.push(`Gap: ${dur}`);
+                    if (meta.ciclosUsados?.length) {
+                      linhas.push(`Ciclos históricos usados: ${meta.ciclosUsados.join(" + ")}`);
+                    } else {
+                      linhas.push(`Sem ciclo histórico — fallback de interpolação`);
+                    }
+                    // Mostra estratégia por campo (até 6 campos pra não poluir)
+                    if (meta.camposEstrategia) {
+                      const entradas = Object.entries(meta.camposEstrategia).slice(0, 6);
+                      linhas.push(`Estratégia por campo:`);
+                      for (const [k, e] of entradas) {
+                        const c = Math.round((meta.camposConfianca?.[k] || 0) * 100);
+                        const nome = e === "splc" ? "SPLC (ciclo histórico)"
+                                   : e === "media" ? "média estável"
+                                   : e === "step" ? "step (último estado)"
+                                   : e;
+                        linhas.push(`  • ${k}: ${nome} (${c}%)`);
+                      }
+                    }
+                    linhas.push(`Âncora antes: ${meta.nAntes} pontos · depois: ${meta.nDepois} pontos`);
+                    return linhas;
+                  }
+                }
+                return "";
+              },
+            },
           },
         },
         scales: {
@@ -981,17 +1187,19 @@ class PaginaSensor {
     const cor = d.borderColor || "#1E6FD6";
     const tem_fill = !!d.fill;
     const bg = tem_fill ? this._gradiente(canvas, cor) : (d.backgroundColor || "transparent");
+    // Linha sólida = série real (mais grossa, suave).
+    // Linha tracejada = série reconstruída (também grossa pra ser visível, em roxo).
     return {
       ...d,
       borderColor: cor,
       backgroundColor: bg,
-      borderWidth: d.borderDash ? 1.6 : 2.4,
-      pointRadius: 0,
-      pointHoverRadius: 5,
+      borderWidth: d.borderWidth ?? (d.borderDash ? 2.4 : 2.4),
+      pointRadius: d.pointRadius ?? 0,
+      pointHoverRadius: 6,
       pointHoverBackgroundColor: cor,
       pointHoverBorderColor: "#ffffff",
       pointHoverBorderWidth: 2,
-      tension: d.stepped ? 0 : 0.35,
+      tension: d.stepped ? 0 : (d.tension ?? 0.5),
       fill: tem_fill,
     };
   }
@@ -1191,84 +1399,54 @@ class PaginaSensor {
   }
 
   // =================================================================
-  //  Detector local de alertas (dispara Notificacoes)
+  //  Detector local de alertas — dispara Notificacoes a partir dos
+  //  vereditos do AGENTE (única fonte de verdade). Cobre energia,
+  //  temperatura E porta, e respeita parâmetros customizados por sensor.
   // =================================================================
 
   _detectarAlertasLocais(dados) {
     if (!dados?.points?.length || !this.sensor) return;
-
-    const indicadores = this.sensor.calcularIndicadores(dados.points);
-    const get = (rotulo) => indicadores.find(i => i.rotulo === rotulo);
     const sensor = this.sensor;
 
-    // helper pra disparar com dedupe por código
-    const disparar = (severidade, titulo, mensagem, codigo, extras = {}) => {
+    // Roda o agente do tipo (Energia/Temperatura/Porta) — mesma chamada
+    // usada pela seção de análise da página. Garante unicidade.
+    let verifs;
+    try {
+      verifs = new AnalisadorSensor(sensor, dados.points).avaliar();
+    } catch (e) {
+      console.error("Falha ao avaliar agente:", e);
+      return;
+    }
+
+    // Mapa status do veredito → severidade da notificação
+    const SEV = { crit: "critica", warn: "alta", info: null, ok: null };
+
+    for (const v of verifs) {
+      const severidade = SEV[v.status];
+      if (!severidade) continue;   // só dispara pra crit/warn
+
+      const codigo = v.id;          // dedupe por id da regra
       const jaExiste = Notificacoes.listar().some(n =>
         n.origem?.id === sensor.id &&
         n.metadados?.codigo === codigo &&
         !n.lido
       );
-      if (jaExiste) return;
+      if (jaExiste) continue;
+
       Notificacoes.enviar({
-        severidade, titulo, mensagem,
+        severidade,
+        titulo: v.label,
+        mensagem: `${sensor.rotulo}: ${v.resumo || v.detalhe}`,
         origem: { tipo: "sensor", id: sensor.id, label: sensor.rotulo },
         acao:   { url: "index.html", texto: "Ver detalhes" },
-        metadados: { codigo, ...extras },
+        metadados: {
+          codigo,
+          fonte: v.fonte,
+          valorMedido: v.valorMedido,
+          valorIdeal:  v.valorIdeal,
+          diagnostico: v.diagnostico,
+        },
       });
-    };
-
-    if (sensor.tipo === "energia") {
-      const fp = parseFloat(get("FP composto")?.valor);
-      if (Number.isFinite(fp)) {
-        if (fp < 0)         disparar("critica", "Fluxo reverso detectado",
-          `${sensor.rotulo}: FP=${fp.toFixed(2)} negativo. Provável fiação do medidor invertida.`, "fp-reverso", { valor: fp });
-        else if (fp < 0.85) disparar("critica", "FP muito baixo",
-          `${sensor.rotulo}: FP=${fp.toFixed(2)} bem abaixo do limite ANEEL (0,92). Multa garantida.`, "fp-critico", { valor: fp });
-        else if (fp < 0.92) disparar("alta", "FP abaixo do limite ANEEL",
-          `${sensor.rotulo}: FP=${fp.toFixed(2)} abaixo de 0,92. Verificar capacitores.`, "fp-baixo", { valor: fp });
-      }
-
-      const cub = parseFloat(get("%CUB corrente")?.valor);
-      if (Number.isFinite(cub) && cub > 10) {
-        disparar("alta", "Desequilíbrio severo de corrente",
-          `${sensor.rotulo}: %CUB=${cub.toFixed(1)}% na zona crítica do NEMA MG-1.`, "cub-alto", { valor: cub });
-      }
-      const vub = parseFloat(get("%VUB tensão")?.valor);
-      if (Number.isFinite(vub) && vub > 2) {
-        disparar("alta", "Desequilíbrio de tensão",
-          `${sensor.rotulo}: %VUB=${vub.toFixed(2)}% acima do limite NEMA (2%).`, "vub-alto", { valor: vub });
-      }
-    }
-    else if (sensor.tipo === "temperatura") {
-      const media = parseFloat(get("Temperatura média")?.valor);
-      const max   = parseFloat(get("Máxima")?.valor);
-      const min   = parseFloat(get("Mínima")?.valor);
-      const sigma = parseFloat(get("Desvio padrão")?.valor);
-
-      // Leituras impossíveis
-      if (Number.isFinite(max) && max > 50) {
-        disparar("critica", "Leitura impossível",
-          `${sensor.rotulo}: máxima ${max.toFixed(1)}°C fora do envelope físico. Sensor com defeito.`, "leitura-impossivel-max", { valor: max });
-      }
-      if (Number.isFinite(min) && min < -100) {
-        disparar("critica", "Leitura impossível",
-          `${sensor.rotulo}: mínima ${min.toFixed(1)}°C fora do envelope físico.`, "leitura-impossivel-min", { valor: min });
-      }
-
-      // Fora da faixa
-      const faixa = PaginaSensor.FAIXAS_TERMICAS[sensor.grupo];
-      if (faixa && Number.isFinite(media)) {
-        if (media < faixa.min || media > faixa.max) {
-          disparar("alta", "Temperatura fora da faixa controlada",
-            `${sensor.rotulo}: média ${media.toFixed(1)}°C fora de ${faixa.label}.`, "fora-faixa", { valor: media });
-        }
-      }
-
-      // Oscilação
-      if (Number.isFinite(sigma) && sigma > 5) {
-        disparar("media", "Oscilação alta de temperatura",
-          `${sensor.rotulo}: σ=${sigma.toFixed(1)}°C indica instabilidade térmica.`, "sigma-alto", { valor: sigma });
-      }
     }
   }
 

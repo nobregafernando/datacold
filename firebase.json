@@ -19,36 +19,10 @@
       "simulador/**",
       "supabase/**"
     ],
-    "cleanUrls": false,
-    "trailingSlash": false,
+    "cleanUrls": true,
+    "trailingSlash": true,
     "predeploy": [
       "node scripts/build/versionar.js"
-    ],
-    "redirects": [
-      { "source": "/paginas/admin",        "destination": "/paginas/admin/admin.html", "type": 301 },
-      { "source": "/paginas/admin/",       "destination": "/paginas/admin/admin.html", "type": 301 },
-      { "source": "/paginas/admin/admin",  "destination": "/paginas/admin/admin.html", "type": 301 },
-      { "source": "/paginas/admin/admin/", "destination": "/paginas/admin/admin.html", "type": 301 },
-      { "source": "/paginas/login",        "destination": "/paginas/login/login.html", "type": 301 },
-      { "source": "/paginas/login/",       "destination": "/paginas/login/login.html", "type": 301 },
-      { "source": "/paginas/login/login",  "destination": "/paginas/login/login.html", "type": 301 },
-      { "source": "/paginas/login/login/", "destination": "/paginas/login/login.html", "type": 301 },
-
-      { "source": "/paginas/admin/agentes",       "destination": "/paginas/admin/agentes/index.html",       "type": 301 },
-      { "source": "/paginas/admin/agentes/",      "destination": "/paginas/admin/agentes/index.html",       "type": 301 },
-      { "source": "/paginas/admin/sala-controle",  "destination": "/paginas/admin/sala-controle/index.html","type": 301 },
-      { "source": "/paginas/admin/sala-controle/", "destination": "/paginas/admin/sala-controle/index.html","type": 301 },
-
-      { "source": "/paginas/admin/sensores/:sensor",  "destination": "/paginas/admin/sensores/:sensor/index.html", "type": 301 },
-      { "source": "/paginas/admin/sensores/:sensor/", "destination": "/paginas/admin/sensores/:sensor/index.html", "type": 301 },
-      { "source": "/paginas/admin/grupos/:grupo",     "destination": "/paginas/admin/grupos/:grupo/index.html",    "type": 301 },
-      { "source": "/paginas/admin/grupos/:grupo/",    "destination": "/paginas/admin/grupos/:grupo/index.html",    "type": 301 },
-
-      { "source": "/apresentacao",  "destination": "/apresentacao/index.html",  "type": 301 },
-      { "source": "/apresentacao/", "destination": "/apresentacao/index.html",  "type": 301 },
-
-      { "source": "/estudos/conectividade",  "destination": "/estudos/conectividade.html", "type": 301 },
-      { "source": "/estudos/conectividade/", "destination": "/estudos/conectividade.html", "type": 301 }
     ],
     "headers": [
       {

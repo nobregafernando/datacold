@@ -1344,3 +1344,32 @@ body{
   .porta-icone{ width: 72px; height: 72px; font-size: 40px; }
   .porta-estado{ font-size: 24px; }
 }
+
+/* =========================================================
+   ESTADO OFFLINE — sensor parou de mandar dados
+   ========================================================= */
+.painel-ludico.offline .gauge-card,
+.painel-ludico.offline .termometro-card,
+.painel-ludico.offline .porta-card{
+  filter: grayscale(.85) opacity(.55);
+  position: relative;
+}
+.painel-ludico.offline .gauge-card::after,
+.painel-ludico.offline .termometro-card::after,
+.painel-ludico.offline .porta-card::after{
+  content: "📡 sem sinal";
+  position: absolute; top: 8px; right: 10px;
+  font-size: 10px; font-weight: 700;
+  background: #dc2626; color: #fff;
+  padding: 3px 8px; border-radius: 4px;
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.painel-ludico.offline .banner-status.crit{
+  border-left-color: #991b1b;
+  background: rgba(220,38,38,.10);
+  animation: piscar-offline 2s ease-in-out infinite;
+}
+@keyframes piscar-offline {
+  0%, 100% { background: rgba(220,38,38,.10); }
+  50%      { background: rgba(220,38,38,.20); }
+}

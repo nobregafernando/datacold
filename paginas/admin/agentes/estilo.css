@@ -60,9 +60,10 @@ body{
 }
 /* Faixa de cor por tipo (lado esquerdo) */
 .ag-card{ border-left: 6px solid; }
-.ag-card.ag-energia    { border-left-color: #d97706; }
-.ag-card.ag-temperatura{ border-left-color: #0ea5e9; }
-.ag-card.ag-porta      { border-left-color: #16a34a; }
+.ag-card.ag-energia      { border-left-color: #d97706; }
+.ag-card.ag-temperatura  { border-left-color: #0ea5e9; }
+.ag-card.ag-porta        { border-left-color: #16a34a; }
+.ag-card.ag-reconstrutor { border-left-color: #7c3aed; }
 
 .ag-card-head{
   display: flex; align-items: center; gap: 22px;
@@ -76,9 +77,11 @@ body{
   display: flex; align-items: center; justify-content: center;
   border-radius: 14px;
 }
-.ag-card.ag-energia    .ag-emoji{ background: linear-gradient(135deg, rgba(217,119,6,.12), rgba(217,119,6,.04)); }
-.ag-card.ag-temperatura .ag-emoji{ background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(14,165,233,.04)); }
-.ag-card.ag-porta      .ag-emoji{ background: linear-gradient(135deg, rgba(22,163,74,.12), rgba(22,163,74,.04)); }
+.ag-card.ag-energia      .ag-emoji{ background: linear-gradient(135deg, rgba(217,119,6,.12), rgba(217,119,6,.04)); }
+.ag-card.ag-temperatura  .ag-emoji{ background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(14,165,233,.04)); }
+.ag-card.ag-porta        .ag-emoji{ background: linear-gradient(135deg, rgba(22,163,74,.12), rgba(22,163,74,.04)); }
+.ag-card.ag-reconstrutor .ag-emoji{ background: linear-gradient(135deg, rgba(124,58,237,.12), rgba(124,58,237,.04)); }
+.ag-card.ag-reconstrutor .ag-cat-tag{ background: rgba(124,58,237,.10); color: #5b21b6; }
 
 .ag-card-info{ flex: 1; min-width: 220px; }
 .ag-card-info .olho{

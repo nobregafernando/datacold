@@ -15,7 +15,7 @@ class PaginaAdmin {
 
   async iniciar() {
     // 1. Proteger rota
-    if (!Autenticacao.protegerPagina("../login/login.html")) return;
+    if (!Autenticacao.protegerPagina("../login//")) return;
 
     // 2. Personalizar header
     this._injetarNomeUsuario();
@@ -311,6 +311,7 @@ class PaginaAdmin {
   _renderizarSensorCard(s) {
     const saude = this._saudeDoSensor(s);
     const conn  = this._conectividade(s.id);
+    const pin   = this._corDoPin(saude, conn);
     const grupo = this.grupos.find(g => g.id === s.grupo);
     const perfil = this.perfisPorSensor[s.id] || {};
     const tooltip = `${s.rotulo} · ${saude.rotulo}\nÚltima leitura ${conn.rotulo}${perfil.personalidade ? '\n' + perfil.personalidade : ''}`;
@@ -319,7 +320,7 @@ class PaginaAdmin {
       <a class="sensor-bento tipo-${s.tipo} saude-${saude.codigo}" href="${url}" title="${tooltip}">
         <div class="sb-topo">
           <span class="sb-ico-tipo tipo-${s.tipo}">${PaginaAdmin.ICONES_TIPO[s.tipo] || ""}</span>
-          <span class="sb-conn conn-${conn.codigo}" title="Última leitura ${conn.rotulo}"></span>
+          <span class="sb-conn conn-${conn.codigo} pin-${pin}" title="Última leitura ${conn.rotulo} · saúde ${saude.rotulo}"></span>
         </div>
         <div class="sb-nome">${s.rotulo}</div>
         <div class="sb-rodape">
@@ -354,6 +355,25 @@ class PaginaAdmin {
     if (s.status === "ativo")     return 4;
     if (s.status === "historico") return 2;
     return 0;
+  }
+
+  /**
+   * Decide a cor da bolinha como o PIOR caso entre saúde e rede:
+   *   - crit  (vermelho): saúde crítica/offline, OU sensor mudo (sem leituras)
+   *   - warn  (laranja):  saúde em atenção/histórico, OU rede com atraso
+   *                       (e nada pior simultâneo)
+   *   - ok    (verde):    saudável e online
+   * Laranja só sobra pra cenários genuinamente intermediários.
+   */
+  _corDoPin(saude, conn) {
+    const saudeCrit = saude.codigo === "critico" || saude.codigo === "offline";
+    const saudeWarn = saude.codigo === "atencao" || saude.codigo === "historico";
+    const connCrit  = conn.codigo === "mudo";
+    const connWarn  = conn.codigo === "atraso";
+
+    if (saudeCrit || connCrit) return "crit";
+    if (saudeWarn || connWarn) return "warn";
+    return "ok";
   }
 
   _rotuloTipo(t) {

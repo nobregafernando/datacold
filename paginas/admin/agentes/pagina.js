@@ -36,6 +36,40 @@ const TIPOS = [
     cor: "porta",
     sensoresIds: ["estoque_porta","graxaria_porta"],
   },
+  {
+    chave: "reconstrutor",
+    classe: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor : null,
+    titulo: "Agente Reconstrutor",
+    apelido: "Quando o sensor reconecta depois de um silêncio, preenche o trecho perdido com dados estimados.",
+    emoji: "🧩",
+    cor: "reconstrutor",
+    sensoresIds: ["extrusora_1","extrusora_2","extrusora_3","congelados_compressor","congelados_temperatura","estoque_compressor_1","estoque_compressor_2","estoque_temperatura","estoque_porta","graxaria_energia","graxaria_temperatura","graxaria_porta","externo_cg_temperatura","externo_tl_temperatura"],
+    _especial: "reconstrutor",
+  },
+];
+
+// Estratégias do reconstrutor (substituem o conceito de "regras" — ele não
+// avalia condições, ele preenche gaps).
+const ESTRATEGIAS_RECONSTRUTOR = [
+  {
+    id: "detectar-gap", categoria: "Detecção",
+    label: "Quando um gap é considerado lacuna?",
+    fonte: "AgenteReconstrutor.GAP_MULT × cadência do tipo",
+    parametros: {
+      gap_mult:             (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_MULT : 2.5,
+      cadencia_energia:     (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.energia : 30,
+      cadencia_temperatura: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.temperatura : 60,
+      cadencia_porta:       (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.porta : 60,
+    },
+  },
+  { id: "estrategia-energia",    categoria: "Energia",     label: "Como reconstrói leituras de energia",
+    fonte: "Interpolação linear das 9 métricas (correntes, tensões, FPs)" },
+  { id: "estrategia-temperatura", categoria: "Temperatura", label: "Como reconstrói leituras de temperatura",
+    fonte: "Interpolação linear da temperatura" },
+  { id: "estrategia-porta",       categoria: "Porta",       label: "Como reconstrói o sinal de porta",
+    fonte: "Função degrau — mantém último estado conhecido" },
+  { id: "marcacao",               categoria: "Marcação",    label: "Como sinaliza pontos estimados",
+    fonte: "flag `_reconstruido = true` em cada ponto" },
 ];
 
 // ===================================================================
@@ -67,6 +101,13 @@ const EXPLICACOES = {
   "rajada-aberturas":       "Várias aberturas em segundos = mau contato falsificando eventos.",
   "sinal-binario":          "Sensor de porta devia mandar só 0 ou 1.",
   "estado-atual":           "Aberta ou fechada nesse exato momento.",
+
+  // ---- Reconstrutor ----
+  "detectar-gap":            "Considera lacuna qualquer intervalo > 2,5× o tempo normal entre leituras daquele tipo.",
+  "estrategia-energia":      "Pega o último ponto antes da queda e o primeiro depois — desenha a linha reta entre os dois pra cada uma das 9 métricas.",
+  "estrategia-temperatura":  "Mesma ideia: interpola linearmente a temperatura entre antes e depois do silêncio.",
+  "estrategia-porta":        "Mantém o último estado conhecido (aberta/fechada) até a metade do gap, depois assume o estado seguinte.",
+  "marcacao":                "Cada ponto preenchido vai com a flag _reconstruido=true, então o gráfico desenha em cinza tracejado pra você saber que é estimado.",
 };
 
 /**
@@ -191,7 +232,7 @@ class PaginaAgentes {
   }
 
   async iniciar() {
-    if (!Autenticacao.protegerPagina("../../login/login.html")) return;
+    if (!Autenticacao.protegerPagina("../../login//")) return;
 
     this.menu = new MenuLateral({ paginaAtiva: "agentes", raiz: "../../../" });
     await this.menu.montar("#menu-lateral");
@@ -213,15 +254,17 @@ class PaginaAgentes {
   }
 
   _renderResumo() {
-    const totalRegras = TIPOS.reduce(
-      (s, t) => s + (t.classe.REGRAS?.length || 0) + _verifsComuns().length,
-      0
-    );
-    const totalSensores = TIPOS.reduce((s, t) => s + t.sensoresIds.length, 0);
+    const totalRegras = TIPOS.reduce((s, t) => {
+      if (t._especial === "reconstrutor") return s + ESTRATEGIAS_RECONSTRUTOR.length;
+      return s + (t.classe?.REGRAS?.length || 0) + _verifsComuns().length;
+    }, 0);
+    // Sensores únicos cobertos (o reconstrutor lista todos os 14, evitar somar 2x)
+    const todosSensores = new Set();
+    TIPOS.forEach(t => t.sensoresIds.forEach(s => todosSensores.add(s)));
     document.getElementById("resumoTopo").innerHTML = `
       <div class="ag-numero"><span>${TIPOS.length}</span><small>tipos de agente</small></div>
-      <div class="ag-numero"><span>${totalSensores}</span><small>sensores cobertos</small></div>
-      <div class="ag-numero"><span>${totalRegras}</span><small>regras técnicas</small></div>
+      <div class="ag-numero"><span>${todosSensores.size}</span><small>sensores cobertos</small></div>
+      <div class="ag-numero"><span>${totalRegras}</span><small>regras + estratégias</small></div>
       <div class="ag-numero"><span>4</span><small>normas referenciadas</small></div>
     `;
   }
@@ -232,12 +275,21 @@ class PaginaAgentes {
   }
 
   _htmlAgente(t) {
-    const regrasComuns = _verifsComuns();
-    const regrasTipo = t.classe.REGRAS || [];
-    const todasRegras = [
-      ...regrasComuns.map(r => ({ ...r, _comum: true })),
-      ...regrasTipo.map(r => ({ ...r, _comum: false })),
-    ];
+    let itens;
+    let rotuloContagem;
+
+    if (t._especial === "reconstrutor") {
+      itens = ESTRATEGIAS_RECONSTRUTOR.map(r => ({ ...r, _comum: false }));
+      rotuloContagem = "estratégias";
+    } else {
+      const regrasComuns = _verifsComuns();
+      const regrasTipo = t.classe?.REGRAS || [];
+      itens = [
+        ...regrasComuns.map(r => ({ ...r, _comum: true })),
+        ...regrasTipo.map(r => ({ ...r, _comum: false })),
+      ];
+      rotuloContagem = "regras";
+    }
 
     return `
       <article class="ag-card ag-${t.cor}">
@@ -249,7 +301,7 @@ class PaginaAgentes {
             <p class="ag-apelido">${t.apelido}</p>
           </div>
           <div class="ag-stats">
-            <div><strong>${todasRegras.length}</strong><span>regras</span></div>
+            <div><strong>${itens.length}</strong><span>${rotuloContagem}</span></div>
             <div><strong>${t.sensoresIds.length}</strong><span>sensores</span></div>
           </div>
         </header>
@@ -260,7 +312,7 @@ class PaginaAgentes {
         </div>
 
         <div class="ag-regras">
-          ${todasRegras.map(r => this._htmlRegra(r, t)).join("")}
+          ${itens.map(r => this._htmlRegra(r, t)).join("")}
         </div>
       </article>
     `;

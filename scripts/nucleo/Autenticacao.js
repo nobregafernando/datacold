@@ -44,7 +44,7 @@ class Autenticacao {
    * Bloqueia a página se não houver sessão.
    * @param {string} urlLogin - caminho relativo para a página de login.
    */
-  static protegerPagina(urlLogin = "../login/login.html") {
+  static protegerPagina(urlLogin = "../login//") {
     if (!Autenticacao.autenticado()) {
       window.location.replace(urlLogin);
       return false;

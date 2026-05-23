@@ -43,16 +43,16 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Sala de Controle</title>
 
-<link rel="icon" type="image/png" href="../../../logo/04-icon-standalone.png?v=1779567436477">
+<link rel="icon" type="image/png" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/04-icon-standalone.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779567436477">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779567436477">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779567436477">
-<link rel="stylesheet" href="../admin.css?v=1779567436477">
-<link rel="stylesheet" href="estilo.css?v=1779567436477">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779574233519">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779574233519">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779574233519">
+<link rel="stylesheet" href="../admin.css?v=1779574233519">
+<link rel="stylesheet" href="estilo.css?v=1779574233519">
 </head>
 <body>
 
@@ -98,10 +98,35 @@
       </div>
     </section>
 
-    <!-- Grid de sensores -->
+    <!-- Toolbar: tabs por tipo + busca em tempo real -->
+    <section class="sala-toolbar">
+      <div class="st-abas" role="tablist" data-abas>
+        <button class="st-aba ativa" data-tipo="todos">Todos <span class="st-aba-n" data-n="todos">0</span></button>
+        <button class="st-aba" data-tipo="energia">⚡ Energia <span class="st-aba-n" data-n="energia">0</span></button>
+        <button class="st-aba" data-tipo="temperatura">🌡️ Temperatura <span class="st-aba-n" data-n="temperatura">0</span></button>
+        <button class="st-aba" data-tipo="porta">🚪 Porta <span class="st-aba-n" data-n="porta">0</span></button>
+      </div>
+      <div class="st-busca">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" data-busca placeholder="Buscar por nome, id, ambiente ou personalidade…" autocomplete="off" spellcheck="false">
+        <button class="st-busca-limpar" data-busca-limpar hidden aria-label="Limpar busca">×</button>
+      </div>
+    </section>
+
+    <!-- Grid de sensores (agora agrupada por tipo) -->
     <section class="sala-grade" data-grade>
       <div class="sala-loading">Carregando catálogo de sensores…</div>
     </section>
+
+    <!-- Paginação -->
+    <nav class="sala-paginacao" data-paginacao hidden aria-label="paginação">
+      <button class="sp-btn" data-pag-acao="primeira" aria-label="Primeira página">«</button>
+      <button class="sp-btn" data-pag-acao="anterior" aria-label="Anterior">‹</button>
+      <div class="sp-paginas" data-pag-paginas></div>
+      <button class="sp-btn" data-pag-acao="proxima" aria-label="Próxima">›</button>
+      <button class="sp-btn" data-pag-acao="ultima" aria-label="Última página">»</button>
+      <div class="sp-info" data-pag-info>—</div>
+    </nav>
 
   </main>
 
@@ -123,18 +148,18 @@
 <!-- Toast container -->
 <div class="sala-toasts" data-toasts></div>
 
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Sensor.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorPorta.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779567436477"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779567436477"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779567436477"></script>
-<script src="pagina.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779574233519"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779574233519"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779574233519"></script>
+<script src="pagina.js?v=1779574233519"></script>
 
 </body>
 </html>

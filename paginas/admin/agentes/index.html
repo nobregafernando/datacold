@@ -43,15 +43,15 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Agentes</title>
 
-<link rel="icon" type="image/png" href="../../../logo/04-icon-standalone.png?v=1779567436477">
+<link rel="icon" type="image/png" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/04-icon-standalone.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779567436477">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779567436477">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779567436477">
-<link rel="stylesheet" href="estilo.css?v=1779567436477">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779574233519">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779574233519">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779574233519">
+<link rel="stylesheet" href="estilo.css?v=1779574233519">
 </head>
 <body>
 
@@ -65,11 +65,12 @@
 
     <header class="agentes-header">
       <span class="olho">Inteligência automática</span>
-      <h1>Os 3 cérebros que cuidam dos sensores</h1>
-      <p>Cada tipo de sensor (energia, temperatura, porta) é avaliado por um
-      <strong>agente especializado</strong> que aplica regras baseadas em normas
-      técnicas reconhecidas — PRODIST/ANEEL, NEMA, ANVISA, Codex. Cada agente
-      vigia o sensor e dispara alertas quando algo sai do padrão.</p>
+      <h1>Os 4 cérebros que cuidam dos sensores</h1>
+      <p>Três <strong>agentes especializados por tipo</strong> (energia, temperatura, porta)
+      aplicam regras técnicas — PRODIST/ANEEL, NEMA, ANVISA, Codex — e disparam
+      alertas. Um quarto <strong>agente reconstrutor</strong> entra em ação quando o
+      sensor reconecta após silêncio: preenche o trecho perdido com dados estimados
+      a partir do histórico.</p>
 
       <div class="ag-resumo" id="resumoTopo"></div>
     </header>
@@ -143,28 +144,29 @@
 </div>
 
 <!-- Dependências ApiBEM (só pra menu lateral / topo) -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Sensor.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/SensorPorta.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779567436477"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779567436477"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779567436477"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779567436477"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779574233519"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779574233519"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779574233519"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779574233519"></script>
 
 <!-- Agentes (mesma ordem que nas páginas dos sensores) -->
-<script src="../../../scripts/agentes/normas.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/Regra.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/verificacoesComuns.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/AgenteBase.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/AgenteEnergia.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/AgenteTemperatura.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/AgentePorta.js?v=1779567436477"></script>
-<script src="../../../scripts/agentes/FabricaAgente.js?v=1779567436477"></script>
+<script src="../../../scripts/agentes/normas.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/Regra.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/verificacoesComuns.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/AgenteBase.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/AgenteEnergia.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/AgenteTemperatura.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/AgentePorta.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/FabricaAgente.js?v=1779574233519"></script>
+<script src="../../../scripts/agentes/AgenteReconstrutor.js?v=1779574233519"></script>
 
-<script src="pagina.js?v=1779567436477"></script>
+<script src="pagina.js?v=1779574233519"></script>
 </body>
 </html>

@@ -18,14 +18,18 @@
   transition: transform 220ms ease;
 }
 
-/* ============ Hamburger (sempre visível, alterna o menu) ============ */
+/* ============ Hamburger ============
+   Regra única e simples: SEMPRE fixo no canto superior esquerdo da tela,
+   independente de viewport, abertura/fechamento do menu. Fica POR CIMA
+   do menu lateral quando ele está aberto (z-index > .menu-lateral).
+*/
 .ml-toggle{
   position: fixed;
   top: 14px;
-  left: 14px;
-  z-index: 50;
-  width: 38px;
-  height: 38px;
+  left: 14px;          /* sempre 14px da borda esquerda — nada de variação */
+  z-index: 50;         /* acima do menu-lateral (z-index: 20) */
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   background: var(--branco);
@@ -33,48 +37,28 @@
   border-radius: 10px;
   color: var(--azul-noite);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(11,29,58,.06);
-  transition: all var(--t-rapida);
+  box-shadow: 0 2px 8px rgba(11,29,58,.10);
+  transition: background var(--t-rapida), color var(--t-rapida), border-color var(--t-rapida);
 }
 .ml-toggle:hover{
   border-color: var(--azul-medio);
   color: var(--azul-medio);
-  transform: scale(1.05);
+  background: var(--azul-gelo);
 }
-/* Quando o menu está aberto, o hamburger fica colado no canto superior do menu */
-.ml-toggle{ left: calc(280px - 52px); }
-
-/* Em mobile, halo extra pra destacar o hamburger sobre o conteúdo */
-@media (max-width: 720px){
-  .layout-admin.menu-fechado .ml-toggle{
-    background: var(--branco);
-    box-shadow: 0 6px 14px rgba(11,29,58,.18);
-    border-color: rgba(30,111,214,.30);
-    color: var(--azul-profundo);
-  }
-  /* Quando o menu está ABERTO em mobile, o hamburger fica no canto superior
-     ESQUERDO do drawer (em vez de colado na borda direita do menu). */
-  .layout-admin:not(.menu-fechado) .ml-toggle{
-    left: 14px;
-    background: var(--branco);
-    color: var(--azul-profundo);
-    border-color: rgba(30,111,214,.30);
-    box-shadow: 0 4px 10px rgba(11,29,58,.12);
-  }
+.ml-toggle:focus-visible{
+  outline: 2px solid var(--azul-medio);
+  outline-offset: 2px;
 }
 
-/* Layout fechado: menu sai da tela, conteúdo principal ocupa tudo */
-.layout-admin.menu-fechado .menu-lateral{
-  transform: translateX(-100%);
-}
-.layout-admin.menu-fechado .ml-toggle{
-  left: 14px;
-}
+/* Layout fechado: menu sai da tela, conteúdo principal ocupa tudo.
+   Hamburger continua exatamente no mesmo lugar (left: 14px). */
 .layout-admin{ transition: padding-left 220ms ease; }
+.layout-admin.menu-fechado .menu-lateral{ transform: translateX(-100%); }
 .layout-admin.menu-fechado{ padding-left: 0 !important; }
 
-/* ============ Topo / marca ============ */
-.ml-topo{ padding: 22px 20px 14px; }
+/* ============ Topo / marca ============
+   Padding-left maior pra abrir espaço pro hamburger sem sobrepor o logo. */
+.ml-topo{ padding: 18px 20px 14px 64px; }
 .ml-marca{ display: inline-flex; align-items: center; }
 .ml-marca img{ height: 30px; width: auto; display: block; }
 
@@ -417,15 +401,16 @@
 .menu-lateral::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.18); border-radius: 6px; }
 .menu-lateral::-webkit-scrollbar-thumb:hover{ background: rgba(30,111,214,.32); }
 
-/* ============ Responsivo ============ */
+/* ============ Responsivo ============
+   Hamburger NUNCA muda de posição — sempre `left: 14px` (definido no
+   bloco principal lá em cima). Aqui só ajustamos largura do menu e
+   comportamento de overlay no mobile. */
 @media (max-width: 900px){
   .menu-lateral{ width: 260px; }
-  .ml-toggle{ left: calc(260px - 52px); }
 }
 @media (max-width: 720px){
-  /* Mobile: menu vira overlay com sombra; fechado por padrão */
+  /* Mobile: menu vira overlay com sombra; fechado por padrão (estado
+     inicial controlado pelo JS via window.matchMedia). */
   .menu-lateral{ box-shadow: 4px 0 24px rgba(11,29,58,.18); }
-  .layout-admin .ml-toggle{ left: calc(260px - 52px); }
   .layout-admin.menu-fechado .menu-lateral{ box-shadow: none; }
-  .layout-admin.menu-fechado .ml-toggle{ left: 14px; }
 }

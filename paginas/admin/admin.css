@@ -141,6 +141,75 @@ body{
   }
 }
 
+/* ===== Mobile ===== */
+@media (max-width: 720px){
+  .admin-main{ padding: 76px 18px 20px; }
+
+  .painel-faixa{
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .painel-faixa h1{ font-size: 1rem; }
+
+  /* KPIs viram grid 2x2 (em vez de flex em linha que estourava) */
+  .pf-kpis{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+  .pf-kpi{ min-width: 0; width: 100%; padding: 8px 12px; }
+  .pf-kpi .pfk-v{ font-size: 1.15rem; }
+
+  .pf-legenda{ gap: 10px; }
+  .pf-legenda .leg-item{ font-size: 10px; }
+}
+
+@media (max-width: 420px){
+  .admin-main{ padding: 72px 12px 16px; }
+
+  .painel-faixa{
+    padding: 12px 12px;
+    gap: 10px;
+    border-radius: var(--raio-md);
+  }
+  .painel-faixa h1{ font-size: .95rem; }
+  .pf-eyebrow{ font-size: 8.5px; letter-spacing: .18em; }
+  .pf-kpi{ padding: 6px 10px; }
+  .pf-kpi .pfk-v{ font-size: 1.05rem; }
+  .pf-kpi .pfk-l{ font-size: 9px; }
+
+  /* Mantém 2 cards lado a lado até 420 */
+  .planta-grade{
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .sensor-bento{
+    padding: 9px 10px 8px;
+    min-height: 92px;
+    gap: 6px;
+  }
+  .sb-nome{ font-size: 12px; -webkit-line-clamp: 2; }
+  .sb-amb-nome{ font-size: 9.5px; }
+
+  /* Filtros: compactar chips */
+  .planta-filtros{ gap: 6px; }
+  .chip-filtro{ padding: 5px 10px 5px 6px; font-size: 11px; }
+  .chip-filtro .cf-ico{ width: 18px; height: 18px; }
+  .chip-filtro .cf-count{ font-size: 9.5px; padding: 1px 6px; }
+
+  /* Legenda em scroll horizontal se faltar espaço */
+  .pf-legenda{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    margin: 0 -2px;
+  }
+  .pf-legenda::-webkit-scrollbar{ display: none; }
+  .pf-legenda .leg-item{ white-space: nowrap; flex-shrink: 0; }
+}
+
 /* =========================================================
    MAPA DA PLANTA (6 colunas de ambientes)
    ========================================================= */
@@ -268,25 +337,31 @@ body{
 }
 .sb-ico-tipo svg{ width: 12px; height: 12px; }
 
-/* Indicador de conectividade (verdinho/amarelinho/cinza) — dado real do agente */
+/* Indicador combinado (saúde × rede). A cor da bolinha agora reflete o
+   PIOR dos dois: laranja só pra cenários intermediários reais. */
 .sb-conn{
   width: 10px; height: 10px;
   border-radius: 50%;
   background: #cbd2dc;
   flex-shrink: 0;
 }
-.sb-conn.conn-online{
-  background: var(--ok);
-  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+/* Animação pulsante quando está online/saudável */
+.sb-conn.conn-online.pin-ok{
   animation: pulsar-conn 1.8s ease-in-out infinite;
 }
-.sb-conn.conn-atraso{
+/* === Cor final pelo PIN (precedência sobre conn-*) === */
+.sb-conn.pin-ok{
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+}
+.sb-conn.pin-warn{
   background: var(--alerta);
   box-shadow: 0 0 0 3px rgba(217,119,6,.18);
 }
-.sb-conn.conn-mudo{
-  background: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148,163,184,.18);
+.sb-conn.pin-crit{
+  background: var(--erro);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.22);
+  animation: pulsar-conn 1.4s ease-in-out infinite;
 }
 @keyframes pulsar-conn{
   0%, 100% { opacity: 1; transform: scale(1); }

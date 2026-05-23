@@ -12,7 +12,7 @@ class PaginaLogin {
   iniciar() {
     // Se já está logado, vai direto pro admin.
     if (Autenticacao.autenticado()) {
-      window.location.replace("../admin/admin.html");
+      window.location.replace("../admin//");
       return;
     }
 
@@ -22,7 +22,7 @@ class PaginaLogin {
 
   _entrarMvp() {
     Autenticacao.loginMvp();
-    window.location.href = "../admin/admin.html";
+    window.location.href = "../admin//";
   }
 
   _entrarFormulario(ev) {
@@ -33,7 +33,7 @@ class PaginaLogin {
       .replace(/[._]+/g, " ")
       .replace(/\b\w/g, c => c.toUpperCase());
     Autenticacao.login({ nome: nome || "Operador", email, papel: "operador" });
-    window.location.href = "../admin/admin.html";
+    window.location.href = "../admin//";
   }
 }
 

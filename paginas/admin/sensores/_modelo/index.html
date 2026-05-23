@@ -43,16 +43,16 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Sensor</title>
 
-<link rel="icon" type="image/png" href="../../../../logo/04-icon-standalone.png?v=1779567436477">
+<link rel="icon" type="image/png" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/04-icon-standalone.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../../estilos/global.css?v=1779567436477">
-<link rel="stylesheet" href="../../../../estilos/sensor.css?v=1779567436477">
-<link rel="stylesheet" href="../../../../scripts/componentes/MenuLateral.css?v=1779567436477">
-<link rel="stylesheet" href="../../../../scripts/componentes/MenuTopo.css?v=1779567436477">
-<link rel="stylesheet" href="../_compartilhado/estilo.css?v=1779567436477">
+<link rel="stylesheet" href="../../../../estilos/global.css?v=1779574233519">
+<link rel="stylesheet" href="../../../../estilos/sensor.css?v=1779574233519">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuLateral.css?v=1779574233519">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuTopo.css?v=1779574233519">
+<link rel="stylesheet" href="../_compartilhado/estilo.css?v=1779574233519">
 </head>
 <body>
 
@@ -135,6 +135,8 @@
             </div>
             <div class="acoes-cabecalho">
               <div class="seletor-janela" data-seletor-janela>
+                <button data-janela="-5m">5m</button>
+                <button data-janela="-15m">15m</button>
                 <button data-janela="-30m">30m</button>
                 <button data-janela="-1h" class="ativo">1h</button>
                 <button data-janela="-6h">6h</button>
@@ -248,28 +250,29 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <!-- Núcleo + componentes -->
-<script src="../../../../scripts/nucleo/ApiBEM.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/Sensor.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/SensorEnergia.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/SensorTemperatura.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/SensorPorta.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/FabricaSensor.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/Usuario.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/Autenticacao.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/Notificacoes.js?v=1779567436477"></script>
-<script src="../../../../scripts/componentes/MenuLateral.js?v=1779567436477"></script>
-<script src="../../../../scripts/componentes/MenuTopo.js?v=1779567436477"></script>
+<script src="../../../../scripts/nucleo/ApiBEM.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/Sensor.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/SensorEnergia.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/SensorTemperatura.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/SensorPorta.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/FabricaSensor.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/Usuario.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/Autenticacao.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/Notificacoes.js?v=1779574233519"></script>
+<script src="../../../../scripts/componentes/MenuLateral.js?v=1779574233519"></script>
+<script src="../../../../scripts/componentes/MenuTopo.js?v=1779574233519"></script>
 <!-- Agentes (carregar nesta ordem: normas → Regra → comuns → base → tipos → fábrica) -->
-<script src="../../../../scripts/agentes/normas.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/Regra.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/verificacoesComuns.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/AgenteBase.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/AgenteEnergia.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/AgenteTemperatura.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/AgentePorta.js?v=1779567436477"></script>
-<script src="../../../../scripts/agentes/FabricaAgente.js?v=1779567436477"></script>
-<script src="../../../../scripts/nucleo/AnalisadorSensor.js?v=1779567436477"></script>
-<script src="../_compartilhado/pagina.js?v=1779567436477"></script>
+<script src="../../../../scripts/agentes/normas.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/Regra.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/verificacoesComuns.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/AgenteBase.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/AgenteEnergia.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/AgenteTemperatura.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/AgentePorta.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/FabricaAgente.js?v=1779574233519"></script>
+<script src="../../../../scripts/agentes/AgenteReconstrutor.js?v=1779574233519"></script>
+<script src="../../../../scripts/nucleo/AnalisadorSensor.js?v=1779574233519"></script>
+<script src="../_compartilhado/pagina.js?v=1779574233519"></script>
 
 </body>
 </html>

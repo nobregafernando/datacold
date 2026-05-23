@@ -100,11 +100,12 @@ begin
   v_cub         := coalesce((p->>'cub_alvo_pct')::numeric, 2) / 100.0;
   v_ausente     := coalesce(p->>'fase_ausente', '');
 
-  -- Modulação por hora do dia: compressor mais ativo no calor, extrusora segue rotina industrial
+  -- Modulação por hora do dia: fábrica 24/7, então variação suave.
+  -- Compressor varia 0.85 a 1.00 conforme calor; extrusora 0.92 a 1.00 (operação contínua).
   if v_grupo like 'camara_%' or v_grupo = 'graxaria' then
-    v_op := 0.55 + 0.45 * sim_fator_dia_noite(p_ts);
+    v_op := 0.85 + 0.15 * sim_fator_dia_noite(p_ts);
   else
-    v_op := 0.65 + 0.35 * sin((extract(hour from p_ts) + extract(minute from p_ts)/60.0 - 12) * pi() / 12);
+    v_op := 0.92 + 0.08 * sin((extract(hour from p_ts) + extract(minute from p_ts)/60.0 - 12) * pi() / 12);
   end if;
 
   -- Correntes (com CUB distribuído entre as fases)

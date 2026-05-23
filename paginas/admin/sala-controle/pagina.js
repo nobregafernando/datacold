@@ -12,7 +12,7 @@
 
 (async () => {
   const usuario = Autenticacao.usuarioAtual();
-  if (!usuario) { window.location.href = "../../login/login.html"; return; }
+  if (!usuario) { window.location.href = "../../login//"; return; }
 
   const api = new ApiBEM();
   const raiz = "../../../";
@@ -70,6 +70,11 @@
   //  Estado
   // ===================================================================
   let sensores = [];
+  // Estado de filtros + paginação
+  const POR_PAGINA = 6;
+  let filtroTipo = "todos";   // "todos" | "energia" | "temperatura" | "porta"
+  let busca      = "";        // query bruta
+  let pagina     = 1;
   let grupos = [];
   let perfisPorSensor = {};            // id → {personalidade, parametros}
   let incidentesAtivos = [];
@@ -78,6 +83,7 @@
   //  Bootstrap
   // ===================================================================
   await Promise.all([carregarCatalogo(), carregarPerfis()]);
+  ligarToolbar();
   renderizarGrade();
   await atualizar();
   setInterval(atualizar, 8000);
@@ -113,118 +119,286 @@
   }
 
   // ===================================================================
-  //  Render da grade
+  //  Busca / filtro / paginação
+  // ===================================================================
+
+  /** Normaliza pra busca: minúsculas, sem acentos, símbolos viram espaço. */
+  function normalizar(s) {
+    return String(s ?? "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  /** Lista sensores ordenados e filtrados por tipo + busca. */
+  function listaFiltrada() {
+    const ordemGrupos = ["extrusao","camara_congelados","camara_estoque","graxaria","externo_campo_grande","externo_tres_lagoas"];
+    const tokens = normalizar(busca).split(" ").filter(Boolean);
+    return [...sensores]
+      .sort((a,b) => {
+        const ia = ordemGrupos.indexOf(a.group), ib = ordemGrupos.indexOf(b.group);
+        if (ia !== ib) return ia - ib;
+        return a.id.localeCompare(b.id);
+      })
+      .filter(s => {
+        if (filtroTipo !== "todos" && s.type !== filtroTipo) return false;
+        if (!tokens.length) return true;
+        const grupo = grupos.find(g => g.id === s.group);
+        const perfil = perfisPorSensor[s.id] || {};
+        const hay = normalizar([
+          s.id, s.label, s.type, s.group, grupo?.label, perfil.personalidade
+        ].filter(Boolean).join(" "));
+        return tokens.every(t => hay.includes(t));
+      });
+  }
+
+  function atualizarContadoresAbas() {
+    const cont = (t) => sensores.filter(s => t === "todos" || s.type === t).length;
+    ["todos","energia","temperatura","porta"].forEach(t => {
+      const el = document.querySelector(`[data-n="${t}"]`);
+      if (el) el.textContent = cont(t);
+    });
+  }
+
+  function rotuloTipoExt(t) {
+    return ({ energia: "⚡ Energia", temperatura: "🌡️ Temperatura", porta: "🚪 Porta" })[t] || t;
+  }
+
+  // ===================================================================
+  //  Render da grade (agrupada por tipo + paginada)
   // ===================================================================
   function renderizarGrade() {
     const cont = document.querySelector("[data-grade]");
     if (!sensores.length) {
       cont.innerHTML = `<div class="sala-loading">Nenhum sensor disponível.</div>`;
+      renderizarPaginacao(0);
       return;
     }
 
-    const ordemGrupos = ["extrusao","camara_congelados","camara_estoque","graxaria","externo_campo_grande","externo_tres_lagoas"];
-    const sensOrdenados = [...sensores].sort((a,b) => {
-      const ia = ordemGrupos.indexOf(a.group), ib = ordemGrupos.indexOf(b.group);
-      if (ia !== ib) return ia - ib;
-      return a.id.localeCompare(b.id);
-    });
+    atualizarContadoresAbas();
 
-    cont.innerHTML = sensOrdenados.map(s => {
-      const presets = PRESETS[s.type] || [];
-      const eHistorico = s.status === "historico";
-      const grupo = grupos.find(g => g.id === s.group);
-      const perfil = perfisPorSensor[s.id] || {};
-      const params = perfil.parametros || {};
+    const filtradas = listaFiltrada();
+    if (!filtradas.length) {
+      cont.innerHTML = `<div class="sala-vazio">
+        <strong>Nenhum sensor bate com sua busca.</strong>
+        <span>Tente outro termo ou troque a aba acima.</span>
+      </div>`;
+      renderizarPaginacao(0);
+      return;
+    }
 
-      return `
-        <article class="sc-card tipo-${s.type} ${eHistorico ? "historico" : ""}" data-sensor="${s.id}">
-          <div class="sc-stripe"></div>
+    const total = filtradas.length;
+    const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+    if (pagina > totalPaginas) pagina = totalPaginas;
+    if (pagina < 1) pagina = 1;
+    const inicio = (pagina - 1) * POR_PAGINA;
+    const slice = filtradas.slice(inicio, inicio + POR_PAGINA);
 
-          <div class="sc-head">
-            <div>
-              <h3>${s.label}</h3>
-              <code>${s.id}</code>
-              <div class="sc-grupo">${grupo ? grupo.label : s.group}</div>
-            </div>
-            <div class="sc-tags">
-              <span class="sc-tipo ${s.type}">${s.type}</span>
-              <span class="sc-status ${s.status}">${s.status}</span>
+    // Quando "todos", agrupa o slice visível por tipo (com subtítulos).
+    let html;
+    if (filtroTipo === "todos") {
+      const porTipo = { energia: [], temperatura: [], porta: [] };
+      slice.forEach(s => {
+        if (!porTipo[s.type]) porTipo[s.type] = [];
+        porTipo[s.type].push(s);
+      });
+      html = ["energia","temperatura","porta"].map(t => {
+        const lista = porTipo[t] || [];
+        if (!lista.length) return "";
+        return `
+          <section class="sg-secao">
+            <h3 class="sg-secao-titulo tipo-${t}">${rotuloTipoExt(t)} <span class="sg-secao-n">${lista.length}</span></h3>
+            <div class="sg-cards">${lista.map(htmlCard).join("")}</div>
+          </section>
+        `;
+      }).join("");
+    } else {
+      html = `<div class="sg-cards">${slice.map(htmlCard).join("")}</div>`;
+    }
+
+    cont.innerHTML = html;
+    ligarHandlersCards(cont);
+    renderizarPaginacao(totalPaginas, total, inicio + 1, inicio + slice.length);
+  }
+
+  function htmlCard(s) {
+    const presets = PRESETS[s.type] || [];
+    const eHistorico = s.status === "historico";
+    const grupo = grupos.find(g => g.id === s.group);
+    const perfil = perfisPorSensor[s.id] || {};
+    const params = perfil.parametros || {};
+
+    return `
+      <article class="sc-card tipo-${s.type} ${eHistorico ? "historico" : ""}" data-sensor="${s.id}">
+        <div class="sc-stripe"></div>
+
+        <div class="sc-head">
+          <div>
+            <h3>${s.label}</h3>
+            <code>${s.id}</code>
+            <div class="sc-grupo">${grupo ? grupo.label : s.group}</div>
+          </div>
+          <div class="sc-tags">
+            <span class="sc-tipo ${s.type}">${s.type}</span>
+            <span class="sc-status ${s.status}">${s.status}</span>
+          </div>
+        </div>
+
+        <div class="sc-receita">
+          <header>
+            <span class="sr-eyebrow">Como o agente gera dados deste sensor</span>
+            <button class="sr-toggle" data-toggle aria-label="expandir">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </header>
+          <div class="sr-personalidade">
+            <strong>Personalidade:</strong>
+            ${perfil.personalidade || "<i>sem traço específico</i>"}
+          </div>
+          <div class="sr-resumo">${resumoReceita(s.type, params)}</div>
+          <div class="sr-detalhes" hidden>
+            <div class="sr-passos">${passosGeracao(s.type, params)}</div>
+            <div class="sr-aviso">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span><strong>Como os botões abaixo mexem nisso:</strong> ao clicar, um <code>incidente</code> é inserido no banco. O gerador (pg_cron, roda a cada 1 min) aplica esse incidente no próximo ponto. Você vê o efeito em até ~60s no painel.</span>
             </div>
           </div>
+        </div>
 
-          <!-- Receita do fake (linguagem leiga, passo a passo) -->
-          <div class="sc-receita">
-            <header>
-              <span class="sr-eyebrow">Como o agente gera dados deste sensor</span>
-              <button class="sr-toggle" data-toggle aria-label="expandir">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-            </header>
-            <div class="sr-personalidade">
-              <strong>Personalidade:</strong>
-              ${perfil.personalidade || "<i>sem traço específico</i>"}
-            </div>
-            <div class="sr-resumo">${resumoReceita(s.type, params)}</div>
-            <div class="sr-detalhes" hidden>
-              <div class="sr-passos">${passosGeracao(s.type, params)}</div>
-              <div class="sr-aviso">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                <span><strong>Como os botões abaixo mexem nisso:</strong> ao clicar, um <code>incidente</code> é inserido no banco. O gerador (pg_cron, roda a cada 1 min) aplica esse incidente no próximo ponto. Você vê o efeito em até ~60s no painel.</span>
-              </div>
-            </div>
+        <div class="sc-leitura">
+          <div class="sc-valor-bloco">
+            <div class="sc-valor" data-valor>—</div>
+            <div class="sc-extra" data-extra>${eHistorico ? "sensor histórico (sem dados ao vivo)" : "aguardando…"}</div>
+            <div class="sc-quando" data-quando></div>
           </div>
-
-          <!-- Leitura ao vivo -->
-          <div class="sc-leitura">
-            <div class="sc-valor-bloco">
-              <div class="sc-valor" data-valor>—</div>
-              <div class="sc-extra" data-extra>${eHistorico ? "sensor histórico (sem dados ao vivo)" : "aguardando…"}</div>
-              <div class="sc-quando" data-quando></div>
-            </div>
-            <div class="sc-spark" data-spark>
-              <svg viewBox="0 0 110 44" preserveAspectRatio="none"></svg>
-            </div>
+          <div class="sc-spark" data-spark>
+            <svg viewBox="0 0 110 44" preserveAspectRatio="none"></svg>
           </div>
+        </div>
 
-          <!-- Indicador medido vs receita -->
-          <div class="sc-comparativo" data-comparativo>
-            ${eHistorico ? "" : '<div class="sc-cmp-vazio">aguardando primeira leitura…</div>'}
-          </div>
+        <div class="sc-comparativo" data-comparativo>
+          ${eHistorico ? "" : '<div class="sc-cmp-vazio">aguardando primeira leitura…</div>'}
+        </div>
 
-          <!-- Ações -->
-          <div class="sc-acoes">
-            ${presets.map(p => `
-              <button class="sc-botao severidade-${p.severidade}"
-                      data-preset='${JSON.stringify(p).replaceAll("'","&apos;")}'
-                      ${eHistorico ? "disabled" : ""}>
-                <span class="sb-titulo">${p.titulo}</span>
-                <span class="sb-sub">${p.sub}</span>
-              </button>
-            `).join("")}
-          </div>
-        </article>
-      `;
-    }).join("");
+        <div class="sc-acoes">
+          ${presets.map(p => `
+            <button class="sc-botao severidade-${p.severidade}"
+                    data-preset='${JSON.stringify(p).replaceAll("'","&apos;")}'
+                    ${eHistorico ? "disabled" : ""}>
+              <span class="sb-titulo">${p.titulo}</span>
+              <span class="sb-sub">${p.sub}</span>
+            </button>
+          `).join("")}
+        </div>
+      </article>
+    `;
+  }
 
-    // toggle das receitas
+  function ligarHandlersCards(cont) {
     cont.querySelectorAll(".sc-card").forEach(card => {
       const toggle   = card.querySelector("[data-toggle]");
       const detalhes = card.querySelector(".sr-detalhes");
-      if (!toggle || !detalhes) return;
-      toggle.onclick = () => {
-        detalhes.hidden = !detalhes.hidden;
-        toggle.classList.toggle("aberto", !detalhes.hidden);
+      if (toggle && detalhes) {
+        toggle.onclick = () => {
+          detalhes.hidden = !detalhes.hidden;
+          toggle.classList.toggle("aberto", !detalhes.hidden);
+        };
+      }
+    });
+    // Click nos botões de falha (delegate por card)
+    cont.querySelectorAll(".sc-botao[data-preset]").forEach(btn => {
+      btn.onclick = () => {
+        if (btn.disabled) return;
+        const card = btn.closest("[data-sensor]");
+        const sensorId = card.dataset.sensor;
+        const preset = JSON.parse(btn.dataset.preset.replaceAll("&apos;","'"));
+        abrirModal(sensorId, preset);
+      };
+    });
+  }
+
+  // ===================================================================
+  //  Paginação
+  // ===================================================================
+  function renderizarPaginacao(totalPaginas, total = 0, primeiro = 0, ultimo = 0) {
+    const nav = document.querySelector("[data-paginacao]");
+    if (!nav) return;
+    if (totalPaginas <= 1) { nav.hidden = true; return; }
+    nav.hidden = false;
+
+    // Botões prev/next: enabled/disabled
+    nav.querySelector("[data-pag-acao='primeira']").disabled = pagina === 1;
+    nav.querySelector("[data-pag-acao='anterior']").disabled = pagina === 1;
+    nav.querySelector("[data-pag-acao='proxima']").disabled  = pagina === totalPaginas;
+    nav.querySelector("[data-pag-acao='ultima']").disabled   = pagina === totalPaginas;
+
+    // Botões de número (janela de 5 ao redor do atual)
+    const cont = nav.querySelector("[data-pag-paginas]");
+    const janela = [];
+    const ini = Math.max(1, pagina - 2);
+    const fim = Math.min(totalPaginas, ini + 4);
+    for (let i = ini; i <= fim; i++) janela.push(i);
+    cont.innerHTML = janela.map(i =>
+      `<button class="sp-num ${i === pagina ? "ativa" : ""}" data-pag-num="${i}">${i}</button>`
+    ).join("");
+    cont.querySelectorAll("[data-pag-num]").forEach(b => {
+      b.onclick = () => { pagina = Number(b.dataset.pagNum); renderizarGrade(); };
+    });
+
+    // Info textual
+    const info = nav.querySelector("[data-pag-info]");
+    if (info) info.textContent = `Mostrando ${primeiro}–${ultimo} de ${total}`;
+  }
+
+  // Listeners da toolbar e paginação (uma vez só)
+  function ligarToolbar() {
+    document.querySelectorAll("[data-abas] [data-tipo]").forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll("[data-abas] [data-tipo]").forEach(x => x.classList.remove("ativa"));
+        b.classList.add("ativa");
+        filtroTipo = b.dataset.tipo;
+        pagina = 1;
+        renderizarGrade();
+        atualizar();  // refresh dos valores na nova página visível
       };
     });
 
-    // clique nos botões de falha
-    cont.addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".sc-botao[data-preset]");
-      if (!btn || btn.disabled) return;
-      const card = btn.closest("[data-sensor]");
-      const sensorId = card.dataset.sensor;
-      const preset = JSON.parse(btn.dataset.preset.replaceAll("&apos;","'"));
-      abrirModal(sensorId, preset);
+    const input = document.querySelector("[data-busca]");
+    const limpar = document.querySelector("[data-busca-limpar]");
+    if (input) {
+      input.addEventListener("input", () => {
+        busca = input.value;
+        limpar.hidden = !busca;
+        pagina = 1;
+        renderizarGrade();
+        atualizar();
+      });
+    }
+    if (limpar) {
+      limpar.onclick = () => {
+        input.value = "";
+        busca = "";
+        limpar.hidden = true;
+        pagina = 1;
+        renderizarGrade();
+        input.focus();
+      };
+    }
+
+    document.querySelectorAll("[data-pag-acao]").forEach(b => {
+      b.onclick = () => {
+        const acao = b.dataset.pagAcao;
+        const totalPaginas = Math.max(1, Math.ceil(listaFiltrada().length / POR_PAGINA));
+        if (acao === "primeira") pagina = 1;
+        if (acao === "anterior" && pagina > 1) pagina--;
+        if (acao === "proxima"  && pagina < totalPaginas) pagina++;
+        if (acao === "ultima")   pagina = totalPaginas;
+        renderizarGrade();
+        atualizar();
+      };
     });
   }
 
