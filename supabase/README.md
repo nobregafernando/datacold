@@ -34,11 +34,22 @@ Antes do primeiro login real, configure no Dashboard do Supabase
 
 ### Authentication → URL Configuration
 - **Site URL** ⇒ `https://datacold.web.app`
-- **Redirect URLs** (adicionar):
-  - `https://datacold.web.app/paginas/conta/redefinir/`
+- **Redirect URLs** (adicionar **as duas**):
+  - `https://datacold.web.app/paginas/conta/redefinir/`  (esqueci senha)
+  - `https://datacold.web.app/paginas/conta/definir/`    (convite de novo usuário)
 
-Sem isso, o link de recuperação que o Supabase envia por e-mail pode
-não apontar para a página correta.
+Sem isso, o link que o Supabase envia por e-mail volta como "Invalid Redirect URL".
+
+### Authentication → Email Templates → "Reset Password"
+
+Cole o conteúdo de **`supabase/email-template-convite.html`** no editor de
+"Reset Password" (a Supabase usa o mesmo template para o nosso fluxo de
+convite, já que internamente disparamos `/auth/v1/recover`).
+
+- **Subject** sugerido: `Você foi convidado para a DataCold`
+- O template já contém todas as variáveis Go (`{{ .ConfirmationURL }}`,
+  `{{ .Email }}`, `{{ .SiteURL }}`) e está com CSS inline para funcionar
+  em Outlook/Gmail.
 
 ### Primeiro admin
 

@@ -350,13 +350,20 @@ class PaginaSensor {
       } else {
         this._renderizarConectividade(this.dados);
       }
+      // 1) DETECTA OFFLINE primeiro — todos os renderizadores seguintes
+      //    consultam this._estaOffline pra zerar valores quando o sensor
+      //    parou de mandar dados (intervalo médio observado x última leitura).
+      this._detectarOffline(this.dados);
       this._renderizarLudico(this.dados);
       this._renderizarKpis(this.dados);
       this._renderizarGraficos(this.dados);
       this._renderizarTabela(this.dados);
       this._renderizarLatencia(this.dados);
       this._renderizarAnalise(this.dados);
-      this._detectarAlertasLocais(this.dados);
+      // _detectarAlertasLocais foi desligado: o baseline dos sensores é
+      // saudável agora; anomalias chegam pela Sala de Controle (incidentes
+      // manuais), não por detecção automática a cada refresh.
+      // this._detectarAlertasLocais(this.dados);
     } catch (e) {
       this._renderizarConectividade(null, "erro", e.message);
       const ehAuth = /401|403|chave|key/i.test(e.message);
@@ -554,6 +561,23 @@ class PaginaSensor {
     const cont = document.querySelector("[data-kpis]");
     if (!cont) return;
 
+    // OFFLINE: zera os 4 KPIs com aviso de sem sinal
+    if (this._estaOffline) {
+      const tempo = this._segDesde < 60
+        ? `${Math.round(this._segDesde)}s`
+        : this._segDesde < 3600
+          ? `${Math.floor(this._segDesde / 60)} min`
+          : `${(this._segDesde / 3600).toFixed(1)}h`;
+      cont.innerHTML = Array.from({ length: 4 }, () => `
+        <div class="kpi-card sev-critico kpi-offline">
+          <div class="kpi-ico" style="background:rgba(220,38,38,.12);color:#dc2626">📡</div>
+          <div class="kpi-rotulo">Sem leitura</div>
+          <div class="kpi-valor" style="color:#dc2626">—</div>
+          <div class="kpi-sub">offline há ${tempo}</div>
+        </div>`).join("");
+      return;
+    }
+
     const itens = this.sensor.calcularIndicadores(dados.points);
     if (!itens.length) {
       cont.innerHTML = `<div class="vazio-bloco" style="grid-column:1/-1"><strong>Sem KPIs</strong><span>Sem dados pra calcular.</span></div>`;
@@ -586,22 +610,51 @@ class PaginaSensor {
   //  Painel lúdico (semáforo + velocímetros / termômetro / porta)
   // =================================================================
 
+  /**
+   * Decide se o sensor está OFFLINE baseado no intervalo médio REAL
+   * observado nos pontos recebidos — não em constante. Robusto a mudanças
+   * de cadência (pg_cron a cada 60s, 30s, etc).
+   *
+   * Critério: offline = última leitura > 2,5× o intervalo médio (com piso
+   * de 90s pra evitar falso positivo em janelas com poucos pontos).
+   *
+   * Resultado: this._estaOffline, this._segDesde, this._cadenciaObservada.
+   */
+  _detectarOffline(dados) {
+    this._estaOffline = false;
+    this._segDesde = 0;
+    this._cadenciaObservada = 60;
+    if (!dados?.points?.length) {
+      this._estaOffline = true;
+      return;
+    }
+    const pts = dados.points;
+    const ultimo = pts[pts.length - 1];
+    this._segDesde = (Date.now() - new Date(ultimo.time).getTime()) / 1000;
+
+    // Intervalo médio observado (últimos 30 pontos)
+    if (pts.length >= 2) {
+      const recortes = pts.slice(-30);
+      const diffs = [];
+      for (let i = 1; i < recortes.length; i++) {
+        const d = (new Date(recortes[i].time).getTime() -
+                   new Date(recortes[i - 1].time).getTime()) / 1000;
+        if (isFinite(d) && d > 0) diffs.push(d);
+      }
+      if (diffs.length) {
+        this._cadenciaObservada = diffs.reduce((s, x) => s + x, 0) / diffs.length;
+      }
+    }
+    const threshold = Math.max(90, this._cadenciaObservada * 2.5);
+    this._estaOffline = this._segDesde > threshold;
+  }
+
   _renderizarLudico(dados) {
     const secao = document.querySelector("[data-ludico]");
     if (!secao || !dados?.points?.length) return;
     secao.hidden = false;
 
     const ultimo = dados.points[dados.points.length - 1];
-
-    // Detecta se o sensor está offline (último ponto antigo demais).
-    // Cadência energia=30s, temp/porta=60s; consideramos offline se
-    // não chega nada há mais que 4× a cadência.
-    const cadencia = (typeof AgenteReconstrutor !== "undefined")
-      ? AgenteReconstrutor.CADENCIA_S[this.sensor.tipo] || 60
-      : 60;
-    const segDesde = (Date.now() - new Date(ultimo.time).getTime()) / 1000;
-    this._estaOffline = segDesde > cadencia * 4;
-    this._segDesde = segDesde;
     secao.classList.toggle("offline", this._estaOffline);
 
     this._renderizarBannerStatus(dados, ultimo);
@@ -1126,12 +1179,26 @@ class PaginaSensor {
           existente.data.datasets[i] = this._estilizarDataset(novo, existente.canvas);
         } else {
           ds.data = novo.data;
-          if (novo.borderColor) ds.borderColor = novo.borderColor;
+          // Propaga props visuais que mudam entre renders — label (carrega
+          // a % de confiança do reconstrutor) e estilo de linha. Sem isso,
+          // o slot do dataset herda o label/estilo do render anterior.
+          if (novo.label !== undefined)       ds.label = novo.label;
+          if (novo.borderColor)               ds.borderColor = novo.borderColor;
+          if (novo.borderDash !== undefined)  ds.borderDash = novo.borderDash;
+          if (novo.borderWidth !== undefined) ds.borderWidth = novo.borderWidth;
+          if (novo.recInfo !== undefined)     ds.recInfo = novo.recInfo;
+          if (novo.tension !== undefined)     ds.tension = novo.tension;
           if (novo.fill && novo.backgroundColor) {
             ds.backgroundColor = this._gradiente(existente.canvas, novo.borderColor || novo.backgroundColor);
           }
         }
       });
+      // Remove datasets sobrando — caso clássico: a "linha morta" do gap
+      // ativo some quando o reconstrutor preenche o vazio. Sem este corte,
+      // o dataset velho fica de fantasma no gráfico com os dados antigos.
+      if (existente.data.datasets.length > datasets.length) {
+        existente.data.datasets.length = datasets.length;
+      }
       existente.update("none");
       return;
     }

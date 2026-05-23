@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+  }
+  // 2) Apaga todas as caches da Cache API
+  if ('caches' in window) {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
+  try {
+    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        if (anterior && anterior !== v.build_id) {
+          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
+          });
+        }
+        localStorage.setItem('__build_id', v.build_id);
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Notificações</title>
+<link rel="icon" href="/assets/favicon.ico?v=1779580228357" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779580228357">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779580228357">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779580228357">
+<link rel="stylesheet" href="../admin.css?v=1779580228357">
+<link rel="stylesheet" href="estilo.css?v=1779580228357">
+</head>
+<body>
+
+<div class="layout-admin">
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="admin-main">
+    <div id="menu-topo"></div>
+
+    <header class="notif-cabecalho">
+      <div>
+        <span class="olho">Centro de notificações</span>
+        <h1>Tudo que os agentes podem disparar</h1>
+        <p class="legenda">
+          Os 4 agentes do DataCold rodam sobre cada sensor e produzem
+          <strong>vereditos</strong>. Quando o veredito é <em>crítico</em> ou de
+          <em>atenção</em>, vira uma notificação. Abaixo: catálogo completo e
+          notificações ativas em tempo real.
+        </p>
+      </div>
+      <div class="notif-acoes">
+        <button class="btn btn-pequeno btn-ghost" data-acao="marcar-todas">Marcar todas como lidas</button>
+        <button class="btn btn-pequeno btn-ghost" data-acao="atualizar">Atualizar</button>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="notif-kpis" data-kpis>
+      <div class="notif-kpi"><div class="nk-v" data-kpi="total">—</div><div class="nk-l">total no histórico</div></div>
+      <div class="notif-kpi nk-crit"><div class="nk-v" data-kpi="critica">—</div><div class="nk-l">críticas</div></div>
+      <div class="notif-kpi nk-alta"><div class="nk-v" data-kpi="alta">—</div><div class="nk-l">atenção</div></div>
+      <div class="notif-kpi nk-media"><div class="nk-v" data-kpi="media">—</div><div class="nk-l">médias</div></div>
+      <div class="notif-kpi nk-comum"><div class="nk-v" data-kpi="comum">—</div><div class="nk-l">comuns</div></div>
+      <div class="notif-kpi"><div class="nk-v" data-kpi="naoLidas">—</div><div class="nk-l">não lidas</div></div>
+    </section>
+
+    <!-- Tabs -->
+    <nav class="notif-tabs">
+      <button data-tab="ativas" class="ativo">Ativas agora</button>
+      <button data-tab="catalogo">Catálogo completo</button>
+      <button data-tab="historico">Histórico</button>
+    </nav>
+
+    <!-- Painel "Ativas agora" -->
+    <section data-painel="ativas" class="notif-painel">
+      <p class="notif-intro">
+        Notificações disparadas <strong>nos últimos 15 minutos</strong> pelos agentes
+        analisando os dados reais que chegaram do gerador (incluindo qualquer
+        incidente injetado na Sala de Controle).
+      </p>
+      <div class="notif-lista" data-ativas><div class="notif-vazio">Carregando…</div></div>
+    </section>
+
+    <!-- Painel "Catálogo" -->
+    <section data-painel="catalogo" class="notif-painel" hidden>
+      <p class="notif-intro">
+        Todas as <strong data-total-regras>—</strong> verificações que os agentes
+        podem disparar. Aplicáveis ao tipo de sensor indicado.
+      </p>
+      <div class="notif-catalogo" data-catalogo></div>
+    </section>
+
+    <!-- Painel "Histórico" -->
+    <section data-painel="historico" class="notif-painel" hidden>
+      <p class="notif-intro">
+        Todas as notificações já recebidas (armazenadas no <code>localStorage</code>
+        do navegador). Limite: últimas 200.
+      </p>
+      <div class="notif-lista" data-historico><div class="notif-vazio">Carregando…</div></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779580228357"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779580228357"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779580228357"></script>
+
+<!-- Agentes (pra extrair o catálogo de regras) -->
+<script src="../../../scripts/agentes/normas.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/Regra.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/verificacoesComuns.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AgenteBase.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AgenteEnergia.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AgenteTemperatura.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AgentePorta.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AgenteReconstrutor.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/FabricaAgente.js?v=1779580228357"></script>
+<script src="../../../scripts/agentes/AnalisadorSensor.js?v=1779580228357"></script>
+
+<script src="pagina.js?v=1779580228357"></script>
+</body>
+</html>

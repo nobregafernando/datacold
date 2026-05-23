@@ -11,8 +11,8 @@
  */
 
 (async () => {
+  if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) return;
   const usuario = Autenticacao.usuarioAtual();
-  if (!usuario) { window.location.href = "../../login//"; return; }
 
   const api = new ApiBEM();
   const raiz = "../../../";

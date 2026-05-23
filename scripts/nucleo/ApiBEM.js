@@ -1,259 +1,178 @@
 /**
- * Cliente HTTP que fala com 3 backends possíveis, escolhidos por URL base:
+ * Cliente único que conversa com o backend via a Edge Function "proxy"
+ * do Supabase. Nenhuma chave de API, anon key ou JWT de admin fica no
+ * browser — tudo é resolvido server-side.
  *
- *   1) Supabase (PostgREST + RPCs)          ← DEFAULT no projeto inteiro
- *      https://fcverbceppwdbveustvq.supabase.co
+ * Endpoint público (e o ÚNICO que esse cliente conhece):
+ *   POST <PROXY_URL>
+ *   body: { acao: "rpc:<nome>" | "auth:<acao>" | "perfil:buscar",
+ *           payload?: any,
+ *           jwt?: string         // token do usuário autenticado, se houver
+ *         }
  *
- *   2) Simulador Python local (FastAPI)     ← útil em dev quando o Supabase
- *      http://127.0.0.1:8001                  cai ou o usuário quer offline
+ * O PROXY_URL pode ser alterado em runtime via:
+ *   localStorage.setItem("datacold_proxy_url", "https://...")
  *
- *   3) API BEM real (hackathon)             ← se quiser bater na API original
- *      https://desafio.beminteligencia.com.br
- *
- * Os 3 expõem os mesmos 3 métodos (verificarSaude, listarCatalogo,
- * buscarDados) com o MESMO formato de resposta — o resto do front não
- * precisa saber qual é a fonte.
- *
- * Pra forçar uma backend específica em runtime:
- *   localStorage.setItem("datacold_api_url", "http://127.0.0.1:8001")
- *   localStorage.removeItem("datacold_api_url")   // volta pro default (Supabase)
+ * Default: edge function pública no Supabase do projeto.
  */
 class ApiBEM {
-  // === URLs disponíveis ===
-  static URL_SUPABASE  = "https://fcverbceppwdbveustvq.supabase.co";
-  static URL_SIMULADOR = "http://127.0.0.1:8001";
-  static URL_BEM_REAL  = "https://desafio.beminteligencia.com.br";
+  /** URL pública do proxy (Supabase Edge Function). Não é segredo, mas pode ser
+   *  trocada via localStorage se um dia trocarmos de hospedagem. */
+  static PROXY_URL_PADRAO =
+    "https://fcverbceppwdbveustvq.supabase.co/functions/v1/proxy";
 
-  // === Chaves públicas (Supabase anon e hackathon BEM) ===
-  // Ambas são públicas por design — anon do Supabase é destinada ao
-  // browser, e a chave do hackathon estava hardcoded no explorador
-  // desde o primeiro commit.
-  static CHAVE_SUPABASE_ANON =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" +
-    ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjdmVyYmNlcHB3ZGJ2ZXVzdHZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NTEzNTgsImV4cCI6MjA5NTEyNzM1OH0" +
-    ".bI6SExnbpMGKI3bvOK2aGGa-NoV5PN_OTRhwPp5hays";
-  static CHAVE_HACKATHON = "04379f4f1c57e0a01c5062ab5b224b2e863ad863";
+  static URL_STORAGE = "datacold_proxy_url";
+  static JWT_STORAGE = "datacold_jwt";       // setado pelo Autenticacao
 
-  // === localStorage keys ===
-  static URL_STORAGE   = "datacold_api_url";
-  static CHAVE_STORAGE = "datacold_api_key";
-
-  constructor({ urlBase = null, chave = null } = {}) {
-    // Prioridade: argumento explícito > localStorage > default (Supabase).
+  constructor({ proxyUrl = null } = {}) {
     let salva = (typeof localStorage !== "undefined")
       ? localStorage.getItem(ApiBEM.URL_STORAGE)
       : null;
-    // Migração: limpa URLs antigas do simulador local que estavam plantadas
-    // antes do default virar Supabase. Assim a próxima visita já cai no novo.
-    if (salva === "http://127.0.0.1:8001" || salva === "http://localhost:8001") {
+    // Migração: limpa configs antigas que apontavam pra Supabase direto ou
+    // pro simulador local. A partir desta versão, tudo passa pelo proxy.
+    if (
+      salva && (
+        salva.includes(".supabase.co") && !salva.includes("/functions/v1/proxy") ||
+        salva.includes("127.0.0.1") ||
+        salva.includes("localhost") ||
+        salva.includes("beminteligencia")
+      )
+    ) {
       if (typeof localStorage !== "undefined") {
         localStorage.removeItem(ApiBEM.URL_STORAGE);
-        localStorage.removeItem(ApiBEM.CHAVE_STORAGE);   // chave antiga não serve no Supabase
+        localStorage.removeItem("datacold_api_url");
+        localStorage.removeItem("datacold_api_key");
       }
       salva = null;
     }
-    this.urlBase = urlBase ?? salva ?? ApiBEM.URL_SUPABASE;
-
-    // Chave guardada por usuário ou padrão por backend.
-    let chaveSalva = (typeof localStorage !== "undefined")
-      ? localStorage.getItem(ApiBEM.CHAVE_STORAGE)
-      : null;
-    // Se a chave salva claramente não pertence ao backend atual, troca:
-    // - Backend Supabase exige um JWT (começa com "eyJ"). Se tiver outra
-    //   coisa salva (ex: chave do hackathon plantada antes), substitui.
-    // - Backend BEM/simulador NÃO aceita um JWT — se tiver, volta pra
-    //   chave do hackathon.
-    const ehSupabase = this.urlBase === ApiBEM.URL_SUPABASE;
-    const pareceJwt  = !!chaveSalva && chaveSalva.startsWith("eyJ");
-    const precisaTrocar =
-      !chaveSalva ||
-      chaveSalva === "simulador-local" ||
-      (ehSupabase && !pareceJwt) ||
-      (!ehSupabase && pareceJwt);
-    if (precisaTrocar) {
-      chaveSalva = this._chavePadrao();
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(ApiBEM.CHAVE_STORAGE, chaveSalva);
-      }
-    }
-    this._chave = chave ?? chaveSalva;
-    // GARANTIA: nunca deixar _chave vazia/null — sempre cai no padrão.
-    // Assim toda página funciona sem o usuário precisar configurar nada.
-    if (!this._chave) {
-      this._chave = this._chavePadrao();
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(ApiBEM.CHAVE_STORAGE, this._chave);
-      }
-    }
+    this.proxyUrl = proxyUrl ?? salva ?? ApiBEM.PROXY_URL_PADRAO;
   }
 
   // ===================================================================
-  //  Configuração derivada da URL escolhida
+  //  Helpers internos
   // ===================================================================
 
-  /** true quando o backend é o Supabase. */
-  get _ehSupabase() { return this.urlBase === ApiBEM.URL_SUPABASE; }
-
-  /** Chave default por backend. */
-  _chavePadrao() {
-    return this._ehSupabase ? ApiBEM.CHAVE_SUPABASE_ANON : ApiBEM.CHAVE_HACKATHON;
+  /** Retorna o JWT do usuário (se houver sessão real Supabase). */
+  _jwt() {
+    try {
+      const cru = (typeof localStorage !== "undefined")
+        ? localStorage.getItem(ApiBEM.JWT_STORAGE)
+        : null;
+      return cru || null;
+    } catch { return null; }
   }
 
-  /** Headers HTTP por backend. */
-  get cabecalhos() {
-    const h = { "Accept": "application/json" };
-    if (this._ehSupabase) {
-      // Supabase exige apikey + Authorization Bearer (ambos com a anon).
-      h["apikey"]        = this._chave || ApiBEM.CHAVE_SUPABASE_ANON;
-      h["Authorization"] = `Bearer ${this._chave || ApiBEM.CHAVE_SUPABASE_ANON}`;
-    } else if (this._chave) {
-      h["X-API-Key"] = this._chave;
-    }
-    return h;
-  }
+  /** Chamada base: monta o body { acao, payload, jwt }, faz POST no proxy. */
+  async _chamar(acao, payload = {}) {
+    const corpo = { acao, payload };
+    const jwt = this._jwt();
+    if (jwt) corpo.jwt = jwt;
 
-  get chave() { return this._chave; }
-  set chave(valor) {
-    this._chave = (valor || "").trim();
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(ApiBEM.CHAVE_STORAGE, this._chave);
-    }
-  }
-
-  // ===================================================================
-  //  Núcleo de fetch
-  // ===================================================================
-
-  async _requisitar(caminho, opcoes = {}) {
-    const url = `${this.urlBase}${caminho}`;
-    const resposta = await fetch(url, {
-      ...opcoes,
-      headers: { ...this.cabecalhos, ...(opcoes.headers || {}) },
-    });
-    if (!resposta.ok) {
-      const corpo = await resposta.text().catch(() => "");
-      throw new Error(`HTTP ${resposta.status} · ${corpo.substring(0, 140)}`);
-    }
-    return resposta.json();
-  }
-
-  /** Helper para chamar RPCs do PostgREST (POST com body JSON). */
-  async _rpc(nome, parametros = {}) {
-    return this._requisitar(`/rest/v1/rpc/${nome}`, {
+    const resp = await fetch(this.proxyUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parametros),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(corpo),
     });
+    const texto = await resp.text().catch(() => "");
+    let dados;
+    try { dados = texto ? JSON.parse(texto) : null; }
+    catch { dados = texto; }
+
+    if (!resp.ok) {
+      const msg = (dados && dados.erro) ? dados.erro : `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    return dados;
+  }
+
+  /** Helpers tipados (cada um equivalente a uma rpc PostgREST). */
+  _rpc(nome, parametros = {}) {
+    return this._chamar(`rpc:${nome}`, parametros);
   }
 
   // ===================================================================
-  //  API pública (mesmo contrato pros 3 backends)
+  //  API pública usada pelo front
   // ===================================================================
 
-  async verificarSaude() {
-    return this._ehSupabase
-      ? this._rpc("verificar_saude")
-      : this._requisitar("/health");
-  }
-
-  async listarCatalogo() {
-    return this._ehSupabase
-      ? this._rpc("listar_catalogo")
-      : this._requisitar("/api/v1/sensors");
-  }
+  async verificarSaude()      { return this._rpc("verificar_saude"); }
+  async listarCatalogo()      { return this._rpc("listar_catalogo"); }
 
   async buscarDados(sensorId, { inicio = "-1h", fim = "now", limite = 1000 } = {}) {
-    if (this._ehSupabase) {
-      return this._rpc("buscar_dados", {
-        p_sensor: sensorId,
-        p_start:  inicio,
-        p_stop:   fim,
-        p_limit:  limite,
-      });
-    }
-    const qs = new URLSearchParams({
-      sensor: sensorId,
-      start:  inicio,
-      stop:   fim,
-      limit:  String(limite),
+    return this._rpc("buscar_dados", {
+      p_sensor: sensorId, p_start: inicio, p_stop: fim, p_limit: limite,
     });
-    return this._requisitar(`/api/v1/data?${qs.toString()}`);
   }
 
   // ===================================================================
-  //  Extras (só Supabase) — disponíveis pra injetar/cancelar incidentes
+  //  Incidentes (Sala de Controle)
   // ===================================================================
 
   async criarIncidente({ sensor, tipo, duracaoS = null, magnitude = 0, valor = 0, descricao = "" }) {
-    if (!this._ehSupabase) {
-      // No simulador local, usa o endpoint específico /sim/incidente
-      return this._requisitar("/sim/incidente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sensor, tipo, duracao_s: duracaoS, magnitude, valor, descricao }),
-      });
-    }
     return this._rpc("criar_incidente", {
-      p_sensor:    sensor,
-      p_tipo:      tipo,
-      p_duracao_s: duracaoS,
-      p_magnitude: magnitude,
-      p_valor:     valor,
-      p_descricao: descricao,
+      p_sensor: sensor, p_tipo: tipo, p_duracao_s: duracaoS,
+      p_magnitude: magnitude, p_valor: valor, p_descricao: descricao,
     });
-  }
-
-  /**
-   * Atualiza (merge) os parâmetros de um sensor específico no Supabase.
-   * Os campos passados sobrescrevem; os existentes não passados ficam.
-   *   ex: atualizarParametrosSensor("extrusora_1", { limite_critico: 0.70 })
-   */
-  async atualizarParametrosSensor(sensor, parametros) {
-    if (!this._ehSupabase) {
-      throw new Error("Customização por sensor disponível apenas no backend Supabase.");
-    }
-    return this._rpc("atualizar_parametros_sensor", {
-      p_sensor: sensor,
-      p_parametros: parametros,
-    });
-  }
-
-  /**
-   * Lê os parâmetros (jsonb) de um sensor. Devolve `{}` se não existir
-   * ou se o backend não for Supabase.
-   *   ex: const p = await api.obterParametrosSensor("extrusora_1");
-   */
-  async obterParametrosSensor(sensorId) {
-    if (!this._ehSupabase) return {};
-    try {
-      return await this._rpc("obter_parametros_sensor", { p_sensor: sensorId }) || {};
-    } catch {
-      return {};
-    }
-  }
-
-  /**
-   * Devolve incidentes ATIVOS de um sensor (gap, offline, spike, drift,
-   * valor_impossivel). Sem incidente ativo → []. Usado pra refletir na
-   * página do sensor o que foi disparado na Sala de Controle.
-   *   ex: const ativos = await api.incidentesAtivos("extrusora_1");
-   */
-  async incidentesAtivos(sensorId = null) {
-    if (!this._ehSupabase) return [];
-    try {
-      const r = await this._rpc("incidentes_ativos", { p_sensor: sensorId });
-      return Array.isArray(r) ? r : [];
-    } catch {
-      return [];
-    }
   }
 
   async cancelarIncidente(id) {
-    if (!this._ehSupabase) {
-      return this._requisitar(`/sim/incidente/${id}`, { method: "DELETE" });
-    }
     return this._rpc("cancelar_incidente", { p_id: id });
   }
+
+  async incidentesAtivos(sensorId = null) {
+    try {
+      const r = await this._rpc("incidentes_ativos", { p_sensor: sensorId });
+      return Array.isArray(r) ? r : [];
+    } catch { return []; }
+  }
+
+  // ===================================================================
+  //  Parâmetros por sensor (catálogo de overrides)
+  // ===================================================================
+
+  async atualizarParametrosSensor(sensor, parametros) {
+    return this._rpc("atualizar_parametros_sensor", {
+      p_sensor: sensor, p_parametros: parametros,
+    });
+  }
+
+  async obterParametrosSensor(sensorId) {
+    try {
+      return await this._rpc("obter_parametros_sensor", { p_sensor: sensorId }) || {};
+    } catch { return {}; }
+  }
+
+  // ===================================================================
+  //  Notificações multi-usuário (RLS por perfil; sem localStorage)
+  // ===================================================================
+
+  async listarMinhasNotificacoes({ limit = 50, offset = 0, status = "todas", severidade = null } = {}) {
+    try {
+      const r = await this._rpc("listar_minhas_notificacoes", {
+        p_limit: limit, p_offset: offset, p_status: status, p_severidade: severidade,
+      });
+      return r || { notificacoes: [], total: 0 };
+    } catch { return { notificacoes: [], total: 0 }; }
+  }
+
+  async contarNaoLidas() {
+    try {
+      return await this._rpc("contar_nao_lidas") || { total: 0, critica: 0 };
+    } catch { return { total: 0, critica: 0 }; }
+  }
+
+  async marcarNotificacaoLida(id)      { return this._rpc("marcar_notificacao_lida", { p_id: id }); }
+  async arquivarNotificacao(id)        { return this._rpc("arquivar_notificacao",     { p_id: id }); }
+  async desarquivarNotificacao(id)     { return this._rpc("desarquivar_notificacao",  { p_id: id }); }
+  async marcarTodasLidas()             { return this._rpc("marcar_todas_lidas"); }
+
+  // ===================================================================
+  //  Compatibilidade — antes existiam `chave` getter/setter usados pra
+  //  exibir o "X-API-Key" no header. Hoje não tem mais chave no front.
+  //  Mantemos os métodos como no-op pra não quebrar callsites antigos.
+  // ===================================================================
+
+  get chave() { return ""; }
+  set chave(_) { /* no-op — não guardamos mais chaves no browser */ }
 }
 
 if (typeof window !== "undefined") window.ApiBEM = ApiBEM;

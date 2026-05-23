@@ -46,7 +46,9 @@ class PaginaAdmin {
     document.querySelector("[data-acao='atualizar']").addEventListener("click", () => this._recarregar());
 
     // 8. Demo do sistema de notificações (uma única vez por usuário)
-    this._disparoDemoNotificacoes();
+    // Demos de notificação desligadas — a sala de controle agora é a única
+    // origem manual de alertas. Pra repovoar pra apresentação, descomente:
+    // this._disparoDemoNotificacoes();
   }
 
   /**

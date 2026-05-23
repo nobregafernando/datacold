@@ -43,27 +43,42 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Criar conta</title>
 
-<link rel="icon" href="/favicon.ico?v=1779577355102" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779577355102">
+<link rel="icon" href="/favicon.ico?v=1779580228357" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779580228357">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779577355102">
-<link rel="stylesheet" href="../_conta.css?v=1779577355102">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779580228357">
+<link rel="stylesheet" href="../../../estilos/nav-publica.css?v=1779580228357">
+<link rel="stylesheet" href="../_conta.css?v=1779580228357">
 </head>
 <body>
+
+<header class="nav">
+  <div class="container">
+    <a href="/" class="marca" aria-label="DataCold">
+      <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
+    </a>
+    <nav class="nav-links" aria-label="navegação principal">
+      <a href="/#sensores">Sensores</a>
+      <a href="/#capacidades">Capacidades</a>
+      <a href="/#tecnologia">Tecnologia</a>
+      <a href="/paginas/admin/" class="btn btn-pequeno">← Painel</a>
+    </nav>
+  </div>
+</header>
 
 <div class="conta-fundo" aria-hidden="true"></div>
 
 <main class="conta-wrap">
   <section class="conta-card">
     <a href="../../admin/" class="conta-marca">
-      <img src="../../../logo/01-primary-logo.png" alt="DataCold">
+      <img src="../../../assets/logo/01-primary-logo.png" alt="DataCold">
     </a>
 
-    <h1>Criar nova conta</h1>
-    <p class="conta-sub">Cadastre um novo usuário. Operadores têm acesso de leitura; administradores podem criar outros usuários e injetar incidentes.</p>
+    <h1>Convidar usuário</h1>
+    <p class="conta-sub">Você só preenche e-mail e papel. O convidado recebe um link por e-mail e define o próprio nome e senha. <strong>Você nunca verá a senha dele.</strong></p>
 
     <div class="conta-aviso-admin">
       <strong>Você está logado como:</strong> <span data-admin-info>—</span>
@@ -71,54 +86,33 @@
 
     <form class="conta-form" data-form novalidate>
       <label class="campo">
-        <span>Nome completo</span>
-        <input type="text" name="nome" autocomplete="name" required minlength="2" maxlength="100" placeholder="Ex: Maria Silva">
-      </label>
-
-      <label class="campo">
-        <span>E-mail</span>
-        <input type="email" name="email" autocomplete="email" required maxlength="254" placeholder="usuario@empresa.com">
+        <span>E-mail do convidado</span>
+        <input type="email" name="email" autocomplete="off" required maxlength="254" placeholder="convidado@empresa.com">
       </label>
 
       <label class="campo">
         <span>Papel</span>
         <select name="papel" required>
-          <option value="operador">Operador (leitura)</option>
+          <option value="operador">Operador (somente leitura)</option>
           <option value="admin">Administrador (acesso total)</option>
         </select>
-      </label>
-
-      <label class="campo">
-        <span>Senha</span>
-        <input type="password" name="senha" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Mínimo 10 caracteres" data-senha>
-      </label>
-
-      <div class="forca-senha">
-        <div class="forca-segmentos" data-forca-segmentos data-nivel="0">
-          <div></div><div></div><div></div><div></div>
-        </div>
-        <span class="forca-rotulo" data-forca-rotulo>—</span>
-      </div>
-
-      <ul class="requisitos-senha" data-requisitos>
-        <li data-req="len">10 caracteres ou mais</li>
-        <li data-req="maiuscula">1 letra maiúscula</li>
-        <li data-req="minuscula">1 letra minúscula</li>
-        <li data-req="digito">1 número</li>
-        <li data-req="especial">1 caractere especial</li>
-        <li data-req="espaco">Sem espaços</li>
-      </ul>
-
-      <label class="campo">
-        <span>Confirmar senha</span>
-        <input type="password" name="senha2" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Repita a senha">
       </label>
 
       <div class="conta-erro" data-erro hidden></div>
       <div class="conta-ok"   data-ok   hidden></div>
 
-      <button type="submit" class="btn btn-primario btn-grande completo" data-btn-criar>Criar conta</button>
+      <button type="submit" class="btn btn-primario btn-grande completo" data-btn-convidar>Enviar convite</button>
     </form>
+
+    <div class="conta-info-fluxo">
+      <h3>Como funciona</h3>
+      <ol>
+        <li>O convidado recebe um e-mail com um link da DataCold.</li>
+        <li>Ao clicar, abre uma página interna onde ele define <strong>nome</strong> e <strong>senha forte</strong> (10+ chars, com maiúscula, minúscula, número e símbolo).</li>
+        <li>Os dados ficam salvos em <code>auth.users</code> e <code>perfis_usuarios</code> (espelhados pelo trigger).</li>
+        <li>Após confirmar, ele é redirecionado para o login com o e-mail já preenchido.</li>
+      </ol>
+    </div>
 
     <div class="conta-links">
       <a href="../../admin/">← Voltar ao dashboard</a>
@@ -126,12 +120,13 @@
   </section>
 </main>
 
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779577355102"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779577355102"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779577355102"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779577355102"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779577355102"></script>
-<script src="pagina.js?v=1779577355102"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779580228357"></script>
+<script src="../../../scripts/nucleo/UtilFormulario.js"></script>
+<script src="scripts/nucleo/Autenticacao.js?v=1779580228357"></script>
+<script src="pagina.js?v=1779580228357"></script>
 
 </body>
 </html>

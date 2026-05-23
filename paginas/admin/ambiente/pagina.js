@@ -75,11 +75,8 @@ function animarKpis() {
 
 // ======================== Boot ========================
 document.addEventListener("DOMContentLoaded", async () => {
-  // Exige sessão ativa para a página admin
-  if (!Autenticacao.usuarioAtual()) {
-    window.location.href = "../../login/";
-    return;
-  }
+  // Apenas admin — operador é redirecionado pro dashboard
+  if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) return;
 
   // Monta menu lateral e barra superior
   const menu = new MenuLateral({ paginaAtiva: "ambiente", raiz: "../../../" });

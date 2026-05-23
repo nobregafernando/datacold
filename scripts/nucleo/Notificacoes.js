@@ -1,301 +1,187 @@
 /**
- * =============================================================================
- *  SISTEMA DE NOTIFICAÇÕES — GUIA RÁPIDO PARA DEVS
- * =============================================================================
+ * Notificacoes — cliente para o sistema multi-usuário no Supabase.
  *
- *  É um event bus global persistido em localStorage.
- *  Qualquer página/componente pode ENVIAR e LER notificações.
- *  O MenuTopo (sino) se inscreve automaticamente — não precisa tocar nele.
+ * ZERO localStorage. Tudo vem do banco via RPCs:
+ *   listar_minhas_notificacoes, contar_nao_lidas,
+ *   marcar_notificacao_lida, arquivar_notificacao, desarquivar_notificacao,
+ *   marcar_todas_lidas
  *
- *  ─────────────────────────────────────────────────────────────────────────
- *  ENVIAR UMA NOTIFICAÇÃO
- *  ─────────────────────────────────────────────────────────────────────────
+ * RLS: operador só vê notificações criadas APÓS sua data de cadastro;
+ * admin vê tudo. Estado (lida/arquivada) é por usuário.
  *
- *  // Forma rápida (atalhos por severidade):
- *  Notificacoes.critica("Sensor offline", "extrusora_1 sem leitura há 12min");
- *  Notificacoes.alta("FP baixo", "extrusora_2: FP=0.45 abaixo do limite ANEEL");
- *  Notificacoes.media("Calibração pendente", "Câmara de congelados precisa recalibrar");
- *  Notificacoes.comum("Sincronização concluída", "Catálogo de 14 sensores atualizado");
- *
- *  // Forma completa (com origem e link de ação):
- *  Notificacoes.enviar({
- *    severidade: "critica",                              // critica | alta | media | comum
- *    titulo: "Superaquecimento detectado",
- *    mensagem: "Temperatura da câmara passou de -8°C há 5 minutos",
- *    origem: {
- *      tipo: "sensor",                                   // tipo livre (sensor, sistema, usuario...)
- *      id: "congelados_temperatura",
- *      label: "Câmara de Congelados",
- *    },
- *    acao: {                                             // opcional, vira link clicável
- *      url: "/paginas/admin/sensores/congelados_temperatura/",
- *      texto: "Abrir sensor",
- *    },
- *    metadados: { temperaturaAtual: -7.4 },              // opcional, qualquer payload
- *  });
- *
- *  ─────────────────────────────────────────────────────────────────────────
- *  SEVERIDADES
- *  ─────────────────────────────────────────────────────────────────────────
- *   - "critica"  → vermelho. Badge pulsa. Use pra falhas que exigem ação imediata.
- *   - "alta"     → laranja. Use pra anomalias relevantes mas não imediatas.
- *   - "media"    → azul. Use pra avisos operacionais (calibração, manutenção).
- *   - "comum"    → cinza. Use pra eventos informativos do sistema.
- *
- *  ─────────────────────────────────────────────────────────────────────────
- *  OUTRAS OPERAÇÕES
- *  ─────────────────────────────────────────────────────────────────────────
- *
- *   Notificacoes.listar()             // array (mais recentes primeiro)
- *   Notificacoes.contarNaoLidas()
- *   Notificacoes.contarPorSeveridade("critica")
+ * API pública (compatível com o que MenuTopo e páginas já consomem):
+ *   Notificacoes.iniciar()                  ↳ inicia polling (auto-refresh)
+ *   Notificacoes.parar()
+ *   Notificacoes.recarregar()               ↳ força refresh imediato
+ *   Notificacoes.listar()                   ↳ snapshot atual em memória
+ *   Notificacoes.contagem()                 ↳ {total, critica} não-lidas
+ *   Notificacoes.naoLidas()                 ↳ filtra lista por não-lidas
  *   Notificacoes.marcarComoLido(id)
+ *   Notificacoes.arquivar(id)
+ *   Notificacoes.desarquivar(id)
  *   Notificacoes.marcarTodosLidos()
- *   Notificacoes.remover(id)
- *   Notificacoes.limpar()             // apaga TODAS
+ *   Notificacoes.assinar(cb)                ↳ cb chamado quando lista muda
+ *   Notificacoes.formatarQuando(iso)
+ *   Notificacoes.rotuloSeveridade(s)
  *
- *  ─────────────────────────────────────────────────────────────────────────
- *  OBSERVAR MUDANÇAS (event bus)
- *  ─────────────────────────────────────────────────────────────────────────
- *
- *   const cancelar = Notificacoes.assinar((lista) => {
- *     console.log("notificações mudaram", lista);
- *   });
- *   // depois: cancelar();
- *
- *   Também emite eventos do DOM:
- *     document.addEventListener("notificacoes:mudou", (ev) => {
- *       const lista = ev.detail.lista;
- *     });
- *
- *  ─────────────────────────────────────────────────────────────────────────
- *  PERSISTÊNCIA & SINCRONIZAÇÃO ENTRE ABAS
- *  ─────────────────────────────────────────────────────────────────────────
- *   - Tudo fica em localStorage (chave: "datacold_notificacoes").
- *   - Mudanças propagam automaticamente entre abas via storage event.
- *   - Lista é truncada em Notificacoes.MAX (default: 100) mais recentes.
- *
- *  ─────────────────────────────────────────────────────────────────────────
- *  COMO INTEGRAR COM UM DETECTOR DE ANOMALIAS
- *  ─────────────────────────────────────────────────────────────────────────
- *  Em qualquer ponto do código (após o script estar carregado):
- *
- *    if (medida.fp_composto < 0.92) {
- *      Notificacoes.alta(
- *        "Fator de potência baixo",
- *        `${sensor.rotulo}: FP=${medida.fp_composto.toFixed(2)} abaixo do limite ANEEL`,
- *        {
- *          origem: { tipo: "sensor", id: sensor.id, label: sensor.rotulo },
- *          acao: { url: `/paginas/admin/sensores/${sensor.id}/`, texto: "Ver sensor" },
- *        }
- *      );
- *    }
- *
- *  Não precisa mexer no MenuTopo nem no MenuLateral — eles vão refletir o
- *  estado automaticamente assim que `Notificacoes.enviar(...)` for chamado.
- * =============================================================================
+ * Notificações NUNCA são criadas pelo front — são geradas pelos triggers
+ * AFTER INSERT nas tabelas de leituras (Postgres). Front só consome.
  */
-
-class Notificacao {
-  constructor({
-    severidade = "comum",
-    titulo,
-    mensagem = "",
-    origem = null,
-    acao = null,
-    metadados = null,
-  } = {}) {
-    if (!Notificacao.SEVERIDADES.includes(severidade)) {
-      console.warn(`Notificacao: severidade "${severidade}" inválida, usando "comum"`);
-      severidade = "comum";
-    }
-    this.id          = Notificacao._gerarId();
-    this.severidade  = severidade;
-    this.titulo      = titulo || "(sem título)";
-    this.mensagem    = mensagem;
-    this.origem      = origem;
-    this.acao        = acao;
-    this.metadados   = metadados;
-    this.criadoEm    = new Date().toISOString();
-    this.lido        = false;
-  }
-
-  static SEVERIDADES = ["critica", "alta", "media", "comum"];
-
-  static _gerarId() {
-    return `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  }
-}
-
 class Notificacoes {
-  static CHAVE = "datacold_notificacoes";
-  static MAX   = 100;
+  static INTERVALO_POLLING_MS = 30000;   // 30s
+  static LIMITE_INICIAL = 50;
 
+  static _api = null;
+  static _cache = [];                    // últimas notificações carregadas
+  static _contagem = { total: 0, critica: 0 };
   static _assinantes = new Set();
-  static _bridgeBound = false;
+  static _timer = null;
+  static _carregando = false;
+  static _statusFiltro = "ativas";       // 'todas'|'ativas'|'nao_lidas'|'arquivadas'
 
-  // ===================================================================
-  //  ENVIO (API principal)
-  // ===================================================================
-
-  /**
-   * Envia uma notificação para o sistema.
-   * @param {object|Notificacao} dados
-   * @returns {Notificacao} a notificação criada
-   */
-  static enviar(dados) {
-    const notificacao = dados instanceof Notificacao ? dados : new Notificacao(dados);
-    const lista = Notificacoes.listar();
-    lista.unshift(notificacao);
-    if (lista.length > Notificacoes.MAX) lista.length = Notificacoes.MAX;
-    Notificacoes._persistir(lista);
-    return notificacao;
+  static _getApi() {
+    if (!Notificacoes._api) Notificacoes._api = new ApiBEM();
+    return Notificacoes._api;
   }
 
-  // Atalhos por severidade
-  static critica(titulo, mensagem, opcoes = {}) {
-    return Notificacoes.enviar({ severidade: "critica", titulo, mensagem, ...opcoes });
-  }
-  static alta(titulo, mensagem, opcoes = {}) {
-    return Notificacoes.enviar({ severidade: "alta", titulo, mensagem, ...opcoes });
-  }
-  static media(titulo, mensagem, opcoes = {}) {
-    return Notificacoes.enviar({ severidade: "media", titulo, mensagem, ...opcoes });
-  }
-  static comum(titulo, mensagem, opcoes = {}) {
-    return Notificacoes.enviar({ severidade: "comum", titulo, mensagem, ...opcoes });
-  }
-
-  // ===================================================================
-  //  LEITURA
-  // ===================================================================
-
-  static listar() {
-    try {
-      const cru = localStorage.getItem(Notificacoes.CHAVE);
-      return cru ? JSON.parse(cru) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  static obter(id) {
-    return Notificacoes.listar().find(n => n.id === id) || null;
-  }
-
-  static contarNaoLidas() {
-    return Notificacoes.listar().filter(n => !n.lido).length;
-  }
-
-  static contarPorSeveridade(severidade) {
-    return Notificacoes.listar().filter(n => n.severidade === severidade).length;
-  }
-
-  static contarNaoLidasPorSeveridade(severidade) {
-    return Notificacoes.listar().filter(n => n.severidade === severidade && !n.lido).length;
-  }
-
-  // ===================================================================
-  //  MUTAÇÕES
-  // ===================================================================
-
-  static marcarComoLido(id) {
-    const lista = Notificacoes.listar().map(n =>
-      n.id === id ? { ...n, lido: true } : n
+  // -------------------------------------------------------------------
+  //  Polling
+  // -------------------------------------------------------------------
+  static iniciar() {
+    if (Notificacoes._timer) return;
+    Notificacoes.recarregar();
+    Notificacoes._timer = setInterval(
+      () => Notificacoes.recarregar(),
+      Notificacoes.INTERVALO_POLLING_MS
     );
-    Notificacoes._persistir(lista);
+  }
+  static parar() {
+    if (Notificacoes._timer) clearInterval(Notificacoes._timer);
+    Notificacoes._timer = null;
   }
 
-  static marcarTodosLidos() {
-    const lista = Notificacoes.listar().map(n => ({ ...n, lido: true }));
-    Notificacoes._persistir(lista);
-  }
-
-  static remover(id) {
-    const lista = Notificacoes.listar().filter(n => n.id !== id);
-    Notificacoes._persistir(lista);
-  }
-
-  static limpar() {
-    Notificacoes._persistir([]);
-  }
-
-  // ===================================================================
-  //  EVENT BUS
-  // ===================================================================
-
-  /**
-   * Assina mudanças. Retorna função pra cancelar.
-   * @param {(lista: Notificacao[]) => void} callback
-   * @returns {() => void}
-   */
-  static assinar(callback) {
-    Notificacoes._garantirBridge();
-    Notificacoes._assinantes.add(callback);
-    return () => Notificacoes._assinantes.delete(callback);
-  }
-
-  // ===================================================================
-  //  HELPERS
-  // ===================================================================
-
-  /** Formata "há X tempo" a partir do timestamp ISO. */
-  static formatarQuando(isoString) {
-    const t = new Date(isoString).getTime();
-    if (isNaN(t)) return "";
-    const diff = Date.now() - t;
-    const s = Math.floor(diff / 1000);
-    if (s < 60)       return "agora";
-    const m = Math.floor(s / 60);
-    if (m < 60)       return `há ${m} min`;
-    const h = Math.floor(m / 60);
-    if (h < 24)       return `há ${h}h`;
-    const d = Math.floor(h / 24);
-    if (d < 7)        return `há ${d}d`;
-    return new Date(isoString).toLocaleDateString("pt-BR");
-  }
-
-  static rotuloSeveridade(severidade) {
-    return {
-      critica: "crítica",
-      alta:    "alta",
-      media:   "média",
-      comum:   "comum",
-    }[severidade] ?? severidade;
-  }
-
-  // ===================================================================
-  //  INTERNOS
-  // ===================================================================
-
-  static _persistir(lista) {
+  static async recarregar({ status = null, severidade = null, limit = null } = {}) {
+    if (Notificacoes._carregando) return;
+    Notificacoes._carregando = true;
     try {
-      localStorage.setItem(Notificacoes.CHAVE, JSON.stringify(lista));
+      const api = Notificacoes._getApi();
+      const [lista, cont] = await Promise.all([
+        api.listarMinhasNotificacoes({
+          limit: limit || Notificacoes.LIMITE_INICIAL,
+          status: status || Notificacoes._statusFiltro,
+          severidade,
+        }),
+        api.contarNaoLidas(),
+      ]);
+      Notificacoes._cache = Array.isArray(lista?.notificacoes) ? lista.notificacoes : [];
+      Notificacoes._contagem = cont || { total: 0, critica: 0 };
+      Notificacoes._notificarAssinantes();
     } catch (e) {
-      console.error("Notificacoes: falha ao persistir", e);
+      // sem sessão / rede caiu — mantém cache antigo
+    } finally {
+      Notificacoes._carregando = false;
     }
-    Notificacoes._emitir(lista);
   }
 
-  static _emitir(lista) {
-    Notificacoes._assinantes.forEach(cb => {
-      try { cb(lista); } catch (e) { console.error("assinante de notificações falhou", e); }
+  // -------------------------------------------------------------------
+  //  Leitura
+  // -------------------------------------------------------------------
+  static listar()              { return [...Notificacoes._cache]; }
+  static contagem()            { return { ...Notificacoes._contagem }; }
+  static naoLidas()            { return Notificacoes._cache.filter(n => !n.lido && !n.arquivado); }
+  static buscar(id)            { return Notificacoes._cache.find(n => n.id === id) || null; }
+  static filtrarPor(fn)        { return Notificacoes._cache.filter(fn); }
+
+  // -------------------------------------------------------------------
+  //  Ações (otimistas: ajusta cache local, dispara fetch em background)
+  // -------------------------------------------------------------------
+  static async marcarComoLido(id) {
+    const n = Notificacoes.buscar(id);
+    if (n) { n.lido = true; n.lido_em = new Date().toISOString(); Notificacoes._notificarAssinantes(); }
+    try { await Notificacoes._getApi().marcarNotificacaoLida(id); } catch {}
+    Notificacoes.recarregar();
+  }
+  static async arquivar(id) {
+    const n = Notificacoes.buscar(id);
+    if (n) {
+      n.arquivado = true; n.lido = true;
+      n.arquivado_em = new Date().toISOString();
+      Notificacoes._notificarAssinantes();
+    }
+    try { await Notificacoes._getApi().arquivarNotificacao(id); } catch {}
+    Notificacoes.recarregar();
+  }
+  static async desarquivar(id) {
+    const n = Notificacoes.buscar(id);
+    if (n) { n.arquivado = false; n.arquivado_em = null; Notificacoes._notificarAssinantes(); }
+    try { await Notificacoes._getApi().desarquivarNotificacao(id); } catch {}
+    Notificacoes.recarregar();
+  }
+  static async marcarTodosLidos() {
+    Notificacoes._cache.forEach(n => {
+      if (!n.arquivado) { n.lido = true; n.lido_em = new Date().toISOString(); }
     });
-    document.dispatchEvent(new CustomEvent("notificacoes:mudou", { detail: { lista } }));
+    Notificacoes._notificarAssinantes();
+    try { await Notificacoes._getApi().marcarTodasLidas(); } catch {}
+    Notificacoes.recarregar();
   }
 
-  /** Liga o storage event uma única vez (sincroniza entre abas). */
-  static _garantirBridge() {
-    if (Notificacoes._bridgeBound) return;
-    Notificacoes._bridgeBound = true;
-    window.addEventListener("storage", (ev) => {
-      if (ev.key !== Notificacoes.CHAVE) return;
-      Notificacoes._emitir(Notificacoes.listar());
-    });
+  // Aliases de nomenclatura antiga (alguns callsites usam camelCase variado)
+  static async marcarLida(id)       { return Notificacoes.marcarComoLido(id); }
+  static async marcarTodasLidas()   { return Notificacoes.marcarTodosLidos(); }
+  static async marcarTodos()        { return Notificacoes.marcarTodosLidos(); }
+  static async remover(id)          { return Notificacoes.arquivar(id); }
+
+  // -------------------------------------------------------------------
+  //  Compat — descontinuados. Mantemos pra não quebrar callsites antigos
+  //  que ainda chamem .enviar(), .critica(), .limpar() etc.
+  // -------------------------------------------------------------------
+  static enviar()  { console.warn("Notificacoes.enviar() removido — notificações vêm do servidor."); }
+  static critica() { Notificacoes.enviar(); }
+  static alta()    { Notificacoes.enviar(); }
+  static media()   { Notificacoes.enviar(); }
+  static comum()   { Notificacoes.enviar(); }
+  static limpar()  { console.warn("Notificacoes.limpar() não tem efeito no servidor."); }
+  static remover() { console.warn("Use arquivar(id)."); }
+
+  // -------------------------------------------------------------------
+  //  Assinantes (MenuTopo/sino se inscreve aqui)
+  // -------------------------------------------------------------------
+  static assinar(cb) {
+    Notificacoes._assinantes.add(cb);
+    try { cb(Notificacoes.listar()); } catch {}
+    return () => Notificacoes._assinantes.delete(cb);
+  }
+  static _notificarAssinantes() {
+    for (const cb of Notificacoes._assinantes) {
+      try { cb(Notificacoes.listar()); } catch (e) { console.error("assinante notif:", e); }
+    }
+  }
+
+  // -------------------------------------------------------------------
+  //  Helpers de formatação
+  // -------------------------------------------------------------------
+  static rotuloSeveridade(s) {
+    return { critica: "Crítica", alta: "Alta", media: "Média", comum: "Comum" }[s] || s;
+  }
+  static formatarQuando(iso) {
+    if (!iso) return "agora";
+    const d = new Date(iso);
+    const seg = Math.max(0, (Date.now() - d.getTime()) / 1000);
+    if (seg < 60)        return "agora";
+    if (seg < 3600)      return `há ${Math.floor(seg / 60)} min`;
+    if (seg < 86400)     return `há ${Math.floor(seg / 3600)}h`;
+    if (seg < 86400 * 7) return `há ${Math.floor(seg / 86400)}d`;
+    return d.toLocaleDateString("pt-BR");
   }
 }
 
 if (typeof window !== "undefined") {
-  window.Notificacao  = Notificacao;
   window.Notificacoes = Notificacoes;
+  // Auto-inicia o polling assim que o script carrega
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => Notificacoes.iniciar());
+  } else {
+    Notificacoes.iniciar();
+  }
 }

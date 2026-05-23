@@ -75,7 +75,7 @@ class MenuLateral {
     this.raizEl.innerHTML = `
       <div class="ml-topo">
         <a href="${this.raiz}index.html" class="ml-marca" aria-label="DataCold">
-          <img src="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/01-primary-logo.png" alt="DataCold">
+          <img src="${this.raiz}assets/logo/01-primary-logo.png" alt="DataCold">
         </a>
       </div>
 
@@ -91,9 +91,14 @@ class MenuLateral {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
           <span>Dashboard</span>
         </a>
+        ${this.usuario?.ehAdmin ? `
         <a href="${this.raiz}paginas/admin/sala-controle/" class="ml-nav-item ${this.paginaAtiva === "sala-controle" ? "ativo" : ""}" data-nav="sala-controle">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
           <span>Sala de controle</span>
+        </a>` : ""}
+        <a href="${this.raiz}paginas/admin/notificacoes/" class="ml-nav-item ${this.paginaAtiva === "notificacoes" ? "ativo" : ""}" data-nav="notificacoes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Notificações</span>
         </a>
 
         <button class="ml-nav-item ml-expansor ${(this.paginaAtiva === "sensor" || this.paginaAtiva === "grupo") ? "ativo" : ""} ${this.sensoresExpandido ? "expandido" : ""}" data-acao="toggle-sensores" aria-expanded="${this.sensoresExpandido}">
@@ -114,6 +119,7 @@ class MenuLateral {
           </div>
         </div>
 
+        ${this.usuario?.ehAdmin ? `
         <a href="${this.raiz}paginas/admin/agentes/" class="ml-nav-item ${this.paginaAtiva === "agentes" ? "ativo" : ""}" data-nav="agentes">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Agentes</span>
@@ -133,12 +139,7 @@ class MenuLateral {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
           <span>Apresentação</span>
         </a>
-        <a href="${this.raiz}estudos/conectividade/" class="ml-nav-item ${this.paginaAtiva === "conectividade" ? "ativo" : ""}" data-nav="conectividade">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
-          <span>Estudo Conectividade</span>
-        </a>
 
-        ${this.usuario?.ehAdmin ? `
         <a href="${this.raiz}paginas/conta/criar/" class="ml-nav-item ${this.paginaAtiva === "criar-conta" ? "ativo" : ""}" data-nav="criar-conta">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
           <span>Criar conta</span>

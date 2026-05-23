@@ -21,6 +21,34 @@ class PaginaLogin {
     }
     this.botaoMvp?.addEventListener("click", () => this._entrarMvp());
     this.form?.addEventListener("submit", (ev) => this._entrarFormulario(ev));
+
+    // Pré-preenche email vindo de ?email=... (usado pelo fluxo de convite
+    // após o operador definir senha, e por qualquer outro redirecionamento).
+    const params = new URLSearchParams(location.search);
+    const emailQuery = Sanitizar.email(params.get("email") || "");
+    if (emailQuery) {
+      const inEmail = this.form?.querySelector("[name='email']");
+      const inSenha = this.form?.querySelector("[name='senha']");
+      if (inEmail) {
+        inEmail.value = emailQuery;
+        inEmail.readOnly = true;
+        inEmail.classList.add("pre-preenchido");
+      }
+      setTimeout(() => inSenha?.focus(), 100);
+    }
+
+    // Cards de credenciais de teste: 1 clique preenche e envia.
+    document.querySelectorAll("[data-cred-email]").forEach(card => {
+      card.addEventListener("click", () => {
+        const email = card.dataset.credEmail;
+        const senha = card.dataset.credSenha;
+        const inEmail = this.form.querySelector("[name='email']");
+        const inSenha = this.form.querySelector("[name='senha']");
+        if (inEmail) { inEmail.value = email; inEmail.readOnly = false; }
+        if (inSenha) inSenha.value = senha;
+        this.form.requestSubmit?.() || this.form.dispatchEvent(new Event("submit", { cancelable: true }));
+      });
+    });
   }
 
   _entrarMvp() {

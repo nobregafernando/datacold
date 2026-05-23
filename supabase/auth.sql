@@ -106,6 +106,35 @@ create trigger trg_criar_perfil_padrao
   for each row execute function fn_criar_perfil_padrao();
 
 
+-- Sincroniza o nome quando o usuário atualiza user_metadata.nome
+-- (acontece quando o operador completa o convite via /paginas/conta/definir/).
+create or replace function fn_sincronizar_nome_perfil()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_novo_nome text;
+begin
+  v_novo_nome := new.raw_user_meta_data ->> 'nome';
+  if v_novo_nome is null then return new; end if;
+  if (old.raw_user_meta_data ->> 'nome') is distinct from v_novo_nome then
+    update perfis_usuarios
+       set nome = v_novo_nome,
+           atualizado_por = 'sync_auth'
+     where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sincronizar_nome on auth.users;
+create trigger trg_sincronizar_nome
+  after update on auth.users
+  for each row execute function fn_sincronizar_nome_perfil();
+
+
 -- ============= 4. RLS · ATIVAR EM TODAS AS TABELAS =============
 alter table grupos                enable row level security;
 alter table sensores              enable row level security;

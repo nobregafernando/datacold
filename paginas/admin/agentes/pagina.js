@@ -232,7 +232,7 @@ class PaginaAgentes {
   }
 
   async iniciar() {
-    if (!Autenticacao.protegerPagina("../../login//")) return;
+    if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) return;
 
     this.menu = new MenuLateral({ paginaAtiva: "agentes", raiz: "../../../" });
     await this.menu.montar("#menu-lateral");

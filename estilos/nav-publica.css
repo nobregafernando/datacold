@@ -1,0 +1,60 @@
+/* ============================================================
+   Navbar pública — extraída da landing.css pra reuso em
+   login, criar-conta e recuperar-senha. Depende de:
+     - estilos/global.css (.container, .btn, vars de cor)
+   ============================================================ */
+.nav{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 14px 0;
+  background: rgba(255,255,255,.78);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid rgba(30,111,214,.08);
+}
+.nav .container{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.nav .marca{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav .marca img{
+  height: 44px;
+  width: auto;
+  display: block;
+}
+.nav .nav-links{
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 14px;
+}
+.nav .nav-links a{
+  color: var(--texto-suave);
+  font-weight: 500;
+  transition: color var(--t-rapida);
+}
+.nav .nav-links a:hover{ color: var(--azul-profundo); }
+
+.nav .nav-links .btn-pequeno{
+  color: var(--branco);
+  background: var(--grad-vibrante);
+  border: none;
+  box-shadow: 0 8px 18px rgba(0,184,240,.25);
+}
+.nav .nav-links .btn-pequeno:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0,184,240,.35);
+  color: var(--branco);
+}
+
+@media (max-width: 720px){
+  .nav .nav-links a:not(.btn){ display: none; }
+  .nav .marca img{ height: 36px; }
+}

@@ -3,8 +3,8 @@
  * O conteúdo principal é estático (HTML/SVG no index.html).
  */
 (async () => {
+  if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) return;
   const usuario = Autenticacao.usuarioAtual();
-  if (!usuario) { window.location.href = "../../login/login.html"; return; }
 
   const raiz = "../../../";
   new MenuLateral({ usuario, raiz, paginaAtiva: "prototipo" }).montar("#menu-lateral");
