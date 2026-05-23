@@ -1,0 +1,216 @@
+/* =========================================================
+   DATACOLD · Página de Sensor (genérica)
+   Esqueleto. Receberá KPIs, gráficos, tabela e investigação.
+   ========================================================= */
+
+body{
+  background: linear-gradient(180deg, var(--azul-gelo) 0%, #ffffff 60%);
+  color: var(--texto);
+  min-height: 100vh;
+}
+
+.layout-admin{
+  min-height: 100vh;
+  padding-left: 280px;   /* espaço pro menu lateral fixo */
+}
+
+.sensor-main{
+  min-width: 0;
+  padding: 32px 40px 60px;
+  overflow-x: hidden;
+}
+
+/* ============ Header do sensor ============ */
+.sensor-topo{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.sensor-titulo{ min-width: 0; }
+
+.voltar{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  margin-bottom: 14px;
+  transition: color var(--t-rapida);
+}
+.voltar:hover{ color: var(--azul-medio); }
+
+.sensor-titulo h1{
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  color: var(--azul-noite);
+  margin: 4px 0;
+  letter-spacing: -.02em;
+}
+.sensor-titulo .legenda{
+  color: var(--texto-suave);
+  font-size: .95rem;
+  margin: 0;
+}
+
+.sensor-meta-topo{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tag-tipo-grande{
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  padding: 6px 14px;
+  border-radius: var(--raio-pill);
+  color: var(--branco);
+}
+.tag-tipo-grande.energia     { background: linear-gradient(135deg, var(--azul-profundo), var(--azul-medio)); box-shadow: 0 6px 14px rgba(30,111,214,.30); }
+.tag-tipo-grande.temperatura { background: linear-gradient(135deg, var(--azul-medio), var(--ciano));          box-shadow: 0 6px 14px rgba(0,184,240,.30); }
+.tag-tipo-grande.porta       { background: linear-gradient(135deg, var(--ciano), var(--azul-claro));          color: var(--azul-noite); box-shadow: 0 6px 14px rgba(142,219,255,.45); }
+
+.tag-status{
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: var(--raio-pill);
+}
+.tag-status.ativo     { background: rgba(22,163,74,.12); color: var(--ok); }
+.tag-status.historico { background: rgba(217,119,6,.12); color: var(--alerta); }
+
+.tag-id{
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  color: var(--texto-suave);
+  background: var(--painel-soft);
+  padding: 5px 10px;
+  border-radius: var(--raio-sm);
+  border: 1px solid var(--borda);
+}
+
+/* ============ Roadmap / Briefing para devs ============ */
+.roadmap{
+  margin-top: 8px;
+}
+.roadmap h2{
+  font-size: 1.4rem;
+  color: var(--azul-noite);
+  margin: 4px 0 8px;
+  letter-spacing: -.01em;
+}
+.roadmap-intro{
+  color: var(--texto-suave);
+  font-size: 14px;
+  margin: 0 0 24px;
+  max-width: 720px;
+  line-height: 1.6;
+}
+.roadmap-intro code{
+  background: var(--painel-soft);
+  border: 1px solid var(--borda);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--azul-profundo);
+}
+.roadmap-grade{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.roadmap-card{
+  background: var(--branco);
+  border: 1px dashed rgba(30,111,214,.30);
+  border-radius: var(--raio-lg);
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color var(--t-media), transform var(--t-media);
+}
+.roadmap-card:hover{
+  border-color: var(--azul-medio);
+  transform: translateY(-2px);
+}
+.roadmap-ico{
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  color: var(--branco);
+  background: var(--grad-vibrante);
+  box-shadow: 0 8px 18px rgba(0,184,240,.25);
+  margin-bottom: 4px;
+}
+.roadmap-card h3{
+  font-size: 1.05rem;
+  color: var(--azul-noite);
+  margin: 0;
+}
+.roadmap-card > p{
+  font-size: 13.5px;
+  color: var(--texto-suave);
+  line-height: 1.55;
+  margin: 0;
+}
+.roadmap-card > p strong{
+  color: var(--azul-noite);
+  font-weight: 700;
+}
+.roadmap-detalhes{
+  list-style: none;
+  padding: 14px 0 0;
+  margin: 6px 0 0;
+  border-top: 1px solid var(--borda);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roadmap-detalhes li{
+  position: relative;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--texto);
+  line-height: 1.5;
+}
+.roadmap-detalhes li::before{
+  content:"";
+  position: absolute;
+  left: 0; top: 8px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--grad-vibrante);
+  box-shadow: 0 0 8px rgba(0,184,240,.40);
+}
+.roadmap-detalhes li strong{
+  color: var(--azul-profundo);
+  font-weight: 700;
+}
+
+/* ============ Estados especiais ============ */
+.sensor-erro{
+  background: rgba(220,38,38,.06);
+  border: 1px solid rgba(220,38,38,.30);
+  border-radius: var(--raio-md);
+  padding: 16px 20px;
+  color: var(--erro);
+  font-size: 14px;
+}
+
+/* ============ Responsivo ============ */
+@media (max-width: 1100px){
+  .roadmap-grade{ grid-template-columns: 1fr; }
+}
+@media (max-width: 900px){
+  .layout-admin{ padding-left: 240px; }
+}
+@media (max-width: 720px){
+  .layout-admin{ padding-left: 0; }
+  .sensor-main{ padding: 24px 20px 40px; }
+}

@@ -1,0 +1,250 @@
+/* =========================================================
+   COMPONENTE · Menu Topo (header interno)
+   Sticky no topo de cada página autenticada.
+   ========================================================= */
+
+.menu-topo{
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 40px;
+  background: rgba(255,255,255,.82);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid var(--borda);
+  margin: -32px -40px 24px;   /* encosta nas bordas do main */
+}
+
+@media (max-width: 720px){
+  .menu-topo{ margin: -24px -20px 18px; padding: 12px 20px; }
+}
+
+.mt-esquerda{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.mt-titulo{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  letter-spacing: -.01em;
+}
+
+.mt-direita{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ============ Status da API ============ */
+.mt-status{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--painel-soft);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+.mt-status-ponto{
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #c8d2e0;
+}
+.mt-status.ok .mt-status-ponto{
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  animation: pulsar 2s ease-in-out infinite;
+}
+.mt-status.erro .mt-status-ponto{
+  background: var(--erro);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.18);
+}
+.mt-status.ok    { color: var(--azul-noite); }
+.mt-status.erro  { color: var(--erro); border-color: rgba(220,38,38,.30); }
+
+/* ============ Sino + badge ============ */
+.mt-sino-wrap{
+  position: relative;
+}
+.mt-sino{
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--raio-md);
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--texto-suave);
+  transition: all var(--t-rapida);
+}
+.mt-sino:hover{
+  border-color: var(--azul-medio);
+  color: var(--azul-profundo);
+  background: var(--azul-gelo);
+}
+.mt-sino[aria-expanded="true"]{
+  border-color: var(--azul-medio);
+  color: var(--azul-profundo);
+  box-shadow: 0 0 0 3px rgba(30,111,214,.12);
+}
+.mt-badge{
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--grad-vibrante);
+  color: var(--branco);
+  font-size: 10px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 10px rgba(0,184,240,.40);
+  border: 2px solid var(--branco);
+}
+
+/* ============ Dropdown de alertas ============ */
+.mt-dropdown{
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra-lg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: opacity var(--t-media), transform var(--t-media), visibility var(--t-media);
+  overflow: hidden;
+}
+.mt-dropdown.aberto{
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.mt-dropdown-topo{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--borda);
+  background: linear-gradient(135deg, rgba(0,184,240,.04), rgba(30,111,214,.04));
+}
+.mt-dropdown-topo h4{
+  margin: 0;
+  font-size: 14px;
+  color: var(--azul-noite);
+}
+.mt-marcar-lidos{
+  background: transparent;
+  border: none;
+  color: var(--azul-medio);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.mt-marcar-lidos:hover{ color: var(--azul-profundo); }
+
+.mt-dropdown-corpo{
+  max-height: 380px;
+  overflow-y: auto;
+}
+.mt-dropdown-rodape{
+  padding: 10px 18px;
+  border-top: 1px solid var(--borda);
+  background: var(--painel-soft);
+}
+.mt-info{
+  font-size: 11px;
+  color: var(--texto-suave);
+  font-style: italic;
+}
+
+/* ============ Item de alerta ============ */
+.mt-alerta{
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--borda);
+  cursor: pointer;
+  transition: background var(--t-rapida);
+}
+.mt-alerta:last-child{ border-bottom: none; }
+.mt-alerta:hover{ background: var(--azul-gelo); }
+.mt-alerta.lido{ opacity: .55; }
+
+.mt-alerta-marca{
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.mt-alerta.crit .mt-alerta-marca { background: var(--erro);    box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+.mt-alerta.warn .mt-alerta-marca { background: var(--alerta);  box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
+.mt-alerta.info .mt-alerta-marca { background: var(--ciano);   box-shadow: 0 0 0 3px rgba(0,184,240,.18); }
+.mt-alerta.lido .mt-alerta-marca { background: #c8d2e0; box-shadow: none; }
+
+.mt-alerta-conteudo{ flex: 1; min-width: 0; }
+.mt-alerta-titulo{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  line-height: 1.3;
+}
+.mt-alerta-msg{
+  font-size: 12px;
+  color: var(--texto-suave);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.mt-alerta-quando{
+  font-size: 10px;
+  color: var(--texto-suave);
+  margin-top: 6px;
+  font-family: var(--fonte-mono);
+}
+
+/* ============ Estado vazio ============ */
+.mt-vazio{
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--texto-suave);
+}
+.mt-vazio svg{
+  color: var(--azul-claro);
+  margin: 0 auto 10px;
+  display: block;
+}
+.mt-vazio p{
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul-noite);
+}
+.mt-vazio span{
+  font-size: 12px;
+}
+
+/* scrollbar fininha no dropdown */
+.mt-dropdown-corpo::-webkit-scrollbar{ width: 6px; }
+.mt-dropdown-corpo::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.20); border-radius: 6px; }

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataCold · Login</title>
+
+<link rel="icon" type="image/png" href="../../logo/04-icon-standalone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../estilos/global.css">
+<link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+<div class="login-fundo" aria-hidden="true"></div>
+
+<main class="login-wrap">
+  <section class="login-card">
+    <a href="../../index.html" class="login-marca">
+      <img src="../../logo/01-primary-logo.png" alt="DataCold">
+    </a>
+
+    <h1>Entre na sua conta</h1>
+    <p class="login-sub">Acesse o painel de monitoramento da sua planta.</p>
+
+    <!-- Acesso rápido MVP -->
+    <button class="btn-mvp" data-acao="mvp">
+      <span class="mvp-avatar">FN</span>
+      <span class="mvp-texto">
+        <span class="mvp-titulo">Entrar como Fernando</span>
+        <span class="mvp-sub">acesso rápido · MVP</span>
+      </span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </button>
+
+    <div class="divisor"><span>ou entre com seu e-mail</span></div>
+
+    <!-- Formulário simbólico -->
+    <form class="login-form" data-form>
+      <label class="campo">
+        <span>E-mail</span>
+        <input type="email" name="email" placeholder="seu@email.com" autocomplete="email" required>
+      </label>
+      <label class="campo">
+        <span>Senha</span>
+        <input type="password" name="senha" placeholder="••••••••" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn btn-primario btn-grande completo">Entrar</button>
+    </form>
+
+    <p class="aviso-mvp">
+      <strong>MVP:</strong> a autenticação ainda não tem backend.
+      Qualquer credencial logada vira o usuário padrão.
+    </p>
+  </section>
+
+  <aside class="login-lateral" aria-hidden="true">
+    <div class="login-lateral-conteudo">
+      <span class="olho">DataCold</span>
+      <h2>Telemetria que vira <span class="destaque">decisão</span>.</h2>
+      <p>Acompanhe energia, temperatura e portas em tempo real — com classificação automática de severidade e recomendações por sensor.</p>
+      <ul class="bullets">
+        <li>14 sensores monitorados</li>
+        <li>Análise automática de anomalias</li>
+        <li>Investigação por perguntas-guia</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="../../scripts/nucleo/Usuario.js"></script>
+<script src="../../scripts/nucleo/Autenticacao.js"></script>
+<script src="login.js"></script>
+
+</body>
+</html>

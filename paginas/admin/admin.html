@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataCold · Admin</title>
+
+<link rel="icon" type="image/png" href="../../logo/04-icon-standalone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../estilos/global.css">
+<link rel="stylesheet" href="../../scripts/componentes/MenuLateral.css">
+<link rel="stylesheet" href="../../scripts/componentes/MenuTopo.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="layout-admin">
+
+  <!-- Menu lateral injetado pelo componente -->
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="admin-main">
+
+    <!-- Menu superior (componente: status + sino de alertas) -->
+    <div id="menu-topo"></div>
+
+    <!-- Saudação ao usuário -->
+    <header class="admin-topo">
+      <div>
+        <span class="olho">Dashboard</span>
+        <h1>Bem-vindo, <span class="destaque" data-nome-usuario>—</span> 👋</h1>
+        <p class="legenda">Visão geral da sua infraestrutura monitorada em tempo real.</p>
+      </div>
+      <div class="admin-acoes">
+        <button class="btn btn-pequeno btn-ghost" data-acao="atualizar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Atualizar
+        </button>
+      </div>
+    </header>
+
+    <!-- Cartões de KPIs -->
+    <section class="admin-kpis" data-kpis>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+    </section>
+
+    <!-- Conteúdo: visão geral + detalhe sensor -->
+    <section class="admin-grade">
+      <div class="admin-coluna-larga">
+        <article class="cartao-painel" data-visao-geral>
+          <header>
+            <h3>Distribuição por tipo</h3>
+            <p>Como estão divididos os sensores conectados.</p>
+          </header>
+          <div class="distribuicao" data-distribuicao></div>
+        </article>
+
+      </div>
+
+      <aside class="admin-coluna-estreita">
+        <article class="cartao-painel">
+          <header>
+            <h3>Atividade</h3>
+            <p>Eventos recentes da plataforma.</p>
+          </header>
+          <ul class="lista-atividade">
+            <li>
+              <span class="ponto-atividade ok"></span>
+              <div>
+                <strong>Catálogo sincronizado</strong>
+                <span>14 sensores carregados</span>
+              </div>
+            </li>
+            <li>
+              <span class="ponto-atividade info"></span>
+              <div>
+                <strong>Sessão iniciada</strong>
+                <span data-sessao-iniciada>agora</span>
+              </div>
+            </li>
+            <li>
+              <span class="ponto-atividade warn"></span>
+              <div>
+                <strong>Sem chave de API</strong>
+                <span>configure para ler dados em tempo real</span>
+              </div>
+            </li>
+          </ul>
+        </article>
+      </aside>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- Scripts: núcleo, componentes e página -->
+<script src="../../scripts/nucleo/ApiBEM.js"></script>
+<script src="../../scripts/nucleo/Sensor.js"></script>
+<script src="../../scripts/nucleo/SensorEnergia.js"></script>
+<script src="../../scripts/nucleo/SensorTemperatura.js"></script>
+<script src="../../scripts/nucleo/SensorPorta.js"></script>
+<script src="../../scripts/nucleo/FabricaSensor.js"></script>
+<script src="../../scripts/nucleo/Usuario.js"></script>
+<script src="../../scripts/nucleo/Autenticacao.js"></script>
+<script src="../../scripts/componentes/MenuLateral.js"></script>
+<script src="../../scripts/componentes/MenuTopo.js"></script>
+<script src="admin.js"></script>
+
+</body>
+</html>

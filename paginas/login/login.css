@@ -1,0 +1,244 @@
+/* =========================================================
+   DATACOLD · Login
+   ========================================================= */
+
+body{
+  min-height: 100vh;
+  background: var(--branco);
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+}
+
+.login-fundo{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 10% 10%, rgba(0,184,240,.22), transparent 55%),
+    radial-gradient(ellipse at 90% 90%, rgba(30,111,214,.18), transparent 55%),
+    linear-gradient(180deg, var(--azul-gelo), var(--branco) 70%);
+}
+
+.login-wrap{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1100px;
+  width: 100%;
+  margin: 40px auto;
+  padding: 0 24px;
+  gap: 32px;
+  align-items: center;
+}
+
+/* ============ Card de login ============ */
+.login-card{
+  background: var(--branco);
+  border-radius: var(--raio-xl);
+  padding: 44px 44px 32px;
+  box-shadow: 0 30px 80px rgba(11,29,58,.12);
+  border: 1px solid var(--borda);
+  position: relative;
+}
+
+.login-marca{
+  display: inline-block;
+  margin-bottom: 24px;
+}
+.login-marca img{
+  height: 42px;
+  width: auto;
+  display: block;
+}
+
+.login-card h1{
+  font-size: 1.7rem;
+  color: var(--azul-noite);
+  margin-bottom: 8px;
+  letter-spacing: -.02em;
+}
+.login-sub{
+  color: var(--texto-suave);
+  font-size: .95rem;
+  margin-bottom: 28px;
+}
+
+/* botão MVP destacado */
+.btn-mvp{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--raio-md);
+  background: linear-gradient(135deg, rgba(0,184,240,.10), rgba(30,111,214,.10));
+  border: 1.5px solid rgba(30,111,214,.25);
+  cursor: pointer;
+  transition: all var(--t-media);
+  font-family: var(--fonte);
+  text-align: left;
+  color: var(--azul-noite);
+}
+.btn-mvp:hover{
+  border-color: var(--azul-medio);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(30,111,214,.18);
+  background: linear-gradient(135deg, rgba(0,184,240,.14), rgba(30,111,214,.14));
+}
+.mvp-avatar{
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--grad-vibrante);
+  color: var(--branco);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 8px 16px rgba(0,184,240,.30);
+}
+.mvp-texto{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.mvp-titulo{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--azul-noite);
+}
+.mvp-sub{
+  font-size: 12px;
+  color: var(--texto-suave);
+}
+.btn-mvp svg{
+  color: var(--azul-medio);
+  transition: transform var(--t-media);
+}
+.btn-mvp:hover svg{ transform: translateX(3px); }
+
+/* divisor "ou" */
+.divisor{
+  position: relative;
+  text-align: center;
+  margin: 26px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--texto-suave);
+}
+.divisor::before,
+.divisor::after{
+  content:"";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 80px);
+  height: 1px;
+  background: var(--borda);
+}
+.divisor::before{ left: 0; }
+.divisor::after{ right: 0; }
+
+/* formulário */
+.login-form{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.campo{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.campo span{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  letter-spacing: .02em;
+}
+.campo input{
+  padding: 12px 16px;
+  font-size: 14px;
+  border-radius: var(--raio-md);
+  background: var(--azul-gelo);
+  border: 1px solid transparent;
+}
+.campo input:focus{
+  background: var(--branco);
+  border-color: var(--azul-medio);
+  box-shadow: 0 0 0 3px rgba(30,111,214,.18);
+}
+
+.aviso-mvp{
+  margin-top: 22px;
+  padding: 12px 14px;
+  border-radius: var(--raio-sm);
+  background: rgba(217,119,6,.08);
+  border: 1px solid rgba(217,119,6,.22);
+  color: #8a5a06;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.aviso-mvp strong{ color: var(--alerta); }
+
+/* ============ Lateral ============ */
+.login-lateral{
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+.login-lateral-conteudo{
+  max-width: 420px;
+  padding: 20px;
+}
+.login-lateral-conteudo h2{
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+  color: var(--azul-noite);
+  margin: 12px 0 18px;
+  letter-spacing: -.02em;
+}
+.login-lateral-conteudo h2 .destaque{
+  background: var(--grad-vibrante);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.login-lateral-conteudo p{
+  color: var(--texto-suave);
+  font-size: 1rem;
+  line-height: 1.65;
+  margin-bottom: 26px;
+}
+.login-lateral-conteudo .bullets{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login-lateral-conteudo .bullets li{
+  position: relative;
+  padding-left: 26px;
+  color: var(--texto);
+  font-size: .95rem;
+}
+.login-lateral-conteudo .bullets li::before{
+  content:"";
+  position: absolute;
+  left: 0; top: 8px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--grad-vibrante);
+  box-shadow: 0 4px 10px rgba(0,184,240,.30);
+}
+
+/* ============ Responsivo ============ */
+@media (max-width: 900px){
+  .login-wrap{ grid-template-columns: 1fr; }
+  .login-lateral{ display: none; }
+  .login-card{ padding: 32px 28px; }
+}

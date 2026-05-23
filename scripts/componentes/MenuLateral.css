@@ -1,70 +1,62 @@
 /* =========================================================
-   COMPONENTE · Menu Lateral (sidebar)
-   Importado em todas as páginas internas.
+   COMPONENTE · Menu Lateral
+   - Posição fixa, rola como bloco único (sem seções fixas).
+   - Sem cores por tipo de sensor (visualmente mais limpo).
    ========================================================= */
 
 .menu-lateral{
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 280px;
-  flex-shrink: 0;
   background: var(--branco);
   border-right: 1px solid var(--borda);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 20;
 }
 
-/* topo / marca */
+/* ============ Topo / marca ============ */
 .ml-topo{
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--borda);
+  padding: 22px 22px 16px;
 }
-.ml-marca{
-  display: flex;
-  align-items: center;
-}
-.ml-marca img{
-  height: 36px;
-  width: auto;
-  display: block;
-}
+.ml-marca{ display: flex; align-items: center; }
+.ml-marca img{ height: 34px; width: auto; display: block; }
 
-/* card do usuário */
+/* ============ Card do usuário (compacto) ============ */
 .ml-usuario{
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
-  margin: 14px 14px 0;
+  padding: 12px 14px;
+  margin: 0 14px 14px;
   background: linear-gradient(135deg, rgba(0,184,240,.08), rgba(30,111,214,.08));
-  border: 1px solid rgba(30,111,214,.14);
+  border: 1px solid rgba(30,111,214,.12);
   border-radius: var(--raio-md);
 }
 .ml-avatar{
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--grad-vibrante);
   color: var(--branco);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: -.02em;
-  box-shadow: 0 8px 16px rgba(0,184,240,.30);
+  box-shadow: 0 6px 14px rgba(0,184,240,.30);
   flex-shrink: 0;
 }
-.ml-usuario-info{
-  min-width: 0;
-  flex: 1;
-}
+.ml-usuario-info{ min-width: 0; flex: 1; }
 .ml-usuario-nome{
   font-size: 13px;
   font-weight: 700;
   color: var(--azul-noite);
-  line-height: 1.15;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -78,63 +70,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ml-papel{
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: var(--raio-pill);
-  background: var(--grad-vibrante);
-  color: var(--branco);
-}
+.ml-papel{ display: none; }  /* simplificado: papel já implícito pelo acesso */
 
-/* navegação superior */
-.ml-secao-nav{
-  padding: 14px 14px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.ml-link{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--raio-sm);
-  color: var(--texto-suave);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background var(--t-rapida), color var(--t-rapida);
-}
-.ml-link:hover{
-  background: var(--azul-gelo);
-  color: var(--azul-profundo);
-}
-.ml-link.ativo{
-  background: linear-gradient(135deg, rgba(30,111,214,.10), rgba(0,184,240,.10));
-  color: var(--azul-profundo);
-  position: relative;
-}
-.ml-link.ativo::before{
-  content:"";
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--grad-vibrante);
-}
-
-/* seção lista */
+/* ============ Filtros ============ */
 .ml-secao{
-  padding: 4px 14px 14px;
-  flex: 1;
-  overflow-y: auto;
-  border-top: 1px solid var(--borda);
-  margin-top: 10px;
-  padding-top: 14px;
+  padding: 4px 14px 0;
 }
 .ml-titulo-secao{
   font-size: 10px;
@@ -142,24 +82,23 @@
   letter-spacing: .18em;
   color: var(--texto-suave);
   font-weight: 800;
-  padding: 0 8px 10px;
+  padding: 4px 8px 10px;
 }
 .ml-filtros{
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  margin-bottom: 12px;
-  padding: 0 4px;
+  margin-bottom: 8px;
 }
 .ml-filtros button{
-  flex: 1;
-  padding: 6px 8px;
+  padding: 6px 4px;
   border-radius: var(--raio-sm);
   border: 1px solid var(--borda);
   background: var(--branco);
   color: var(--texto-suave);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .04em;
+  letter-spacing: .02em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all var(--t-rapida);
@@ -172,13 +111,14 @@
   background: var(--grad-vibrante);
   color: var(--branco);
   border-color: transparent;
-  box-shadow: 0 4px 10px rgba(0,184,240,.30);
+  box-shadow: 0 4px 10px rgba(0,184,240,.25);
 }
 
+/* ============ Lista de sensores ============ */
 .ml-lista-sensores{
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .ml-grupo-rotulo{
   font-size: 10px;
@@ -186,44 +126,35 @@
   letter-spacing: .14em;
   color: var(--texto-suave);
   font-weight: 700;
-  padding: 14px 8px 6px;
+  padding: 16px 8px 6px;
 }
 
 .ml-item{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: var(--raio-sm);
   cursor: pointer;
   transition: background var(--t-rapida);
   text-decoration: none;
+  border: 1px solid transparent;
 }
 .ml-item:hover{ background: var(--azul-gelo); }
 .ml-item.ativo{
   background: linear-gradient(135deg, rgba(30,111,214,.10), rgba(0,184,240,.10));
-  padding-left: 8px;
-  border-left: 2px solid;
-  border-image: var(--grad-vibrante) 1;
+  border-color: rgba(30,111,214,.20);
 }
 
-.ml-bolinha{
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(0,184,240,.10);
-}
-.ml-bolinha.tipo-energia    { background: var(--azul-profundo); }
-.ml-bolinha.tipo-temperatura{ background: var(--ciano); }
-.ml-bolinha.tipo-porta      { background: var(--azul-claro); }
+/* a bolinha colorida foi removida — não fazia sentido pro usuário */
+.ml-bolinha{ display: none; }
 
 .ml-item-info{ flex: 1; min-width: 0; }
 .ml-item-nome{
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--azul-noite);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -233,28 +164,27 @@
   font-size: 10px;
   color: var(--texto-suave);
   line-height: 1.2;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ml-status-pill{
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 3px;
+  flex-shrink: 0;
 }
-.ml-status-pill.ativo{
-  background: rgba(22,163,74,.12);
-  color: var(--ok);
-}
-.ml-status-pill.historico{
-  background: rgba(217,119,6,.12);
-  color: var(--alerta);
-}
+.ml-status-pill.ativo    { background: rgba(22,163,74,.12); color: var(--ok); }
+.ml-status-pill.historico{ background: rgba(217,119,6,.12); color: var(--alerta); }
 
-/* rodapé */
+/* ============ Rodapé (sair) ============ */
 .ml-rodape{
-  padding: 14px;
-  border-top: 1px solid var(--borda);
+  padding: 16px 14px 18px;
+  margin-top: auto;
 }
 .ml-sair{
   width: 100%;
@@ -277,32 +207,32 @@
   border-color: var(--erro);
 }
 
-/* estados */
+/* ============ Estados especiais ============ */
 .ml-loading,
 .ml-vazio,
 .ml-erro{
-  padding: 20px 10px;
+  padding: 18px 10px;
   text-align: center;
   font-size: 12px;
   color: var(--texto-suave);
 }
 .ml-erro{ color: var(--erro); }
 
-/* scrollbar fininha na lista */
-.ml-secao::-webkit-scrollbar{ width: 6px; }
-.ml-secao::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.20); border-radius: 6px; }
+/* esconder elementos antigos que ainda existam no HTML */
+.ml-secao-nav,
+.ml-link{ display: none; }
 
-/* responsivo */
+/* scrollbar fininha pro menu todo */
+.menu-lateral::-webkit-scrollbar{ width: 6px; }
+.menu-lateral::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.20); border-radius: 6px; }
+.menu-lateral::-webkit-scrollbar-thumb:hover{ background: rgba(30,111,214,.35); }
+
+/* ============ Responsivo ============ */
 @media (max-width: 900px){
-  .menu-lateral{
-    width: 240px;
-  }
+  .menu-lateral{ width: 240px; }
 }
 @media (max-width: 720px){
   .menu-lateral{
-    position: fixed;
-    left: 0; top: 0;
-    z-index: 100;
     transform: translateX(-100%);
     transition: transform var(--t-lenta);
     box-shadow: 0 0 40px rgba(0,0,0,.25);

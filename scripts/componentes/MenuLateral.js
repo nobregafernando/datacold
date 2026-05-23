@@ -71,17 +71,6 @@ class MenuLateral {
         </div>
       </div>
 
-      <nav class="ml-secao-nav" aria-label="navegação">
-        <a href="${this.raiz}paginas/admin/admin.html" class="ml-link ${this.paginaAtiva==='admin'?'ativo':''}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          Dashboard
-        </a>
-        <a href="#" class="ml-link" data-acao="recarregar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-          Atualizar dados
-        </a>
-      </nav>
-
       <div class="ml-secao">
         <div class="ml-titulo-secao">Sensores</div>
         <div class="ml-filtros" role="tablist">
@@ -112,10 +101,6 @@ class MenuLateral {
         Autenticacao.logout();
         window.location.href = `${this.raiz}paginas/login/login.html`;
       }
-      if (acao === "recarregar") {
-        ev.preventDefault();
-        this._carregarCatalogo();
-      }
 
       const botaoFiltro = ev.target.closest("[data-filtro]");
       if (botaoFiltro) {
@@ -130,7 +115,11 @@ class MenuLateral {
         ev.preventDefault();
         const id = itemSensor.dataset.sensor;
         this.destacarSensor(id);
-        if (this.aoSelecionarSensor) this.aoSelecionarSensor(id);
+        if (this.aoSelecionarSensor) {
+          this.aoSelecionarSensor(id);
+        } else {
+          window.location.href = `${this.raiz}paginas/admin/sensores/${encodeURIComponent(id)}/`;
+        }
       }
     });
   }

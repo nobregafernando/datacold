@@ -78,6 +78,28 @@
     font-weight:600;letter-spacing:.3px;text-transform:uppercase;
   }
   .filter-row button.active{background:var(--txt);color:#fff;border-color:var(--txt)}
+
+  /* === CACHE STATUS === */
+  .cache-status{
+    display:flex;align-items:center;gap:8px;margin:0 4px 14px;padding:8px 10px;
+    border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted);
+    background:var(--panel);line-height:1.3;
+  }
+  .cache-status .cs-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0}
+  .cache-status.loading .cs-dot{background:#1f6feb;animation:cs-pulse 1.2s ease-in-out infinite}
+  .cache-status.ready .cs-dot{background:#16a34a}
+  .cache-status.err .cs-dot{background:#dc2626}
+  .cache-status .cs-txt{flex:1;min-width:0}
+  .cache-status .cs-txt strong{color:var(--txt);font-weight:700}
+  .cache-status .cs-refresh{
+    background:transparent;border:1px solid var(--border);border-radius:6px;
+    padding:3px 7px;font-size:10px;cursor:pointer;color:var(--muted);
+    font-weight:600;letter-spacing:.3px;text-transform:uppercase;
+  }
+  .cache-status .cs-refresh:hover{color:var(--txt);border-color:var(--txt)}
+  .cache-status .cs-refresh:disabled{opacity:.5;cursor:wait}
+  @keyframes cs-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
   .group-label{
     font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
     padding:10px 8px 4px;font-weight:700;
@@ -359,6 +381,11 @@
     <button data-filter="temperatura">Temp</button>
     <button data-filter="porta">Porta</button>
   </div>
+  <div class="cache-status" id="cacheStatus">
+    <span class="cs-dot"></span>
+    <span class="cs-txt">cache: aguardando…</span>
+    <button class="cs-refresh" id="cacheRefresh" title="Recarregar todos os sensores">↻</button>
+  </div>
   <div id="sensorList"></div>
 </aside>
 
@@ -377,6 +404,16 @@
 const API_BASE = "https://desafio.beminteligencia.com.br";
 const KEY_STORAGE = "datacold_api_key";
 
+// ============ CACHE LOCAL ============
+const DATA_CACHE_KEY = "datacold_api_data_cache_v1";
+const CACHE_TTL_MS = 30 * 60 * 1000;          // 30 min
+const PREFETCH_LIMIT = 20000;                  // pega tudo que a API devolver
+const PREFETCH_CONCURRENCY = 3;                // requisições em paralelo
+const WINDOW_ATIVO = { start: "-167h", stop: "now" };           // 7d (limite da API)
+const WINDOW_HISTORICO = { start: "-334h", stop: "-167h" };     // janela 7d-14d atrás
+
+let dataCache = { fetchedAt: 0, data: {} };
+
 const $ = (id)=>document.getElementById(id);
 let sensors=[], groups=[];
 let currentFilter="todos";
@@ -384,13 +421,144 @@ let currentSensor=null;
 let currentRange="-1h";
 let charts=[];
 
+// ============ HELPERS DE CACHE ============
+function loadCacheFromStorage(){
+  try{
+    const raw = localStorage.getItem(DATA_CACHE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || parsed.v !== 1) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+
+function saveCacheToStorage(){
+  try{
+    localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
+      v: 1, fetchedAt: dataCache.fetchedAt, data: dataCache.data
+    }));
+    return true;
+  }catch(e){
+    console.warn("Cache não coube em localStorage; mantendo apenas em memória.", e);
+    return false;
+  }
+}
+
+function setCacheStatus(state, html){
+  const el = $("cacheStatus");
+  if(!el) return;
+  el.className = "cache-status " + (state || "");
+  el.querySelector(".cs-txt").innerHTML = html;
+}
+
+function formatAge(ms){
+  const s = Math.max(0, Math.floor((Date.now()-ms)/1000));
+  if(s < 60)  return "agora mesmo";
+  const m = Math.floor(s/60);
+  if(m < 60)  return `há ${m} min`;
+  const h = Math.floor(m/60);
+  return `há ${h}h${m%60 ? ` ${m%60}min` : ""}`;
+}
+
+function parseRangeMs(r){
+  const m = String(r).match(/^-(\d+(?:\.\d+)?)(m|h|d)$/);
+  if(!m) return null;
+  const mul = m[2]==="m" ? 60e3 : m[2]==="h" ? 3600e3 : 86400e3;
+  return parseFloat(m[1]) * mul;
+}
+
+function sliceCachedData(cached, range){
+  // Histórico = janela fixa antiga, devolve tudo (filtrar por "-1h" não faz sentido)
+  if(cached._isHistorico) return cached;
+  const span = parseRangeMs(range);
+  if(!span) return cached;
+  const cutoff = Date.now() - span;
+  const points = cached.points.filter(p => new Date(p.time).getTime() >= cutoff);
+  return { ...cached, points, count: points.length };
+}
+
+async function fetchSensorData(sensor, key){
+  const win = sensor.status === "historico" ? WINDOW_HISTORICO : WINDOW_ATIVO;
+  const url = `${API_BASE}/api/v1/data?sensor=${sensor.id}`
+            + `&start=${encodeURIComponent(win.start)}`
+            + `&stop=${encodeURIComponent(win.stop)}`
+            + `&limit=${PREFETCH_LIMIT}`;
+  const r = await fetch(url, { headers: {"X-API-Key": key} });
+  if(!r.ok){
+    const t = await r.text();
+    throw new Error(`HTTP ${r.status} · ${t.substring(0,100)}`);
+  }
+  const json = await r.json();
+  return { ...json, _window: win, _isHistorico: sensor.status === "historico" };
+}
+
+async function prefetchAllSensors({ force = false } = {}){
+  const key = $("apiKey").value.trim();
+  if(!key){
+    setCacheStatus("err", "Cole a chave da API para cachear os dados");
+    return;
+  }
+  if(!sensors.length){
+    setCacheStatus("err", "Catálogo indisponível");
+    return;
+  }
+  if(!force){
+    const stored = loadCacheFromStorage();
+    if(stored && (Date.now() - stored.fetchedAt < CACHE_TTL_MS)){
+      dataCache = stored;
+      const n = Object.keys(dataCache.data).length;
+      setCacheStatus("ready",
+        `<strong>${n}/${sensors.length} sensores</strong> em cache · ${formatAge(dataCache.fetchedAt)}`);
+      return;
+    }
+  }
+
+  const btn = $("cacheRefresh");
+  if(btn) btn.disabled = true;
+  const total = sensors.length;
+  let done = 0, errors = 0;
+  setCacheStatus("loading", `Pré-carregando <strong>0/${total}</strong> sensores…`);
+
+  const fresh = {};
+  const queue = [...sensors];
+  async function worker(){
+    while(queue.length){
+      const s = queue.shift();
+      try{
+        fresh[s.id] = await fetchSensorData(s, key);
+      }catch(e){
+        errors++;
+        console.warn("Falha em", s.id, e.message);
+      }
+      done++;
+      setCacheStatus("loading",
+        `Pré-carregando <strong>${done}/${total}</strong> sensores…`);
+    }
+  }
+  await Promise.all(Array.from({length: PREFETCH_CONCURRENCY}, worker));
+
+  dataCache = { fetchedAt: Date.now(), data: fresh };
+  const persisted = saveCacheToStorage();
+  const tail = persisted ? "" : " · só nesta aba (excedeu cota do disco)";
+  if(errors){
+    setCacheStatus("ready",
+      `<strong>${total - errors}/${total} ok</strong> · ${errors} falharam · ${formatAge(dataCache.fetchedAt)}${tail}`);
+  }else{
+    setCacheStatus("ready",
+      `<strong>${total} sensores</strong> em cache · ${formatAge(dataCache.fetchedAt)}${tail}`);
+  }
+  if(btn) btn.disabled = false;
+}
+
 // ============ INIT ============
 async function init(){
   const saved = localStorage.getItem(KEY_STORAGE);
   if(saved) $("apiKey").value = saved;
   // se ainda não há nada salvo, mantém o default já no atributo value
-  $("apiKey").addEventListener("change", ()=>{
+  $("apiKey").addEventListener("change", async ()=>{
     localStorage.setItem(KEY_STORAGE, $("apiKey").value.trim());
+    // chave nova invalida o cache e dispara nova pré-busca
+    await prefetchAllSensors({ force: true });
     if(currentSensor) loadSensor(currentSensor.id);
   });
 
@@ -412,6 +580,8 @@ async function init(){
     renderSidebar();
   }catch(e){
     $("sensorList").innerHTML = "<div class='err-box' style='margin:10px'>Erro ao carregar sensores.</div>";
+    setCacheStatus("err", "Catálogo indisponível");
+    return;
   }
 
   // filtros
@@ -424,6 +594,15 @@ async function init(){
     };
   });
 
+  // botão de recarregar o cache
+  const btn = $("cacheRefresh");
+  if(btn) btn.onclick = async ()=>{
+    await prefetchAllSensors({ force: true });
+    if(currentSensor) loadSensor(currentSensor.id);
+  };
+
+  // pré-carrega todos os 14 sensores e guarda em localStorage
+  await prefetchAllSensors();
 }
 
 // ============ SIDEBAR ============
@@ -469,22 +648,6 @@ async function loadSensor(sensorId){
   const s = sensors.find(x=>x.id===sensorId);
   if(!s) return;
 
-  // se for histórico e a janela for recente, ajusta automaticamente
-  let start = currentRange;
-  let stop = "now";
-  if(s.status === "historico" && !["-7d","-24h"].includes(start)){
-    start = "-90d";
-    stop = "-30d";
-  }
-
-  $("content").innerHTML = `
-    <div class="src-banner">
-      <div class="icon">!</div>
-      <div><strong>Carregando…</strong> sensor <code>${sensorId}</code></div>
-    </div>
-    <div class="loading"><div class="spinner"></div> Buscando na API BEM…</div>
-  `;
-
   if(!key){
     $("content").innerHTML = renderHeader(s, null) + `
       <div class="err-box">
@@ -495,24 +658,41 @@ async function loadSensor(sensorId){
     return;
   }
 
-  const url = `${API_BASE}/api/v1/data?sensor=${sensorId}&start=${encodeURIComponent(start)}&stop=${encodeURIComponent(stop)}&limit=1000`;
-  try{
-    const r = await fetch(url, { headers: {"X-API-Key": key} });
-    if(!r.ok){
-      const t = await r.text();
-      throw new Error(`HTTP ${r.status} · ${t.substring(0,140)}`);
+  // 1) tenta cache em memória
+  let cached = dataCache.data[sensorId];
+
+  // 2) se não tem (algum sensor falhou na pré-busca), busca só esse
+  if(!cached){
+    $("content").innerHTML = `
+      <div class="src-banner">
+        <div class="icon">!</div>
+        <div><strong>Carregando…</strong> sensor <code>${sensorId}</code> fora do cache</div>
+      </div>
+      <div class="loading"><div class="spinner"></div> Buscando na API BEM…</div>
+    `;
+    try{
+      cached = await fetchSensorData(s, key);
+      dataCache.data[sensorId] = cached;
+      saveCacheToStorage();
+    }catch(e){
+      $("content").innerHTML = renderHeader(s, null) + `<div class="err-box">Erro ao buscar dados: ${e.message}</div>`;
+      bindInlineRange();
+      return;
     }
-    const data = await r.json();
-    render(s, data, start, stop);
-  }catch(e){
-    $("content").innerHTML = renderHeader(s, null) + `<div class="err-box">Erro ao buscar dados: ${e.message}</div>`;
-    bindInlineRange();
   }
+
+  // 3) fatia pela janela escolhida (cliente, sem nova requisição)
+  const sliced = sliceCachedData(cached, currentRange);
+  const win = cached._window || { start: currentRange, stop: "now" };
+  render(s, sliced, win.start, win.stop);
 }
 
 function renderHeader(s, data){
   const grp = groups.find(g=>g.id===s.group);
-  const fetchedAt = new Date().toLocaleString("pt-BR");
+  const fetchedAt = dataCache.fetchedAt
+    ? new Date(dataCache.fetchedAt).toLocaleString("pt-BR")
+    : new Date().toLocaleString("pt-BR");
+  const fonte = dataCache.fetchedAt ? "Cache local da API BEM" : "API BEM ao vivo";
   const ranges = [
     {v:"-30m",  l:"30m"},
     {v:"-1h",   l:"1h"},
@@ -524,8 +704,8 @@ function renderHeader(s, data){
   return `
     <div class="src-banner">
       <div class="icon">A</div>
-      <div><strong>Dados ao vivo da API BEM</strong> · sensor <code>${s.id}</code></div>
-      <div class="meta">consultado em ${fetchedAt}${data ? ` · ${data.count} pontos` : ""}</div>
+      <div><strong>${fonte}</strong> · sensor <code>${s.id}</code></div>
+      <div class="meta">pré-carregado em ${fetchedAt}${data ? ` · ${data.count} pontos no recorte` : ""}</div>
     </div>
     <div class="sensor-header">
       <div style="flex:1">

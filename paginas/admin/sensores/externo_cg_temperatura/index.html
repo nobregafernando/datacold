@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataCold · Sensor</title>
+
+<link rel="icon" type="image/png" href="../../../../logo/04-icon-standalone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../../estilos/global.css">
+<link rel="stylesheet" href="../../../../estilos/sensor.css">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuLateral.css">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuTopo.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<div class="layout-admin">
+
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="sensor-main">
+
+    <!-- Menu superior (componente: status + sino de alertas) -->
+    <div id="menu-topo"></div>
+
+    <header class="sensor-topo">
+      <div class="sensor-titulo">
+        <a href="../../admin.html" class="voltar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Dashboard
+        </a>
+        <span class="olho" data-tipo-sensor>—</span>
+        <h1 data-nome-sensor>Carregando sensor…</h1>
+        <p class="legenda" data-grupo-sensor>—</p>
+      </div>
+      <div class="sensor-meta-topo" data-meta-topo></div>
+    </header>
+
+    <!-- Briefing para os devs construírem esta página -->
+    <section class="roadmap">
+      <span class="olho">Briefing técnico</span>
+      <h2>O que esta página precisa entregar</h2>
+      <p class="roadmap-intro">
+        Os blocos abaixo descrevem o escopo da página deste sensor.
+        Devem ser implementados consumindo a API BEM e a classe <code>Sensor</code> do núcleo.
+      </p>
+
+      <div class="roadmap-grade">
+        <article class="roadmap-card">
+          <div class="roadmap-ico">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+          </div>
+          <h3>Monitoramento de conectividade</h3>
+          <p>Status de rede do sensor em tempo real — <strong>online, instável ou offline</strong>. Detecta perda de conexão pelo tempo decorrido desde a última leitura e por lacunas (gaps) excessivas no histórico.</p>
+          <ul class="roadmap-detalhes">
+            <li><strong>Online:</strong> recebeu leitura nos últimos N segundos (configurável por tipo).</li>
+            <li><strong>Instável:</strong> recebeu leitura mas com gaps acima da média habitual.</li>
+            <li><strong>Offline:</strong> sem leitura há mais de X minutos.</li>
+            <li>Indicador visual fixo no topo da página, com cor (verde/amarelo/vermelho).</li>
+            <li>Persistir histórico de mudanças de status para diagnóstico.</li>
+          </ul>
+        </article>
+
+        <article class="roadmap-card">
+          <div class="roadmap-ico">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"></polyline><polyline points="14 7 21 7 21 14"></polyline></svg>
+          </div>
+          <h3>Gráficos em tempo real</h3>
+          <p>Plotagem de <strong>séries temporais</strong> dos dados recebidos, com atualização contínua via polling à API BEM (ou websocket quando disponível).</p>
+          <ul class="roadmap-detalhes">
+            <li><strong>Energia:</strong> 3 séries de corrente (A/B/C), 3 de tensão, 3 de FP e 1 de potência ativa.</li>
+            <li><strong>Temperatura:</strong> 1 série principal de temperatura.</li>
+            <li><strong>Porta:</strong> sinal bruto em formato stepped (degraus).</li>
+            <li>Seletor de janela: 30m · 1h · 6h · 24h · 3d · 7d (limite da API).</li>
+            <li>Linhas de referência: limite ANEEL (FP 0,92), faixa segura (temperatura por câmara).</li>
+            <li>Tooltip com timestamp e valor formatado em pt-BR.</li>
+            <li>Atualização sem flicker (preservar zoom/pan se houver).</li>
+          </ul>
+        </article>
+
+        <article class="roadmap-card">
+          <div class="roadmap-ico">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <h3>Alertas</h3>
+          <p>Notificações automáticas de anomalias com <strong>severidade classificada</strong> (crítico, atenção, informativo).</p>
+          <ul class="roadmap-detalhes">
+            <li><strong>Offline:</strong> ausência de leituras acima do esperado.</li>
+            <li><strong>Oscilação:</strong> desvio padrão acima do baseline histórico do sensor.</li>
+            <li><strong>Superaquecimento:</strong> temperatura fora da faixa segura por X tempo consecutivo.</li>
+            <li><strong>Energia:</strong> FP &lt; 0,92, %CUB &gt; 10%, %VUB &gt; 2%, fluxo reverso (FP negativo).</li>
+            <li><strong>Porta:</strong> aberturas anormalmente longas ou frequentes.</li>
+            <li>Feed cronológico com filtros por severidade.</li>
+            <li>Notificação no navegador (Notifications API) para críticos, opcional.</li>
+            <li>Marcar como lido / arquivar.</li>
+          </ul>
+        </article>
+
+        <article class="roadmap-card">
+          <div class="roadmap-ico">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <h3>Verificador de latência</h3>
+          <p>Análise do <strong>intervalo médio entre leituras</strong> em milissegundos. Detecta quando está muito baixo (sensor enviando rápido demais → suspeita de duplicação ou loop) ou muito alto (atrasos / perda de pacotes).</p>
+          <ul class="roadmap-detalhes">
+            <li>Cálculo do intervalo médio, mediana, maior gap e número de gaps no período.</li>
+            <li>Comparação com o baseline esperado para o tipo do sensor.</li>
+            <li>Histograma da distribuição do intervalo.</li>
+            <li>Alerta visual quando o intervalo sair do padrão por mais de N amostras.</li>
+            <li>Exportar relatório CSV pra análise externa.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<script src="../../../../scripts/nucleo/ApiBEM.js"></script>
+<script src="../../../../scripts/nucleo/Sensor.js"></script>
+<script src="../../../../scripts/nucleo/SensorEnergia.js"></script>
+<script src="../../../../scripts/nucleo/SensorTemperatura.js"></script>
+<script src="../../../../scripts/nucleo/SensorPorta.js"></script>
+<script src="../../../../scripts/nucleo/FabricaSensor.js"></script>
+<script src="../../../../scripts/nucleo/Usuario.js"></script>
+<script src="../../../../scripts/nucleo/Autenticacao.js"></script>
+<script src="../../../../scripts/componentes/MenuLateral.js"></script>
+<script src="../../../../scripts/componentes/MenuTopo.js"></script>
+<script src="pagina.js"></script>
+
+</body>
+</html>
