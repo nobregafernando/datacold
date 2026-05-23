@@ -107,51 +107,103 @@ Cada subclasse implementa `calcularIndicadores(pontos)` que devolve os KPIs
 
 ## 3. Os 4 agentes de análise
 
-Strategy + Rule Engine em `scripts/agentes/`. O orquestrador
-(`scripts/nucleo/AnalisadorSensor.js`) recebe `(sensor, pontos)` e delega
-pro agente certo via `FabricaAgente.criar(sensor)`.
+Strategy + Rule Engine em `scripts/agentes/`. Cada agente é uma **subclasse
+de `AgenteBase`** que define:
+- `contexto(pontos)` → pré-mastiga métricas comuns às regras (FP composto,
+  %CUB, faixa térmica, eventos de porta…). Roda **uma vez** por avaliação.
+- `static REGRAS = [...]` → lista de instâncias de `Regra` (cada uma é um
+  `{id, categoria, label, fonte, parametros, avaliar(ctx, p)}`).
 
-### 3.1 `AgenteEnergia`
-Trifásico industrial. Pré-calcula contexto: FP composto, fluxo reverso (FP
-negativo em alguma fase), %CUB e %VUB pela fórmula NEMA, fases ausentes, pico
-de corrente, consumo dia vs noite (phantom load). Confronta com as normas
-(PRODIST 8 ANEEL, NEMA MG-1) e emite vereditos por regra.
+O orquestrador `AnalisadorSensor.avaliar(sensor, pontos)` chama
+`FabricaAgente.criar(sensor)` (escolhe a subclasse pelo `sensor.tipo`) e
+devolve um array de vereditos `{status, resumo, detalhe, diagnostico,
+valorMedido, valorIdeal, fonte}`.
 
-### 3.2 `AgenteTemperatura`
-Câmaras controladas + ambiente externo. Calcula média, desvio, amplitude,
-tempo fora da faixa ideal (por grupo: congelados −28/−18 °C, estoque −4/4 °C,
-graxaria −10/4 °C), tendência °C/h, picos por z-score e leituras
-fisicamente impossíveis (>85 °C numa câmara fria = sensor com defeito).
+### 3.1 `AgenteEnergia` — 9 regras (`scripts/agentes/AgenteEnergia.js`)
 
-### 3.3 `AgentePorta`
-Sinal binário (em alguns sensores é analógico próximo a binário). Extrai
-eventos de abertura por transição (0 → >0), calcula tempo total aberta,
-duração média/maior evento, fração do tempo aberta, padrão hora-a-hora,
-quantas vezes na 1ª vs 2ª metade da janela.
+Contexto pré-calculado: `fp_composto`, `fp_negativo`, `correntes[]`,
+`tensoes[]`, `cub_pct`, `vub_pct`, `fases_ausentes[]`, `pico_corrente_x`,
+`potencia_kw`, `consumo_madrugada` vs `consumo_comercial`.
 
-### 3.4 `AgenteReconstrutor` — preenche lacunas
-Quando a telemetria tem gaps (link caiu, gateway com fila, bateria fraca), o
-reconstrutor **interpola sem inventar**:
+| Regra | O que checa | Fonte |
+|---|---|---|
+| `fp-baixo` | FP composto vs limite mínimo (warn) e crítico | PRODIST 8 ANEEL §3.2 |
+| `fluxo-reverso` | Alguma fase com FP negativo (TC invertido) | PRODIST 8 |
+| `desequilibrio-corrente` | %CUB vs zona de atenção/crítica | NEMA MG-1 §14.35 |
+| `desequilibrio-tensao` | %VUB vs ideal/máximo tolerável | NEMA MG-1 |
+| `fase-ausente` | Tensão < 10V em alguma fase | Convenção elétrica |
+| `pico-corrente` | Pico / média vs faixa de partida típica (5–7×) | IEEE 141 |
+| `phantom-load` | Corrente madrugada (00–05h) vs comercial (08–18h) | Boa prática operacional |
+| `tensao-fora-faixa` | Tensão vs ±5% nominal (127V ou 220V) | PRODIST 8 Anexo VIII |
+| `potencia-atual` | P = V × I × FP da última leitura (informativo) | Cálculo |
 
-- `tensao_*` → média do contexto adjacente (sinal estável).
-- `corrente_*` → SPLC multi-ciclo (busca o "mesmo horário" 24h e 7d atrás,
-  descarta outliers por z-score > 3, devolve média ponderada).
-- `fator_potencia_*` → média local.
-- `temperatura (ambiente)` → SPLC com peso forte no ciclo diário.
-- `temperatura (câmara)` → SPLC + correção pela tendência local.
-- `abertura_porta` → step (mantém último estado conhecido).
+### 3.2 `AgenteTemperatura` — 7 regras
 
-Cada ponto reconstruído carrega **score de confiança** (0–1) calculado por
-campo e combinado. A UI pode mostrar (linha pontilhada, opacidade) que
-aquele trecho foi inferido.
+Contexto: `valores[]`, `media`, `desvio`, `min`, `max`, `tempo_fora_pct`,
+`tendencia_c_h`, `picos_zscore`, `travado`, `faixa` (por grupo),
+`impossivel_count`.
+
+| Regra | O que checa | Fonte |
+|---|---|---|
+| `leitura-impossivel` | Valores fora do envelope físico (-100 a +100 °C) | Limite físico do termopar |
+| `fora-da-faixa` | % do tempo fora da faixa ideal (por câmara) | ANVISA RDC 275, Codex |
+| `temperatura-atual` | Valor da última leitura (informativo) | — |
+| `oscilacao` | Desvio padrão vs limite (5°C warn) | Engenharia frigorífica |
+| `tendencia` | Inclinação °C/h (drift) | Eng. frigorífica |
+| `picos-zscore` | Pontos com |z-score| > 3 (outliers) | Estatística |
+| `sensor-travado` | σ < 0.05 = sensor não varia (congelado) | Diagnóstico |
+
+### 3.3 `AgentePorta` — 7 regras
+
+Contexto: `eventos[]` (transições 0→>0), `abertas`, `duracao_total_s`,
+`duracao_media_s`, `maior_evento_s`, `fracao_aberta`, `aberta_agora`,
+`binario`, `metade1_abert` vs `metade2_abert`.
+
+| Regra | O que checa | Fonte |
+|---|---|---|
+| `porta-esquecida` | Maior abertura > 10 min | Boa prática (perda de frio) |
+| `tempo-medio-alto` | Duração média > 2 min | Boa prática operacional |
+| `fracao-aberta` | % do período aberta vs aceitável | Custo elétrico |
+| `padrao-evolutivo` | 1ª metade vs 2ª metade (mudança > 50%) | Análise de padrão |
+| `rajada-aberturas` | Aberturas consecutivas com intervalo < 60s | Eng. operacional |
+| `sinal-binario` | Sinal é coerente (binário ou perto disso) | Diagnóstico do sensor |
+| `estado-atual` | Porta aberta ou fechada agora (informativo) | — |
+
+### 3.4 `AgenteReconstrutor` — preenche lacunas (`scripts/agentes/AgenteReconstrutor.js`)
+
+Esse não é "rule engine" — é um **algoritmo de inferência** que entra antes
+da análise quando a janela tem gaps. Estratégia por campo:
+
+| Campo | Algoritmo |
+|---|---|
+| `tensao_*` | Média do contexto adjacente (sinal estável). |
+| `corrente_*` | **SPLC multi-ciclo**: busca o "mesmo horário" 24h e 7d atrás, descarta outliers por z-score > 3, devolve média ponderada (24h tem peso 2× sobre 7d). |
+| `fator_potencia_*` | Média local. |
+| `temperatura (ambiente)` | SPLC com peso forte no ciclo diário (cossenoide 24h domina). |
+| `temperatura (câmara)` | SPLC + correção pela tendência local da janela. |
+| `abertura_porta` | **Step** (mantém último estado conhecido — não interpola). |
+
+Cada ponto reconstruído carrega:
+- `meta.fonte = "reconstruido"` (vs `"medido"`)
+- `meta.confianca` ∈ [0, 1] — calculada por campo (quantos ciclos
+  contribuíram sem outliers × tamanho do gap) e combinada na meta do ponto.
+
+A UI pode usar a confiança pra desenhar linha pontilhada, baixar opacidade
+ou esconder o ponto reconstruído.
 
 ### Catálogo de regras editável
 
-`scripts/agentes/normas.js` — todos os limites técnicos numa fonte só
-(PRODIST, NEMA, ANVISA, Codex), com `valor` + `fonte` (string para auditoria
-no front). Cada `sensor.parametros` no banco pode sobrepor a norma só pra
-aquele sensor (jsonb, merge). A página **Agentes** (`/paginas/admin/agentes/`)
-é a UI para editar isso sem tocar em SQL.
+`scripts/agentes/normas.js` consolida **todas as constantes técnicas** numa
+única fonte: ANEEL/PRODIST 8, NEMA MG-1, IEEE 141, ANVISA RDC 275, Codex
+Alimentarius CAC/GL 50, engenharia frigorífica, ISO 8000. Cada valor vem
+com `{valor, fonte}` — a `fonte` é exibida no veredito da UI pra auditoria.
+
+Para **sobrepor um limite só pra UM sensor** específico (ex: a extrusora 1
+tem capacitor diferente e o FP mínimo dela é 0.85 em vez de 0.92), basta
+gravar no `sensor.parametros` (jsonb na tabela `sensores` do Supabase). O
+agente faz `mesclarParametros(defaults_norma, sensor.parametros)` antes de
+avaliar. A página **Agentes** (`/paginas/admin/agentes/`) é a UI pra editar
+isso sem tocar em SQL — chama `atualizar_parametros(sensor, patch jsonb)`.
 
 ---
 
@@ -161,15 +213,40 @@ aquele sensor (jsonb, merge). A página **Agentes** (`/paginas/admin/agentes/`)
 
 | Camada | Tecnologia | Onde |
 |---|---|---|
-| Front | HTML/CSS/JS puro (sem framework, sem build pesado) | Firebase Hosting (`datacold.web.app`) |
-| API | PostgREST RPC + funções PL/pgSQL | Supabase (Postgres us-west-1) |
-| Banco | Postgres 15 + pg_cron + RLS | Supabase |
+| Front | HTML/CSS/JS puro (sem framework, sem build pesado) | **Firebase Hosting** (`datacold.web.app`) |
+| API | PostgREST RPC + funções PL/pgSQL | **Supabase** (Postgres us-west-1) |
+| Banco | Postgres 15 + pg_cron + RLS + auditoria automática | **Supabase** |
 | Cache-bust | `versao.json` + querystring `?v=<build_id>` automática em todos os HTMLs | `scripts/build/versionar.js` |
 | Auth | Supabase Auth opcional (hoje MVP local em `localStorage`) | Front |
 
-Sem Node em produção. O build é `scripts/build/aplicar-sem-cache.js` que
-injeta um snippet de service-worker cleanup nos HTMLs e gera um novo
-`versao.json`. Tudo o resto é estático.
+**Por que Firebase Hosting?** O front é 100% estático (sem SSR, sem Node em
+produção). Firebase entrega CDN global, HTTPS automático, deploys atômicos
+com rollback (`firebase hosting:rollback`) e domínio padronizado
+(`datacold.web.app`). Custo: zero no plano Spark até o tráfego deste MVP.
+Config em `firebase.json` (rewrites, headers de cache, `404.html` próprio).
+Deploy é `firebase deploy --only hosting`.
+
+**Por que Supabase?** Precisamos de Postgres real (analytics, índice por
+timestamp, jsonb pros parâmetros dos sensores), agendador no banco (pg_cron
+pra `sim_tick` a cada 60s), API pública pronta (PostgREST gera HTTP RPC
+direto das funções SQL) e autenticação opcional já integrada. Resolve tudo
+num provedor só, com `.env` enxuto (`SUPABASE_PROJECT_ID` +
+`SUPABASE_DB_PASSWORD`). Acesso ao banco via pooler
+`aws-1-us-west-1.pooler.supabase.com:6543` no `supabase/aplicar.py`.
+
+**Por que sem framework no front?** Como o estado do app é praticamente só
+a resposta da API + estado local de UI, o ganho de React/Vue/Svelte
+seria pequeno comparado ao overhead. Cada página é uma classe ES2022
+(`PaginaSensor`, `PaginaGrupo`, `PaginaAdmin`...) que monta MenuLateral +
+MenuTopo, chama `ApiBEM.buscarDados()` e usa `setInterval` pra atualizar.
+Bundle = zero, tempo de carga = só os bytes do HTML/CSS/JS necessário.
+
+**Build = 2 scripts Node** (`scripts/build/`). `versionar.js` gera um
+`versao.json` novo. `aplicar-sem-cache.js` injeta em todos os HTMLs:
+- bloco `BLOCO-SEM-CACHE` (desregistra service workers antigos, limpa Cache
+  API, e detecta build novo via `versao.json`).
+- querystring `?v=<build_id>` em **todos** os `<link>` e `<script>`
+  (cache-bust automático sem precisar mudar nome de arquivo).
 
 ### 4.2 Reconexão automática e detecção de queda
 
@@ -208,20 +285,32 @@ sempre a janela `[start, stop]` e ignora o resto.
 
 ## 5. Banco de dados (Supabase / PostgreSQL)
 
-Schema completo em `supabase/schema.sql`. 7 tabelas:
+Schema completo em `supabase/schema.sql` (266 linhas). 7 tabelas:
 
 | Tabela | Propósito |
 |---|---|
-| `grupos` | os 6 ambientes físicos |
-| `sensores` | catálogo dos 14 + `parametros` jsonb (overrides de norma) |
-| `leituras_energia` | série temporal trifásica (3 sensores × N) |
-| `leituras_temperatura` | série temporal de temperatura |
-| `leituras_porta` | série temporal de abertura |
+| `grupos` | os 6 ambientes físicos (id, rotulo, descricao) |
+| `sensores` | catálogo dos 14 (id, tipo, grupo, status, parametros jsonb) |
+| `leituras_energia` | série temporal trifásica (3 sensores × N pontos) |
+| `leituras_temperatura` | série temporal de temperatura (4 sensores) |
+| `leituras_porta` | série temporal de abertura (2 sensores) |
 | `incidentes` | falhas injetadas pela sala de testes |
 | `auditoria` | log automático de toda mudança em grupos/sensores/incidentes |
 
-Trigger `fn_registrar_auditoria()` grava `dados_antes`/`dados_depois` em JSON
-com autor lido do JWT. Leituras **não** são auditadas (append-only).
+**Convenções:**
+- Tudo em **português** (`grupos`, `sensores`, `leituras_*`, `auditoria`).
+- `momento` (timestamp) em todas as leituras, indexado em `(sensor_id, momento DESC)`.
+- `parametros jsonb` em `sensores` é o que permite override fino das normas
+  por sensor (ver §3 — `mesclarParametros`).
+- Leituras são **append-only** (sem update/delete em produção) — por isso
+  não são auditadas (geram volume demais).
+
+**Auditoria automática:**
+Trigger `fn_registrar_auditoria()` em `grupos`, `sensores` e `incidentes`
+grava em JSON o estado **antes** e **depois** da mudança, junto com o autor
+(lido do JWT do Supabase Auth via `request.jwt.claims` ou
+`current_setting('app.autor')`). Permite responder "quem alterou o limite
+de FP da extrusora_2 em 17/05" sem ferramenta externa.
 
 ### API pública via RPC
 
@@ -243,28 +332,69 @@ A função `buscar_dados` aceita expressões relativas (`-1h`, `-7d`, `now`) via
 ## 6. Simulador — nosso ambiente controlado de geração
 
 Para conseguir testar comportamentos específicos (FP caindo, porta esquecida
-aberta, fase ausente) sem esperar acontecer na fábrica, criamos um **gerador
-próprio de dados sintéticos**. Duas versões:
+aberta, fase ausente, sensor com defeito) sem esperar acontecer na fábrica,
+criamos um **gerador próprio de dados sintéticos** que reproduz fielmente o
+contrato da API BEM real. Existe em **duas versões equivalentes**:
 
-### Versão A — Python local (`simulador/`)
-FastAPI + SQLite. Sobe um servidor que espelha os endpoints da API BEM real.
-Pra desenvolver com latência zero e dados controlados:
+### Versão A — Python local (`simulador/main.py`, FastAPI + SQLite)
 
-```
+Sobe um servidor que **espelha os endpoints da API BEM real** (mesmo
+formato de resposta, mesmas expressões de janela tipo `-1h`/`-7d`). O front
+não precisa saber se está conversando com a BEM, o Supabase ou o
+simulador local — o `ApiBEM.js` lê a URL base de `localStorage`.
+
+**Endpoints públicos (espelham a API BEM):**
+
+| Endpoint | Resposta |
+|---|---|
+| `GET /health` | `{ ok: true, demo_mode: true }` |
+| `GET /api/v1/sensors` | Catálogo: `{ sensors: [...], groups: [...] }` |
+| `GET /api/v1/data?sensor=ID&start=-1h&stop=now&limit=1000` | `{ sensor, type, count, fields, window, points: [...] }` |
+
+**Endpoints administrativos (extras, controlam a simulação):**
+
+| Endpoint | O que faz |
+|---|---|
+| `GET /sim/perfil/{sensor}` | Mostra os parâmetros físicos do sensor (FP base, faixa, etc.) |
+| `GET /sim/incidentes` | Lista incidentes ativos |
+| `POST /sim/incidente` | Injeta falha (spike/drift/gap/offline/valor_impossivel) |
+| `DELETE /sim/incidente/{id}` | Cancela um incidente |
+| `POST /sim/resetar` | Apaga o banco local e refaz o warm-up |
+
+**Para rodar:**
+```bash
 cd simulador
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt           # FastAPI, uvicorn, pydantic
 uvicorn main:app --reload --port 8000
 ```
 
-Front aponta pra ele com:
+**Para o front usar o simulador local** (em vez do Supabase):
 ```js
+// Console do browser, qualquer página do datacold:
 localStorage.setItem("datacold_api_url", "http://127.0.0.1:8000")
+location.reload()
 ```
 
+Por padrão, no boot, o simulador faz **warm-up de 168h** (7 dias) gerando
+1 ponto a cada 60s para cada sensor, e depois um **agendador** (`Agendador`
+em `estado.py`) gera 1 ponto novo a cada `TICK_S` segundos (default 5s no
+local, dá pra acelerar com `DATACOLD_TICK_S=1`).
+
 ### Versão B — Funções SQL no Supabase (`supabase/simulador_db.sql`)
-Mesma lógica de geração, mas portada pra PL/pgSQL e rodando via `pg_cron`
-no próprio Supabase. É o que está em produção em `datacold.web.app`.
+
+A **mesma lógica de geração**, portada pra PL/pgSQL. É o que está em
+produção em `datacold.web.app`:
+
+- `sim_gerar_energia(sensor, ts?)`, `sim_gerar_temperatura(sensor, ts?)`,
+  `sim_gerar_porta(sensor, ts?)` — geradores determinísticos espelhados.
+- `sim_tick()` — orquestrador chamado por **pg_cron a cada 1 minuto**, gera
+  1 ponto pra cada sensor com `status = 'ativo'`.
+- `sim_warmup(p_horas)` — backfill retroativo das últimas N horas
+  (configurável). Usado uma vez no setup ou após mudanças no catálogo.
+
+Vantagem: zero infraestrutura adicional. O banco é o cron, o gerador e o
+endpoint, tudo no mesmo lugar.
 
 ### Como cada tipo é modelado (`simulador/geradores.py`)
 
