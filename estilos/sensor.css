@@ -16,7 +16,7 @@ body{
 
 .sensor-main{
   min-width: 0;
-  padding: 32px 40px 60px;
+  padding: 96px 40px 60px;  /* topo: 96px libera espaço pro menu-topo fixo (~68px + respiro) */
   overflow-x: hidden;
 }
 
@@ -203,14 +203,111 @@ body{
   font-size: 14px;
 }
 
+/* ============ Achados automáticos ============ */
+.achados{
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-md);
+  padding: 28px 28px 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.achados-cabecalho{
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.achados-cabecalho h2{
+  margin: 6px 0 4px; font-size: 20px; letter-spacing: -.3px;
+}
+.achados-intro{
+  color: var(--texto-suave); font-size: 13px; margin: 0; max-width: 640px; line-height: 1.5;
+}
+.achados-resumo{
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.resumo-chip{
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: .3px;
+  border: 1px solid var(--borda); color: var(--texto-suave); background: #f8fafc;
+}
+.resumo-chip strong{ color: var(--texto); font-weight: 700; }
+.resumo-chip.crit{ border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.06); color: #991b1b; }
+.resumo-chip.crit strong{ color: #991b1b; }
+.resumo-chip.warn{ border-color: rgba(217,119,6,.35); background: rgba(217,119,6,.06); color: #92400e; }
+.resumo-chip.warn strong{ color: #92400e; }
+.resumo-chip.info{ border-color: rgba(31,111,235,.30); background: rgba(31,111,235,.06); color: #1e40af; }
+.resumo-chip.info strong{ color: #1e40af; }
+.resumo-chip.ok  { border-color: rgba(22,163,74,.30); background: rgba(22,163,74,.06); color: #166534; }
+.resumo-chip.ok strong{ color: #166534; }
+
+.achados-lista{
+  display: flex; flex-direction: column; gap: 12px;
+}
+.achado{
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-left-width: 4px;
+  border-radius: var(--raio-sm, 8px);
+  padding: 16px 18px;
+}
+.achado.severidade-crit{ border-left-color: #dc2626; background: rgba(220,38,38,.03); }
+.achado.severidade-warn{ border-left-color: #d97706; background: rgba(217,119,6,.03); }
+.achado.severidade-info{ border-left-color: #1f6feb; }
+.achado.severidade-ok  { border-left-color: #16a34a; opacity: .85; }
+
+.achado-topo{
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.achado-sev{
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+  background: #f1f5f9; color: var(--texto-suave);
+}
+.achado.severidade-crit .achado-sev{ background: rgba(220,38,38,.12); color: #991b1b; }
+.achado.severidade-warn .achado-sev{ background: rgba(217,119,6,.12); color: #92400e; }
+.achado.severidade-info .achado-sev{ background: rgba(31,111,235,.12); color: #1e40af; }
+.achado.severidade-ok   .achado-sev{ background: rgba(22,163,74,.12); color: #166534; }
+.achado-q{
+  font-size: 14px; font-weight: 600; margin: 0; color: var(--texto); line-height: 1.35;
+}
+.achado-bloco{
+  margin-top: 8px;
+}
+.achado-bloco p{
+  margin: 4px 0 0; font-size: 13px; color: var(--texto); line-height: 1.5;
+}
+.achado-rotulo{
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--texto-suave);
+}
+
+.achado-vazio{
+  border: 1px dashed var(--borda); border-radius: var(--raio-sm, 8px);
+  padding: 22px; text-align: center; display: flex; flex-direction: column; gap: 4px;
+  color: var(--texto-suave); font-size: 13px;
+}
+.achado-vazio strong{ color: var(--texto); font-weight: 600; }
+
+.achados-rodape{
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borda);
+  font-size: 11px; color: var(--texto-suave);
+}
+.achados-rodape code{
+  background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 10px;
+}
+
 /* ============ Responsivo ============ */
 @media (max-width: 1100px){
   .roadmap-grade{ grid-template-columns: 1fr; }
 }
 @media (max-width: 900px){
   .layout-admin{ padding-left: 240px; }
+  .achados{ padding: 22px 20px 18px; }
 }
 @media (max-width: 720px){
   .layout-admin{ padding-left: 0; }
-  .sensor-main{ padding: 24px 20px 40px; }
+  .sensor-main{ padding: 84px 20px 40px; }
+  .achados-cabecalho{ flex-direction: column; }
 }

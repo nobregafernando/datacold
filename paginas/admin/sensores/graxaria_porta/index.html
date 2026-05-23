@@ -40,6 +40,25 @@
       <div class="sensor-meta-topo" data-meta-topo></div>
     </header>
 
+    <!-- Achados automáticos: erros encontrados, possíveis motivos e recomendações.
+         Populado pelo pagina.js a partir de scripts/nucleo/AchadosSensores.js. -->
+    <section class="achados" id="achados" data-achados hidden>
+      <header class="achados-cabecalho">
+        <div>
+          <span class="olho">Análise automática</span>
+          <h2>Erros encontrados, possíveis motivos e recomendações</h2>
+          <p class="achados-intro">
+            Conclusões da investigação automática deste sensor, geradas a partir da
+            janela mais recente disponível na API BEM. Vermelho = sério, amarelo = atenção,
+            azul = observação.
+          </p>
+        </div>
+        <div class="achados-resumo" data-achados-resumo></div>
+      </header>
+      <div class="achados-lista" data-achados-lista></div>
+      <footer class="achados-rodape" data-achados-rodape></footer>
+    </section>
+
     <!-- Briefing para os devs construírem esta página -->
     <section class="roadmap">
       <span class="olho">Briefing técnico</span>
@@ -129,8 +148,10 @@
 <script src="../../../../scripts/nucleo/FabricaSensor.js"></script>
 <script src="../../../../scripts/nucleo/Usuario.js"></script>
 <script src="../../../../scripts/nucleo/Autenticacao.js"></script>
+<script src="../../../../scripts/nucleo/Notificacoes.js"></script>
 <script src="../../../../scripts/componentes/MenuLateral.js"></script>
 <script src="../../../../scripts/componentes/MenuTopo.js"></script>
+<script src="../../../../scripts/nucleo/AchadosSensores.js"></script>
 <script src="pagina.js"></script>
 
 </body>
