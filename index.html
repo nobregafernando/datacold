@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataCold · Monitoramento inteligente de sensores industriais</title>
+<meta name="description" content="Plataforma DataCold: telemetria em tempo real de energia, temperatura e portas para câmaras frias, linhas de produção e ambientes industriais.">
+
+<link rel="icon" type="image/png" href="logo/04-icon-standalone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="estilos/global.css">
+<link rel="stylesheet" href="paginas/landing/landing.css">
+</head>
+<body>
+
+<div class="fundo-aurora" aria-hidden="true"></div>
+<div class="fundo-grade" aria-hidden="true"></div>
+
+<!-- ============ NAVBAR ============ -->
+<header class="nav">
+  <div class="container">
+    <a href="/" class="marca" aria-label="DataCold">
+      <img src="logo/01-primary-logo.png" alt="DataCold">
+    </a>
+    <nav class="nav-links" aria-label="navegação principal">
+      <a href="#sensores">Sensores</a>
+      <a href="#capacidades">Capacidades</a>
+      <a href="#tecnologia">Tecnologia</a>
+      <a href="paginas/painel/painel.html" class="btn btn-pequeno">Abrir painel →</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="container">
+    <div class="surgir surgir-1">
+      <span class="selo" data-status-api>
+        <span class="ponto"></span>
+        <span data-status-texto>verificando API…</span>
+      </span>
+    </div>
+    <h1 class="surgir surgir-2">
+      Monitore cada sensor.<br>
+      <span class="destaque">Antecipe cada falha.</span>
+    </h1>
+    <p class="subtitulo surgir surgir-3">
+      A DataCold conecta a sua operação industrial a uma camada de inteligência
+      em tempo real — energia, temperatura e portas, lidos a cada segundo e
+      transformados em decisões.
+    </p>
+    <div class="acoes surgir surgir-4">
+      <a href="paginas/painel/painel.html" class="btn btn-primario btn-grande">
+        Acessar painel
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="#sensores" class="btn btn-secundario-claro btn-grande">Conhecer sensores</a>
+    </div>
+
+    <div class="hero-orb surgir surgir-5" aria-hidden="true">
+      <div class="anel"></div>
+      <div class="anel"></div>
+      <div class="anel"></div>
+      <div class="glow"></div>
+      <img src="logo/04-icon-standalone.png" alt="" class="logo-flutuante">
+      <div class="satelite sat-1"></div>
+      <div class="satelite sat-2"></div>
+      <div class="satelite sat-3"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAIXA DE STATS ============ -->
+<section class="faixa">
+  <div class="container">
+    <div class="faixa-grid">
+      <div class="stat" data-aparece>
+        <div class="num"><span data-contador="14">0</span></div>
+        <div class="l">Sensores conectados</div>
+      </div>
+      <div class="stat" data-aparece>
+        <div class="num"><span data-contador="6">0</span></div>
+        <div class="l">Ambientes monitorados</div>
+      </div>
+      <div class="stat" data-aparece>
+        <div class="num"><span data-contador="3">0</span></div>
+        <div class="l">Tipos de telemetria</div>
+      </div>
+      <div class="stat" data-aparece>
+        <div class="num"><span data-contador="168" data-sufixo="h">0</span></div>
+        <div class="l">Janela máxima de leitura</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CARDS DE SENSORES ============ -->
+<section class="secao" id="sensores">
+  <div class="container">
+    <div class="cabecalho" data-aparece>
+      <span class="olho">Sensores suportados</span>
+      <h2>Três famílias. <span class="destaque">Uma única plataforma.</span></h2>
+      <p class="legenda">
+        Cada tipo de sensor é modelado como uma classe própria — extensível, testável
+        e com lógica de análise específica para o que importa em cada ambiente.
+      </p>
+    </div>
+
+    <div class="cards-sensores">
+      <article class="card-sensor energia" data-aparece>
+        <div class="ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <h3>Energia trifásica</h3>
+        <p>Consumo, fator de potência, desequilíbrios entre fases e detecção de fluxo reverso — calculados de ponta a ponta.</p>
+        <ul>
+          <li>Potência ativa em kW e kWh acumulado</li>
+          <li>FP composto e por fase (limite ANEEL)</li>
+          <li>%CUB e %VUB com referência NEMA MG-1</li>
+        </ul>
+      </article>
+
+      <article class="card-sensor temperatura" data-aparece>
+        <div class="ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4 4 0 1 0 5 0z"></path>
+          </svg>
+        </div>
+        <h3>Temperatura</h3>
+        <p>Estabilidade térmica de câmaras frias e ambientes externos com indicadores de variação e oscilação.</p>
+        <ul>
+          <li>Média, máximo, mínimo e amplitude</li>
+          <li>Desvio padrão como medida de estabilidade</li>
+          <li>Alertas para leituras fisicamente impossíveis</li>
+        </ul>
+      </article>
+
+      <article class="card-sensor porta" data-aparece>
+        <div class="ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <line x1="15" y1="12" x2="15.01" y2="12"></line>
+          </svg>
+        </div>
+        <h3>Abertura de portas</h3>
+        <p>Sinal bruto de portas convertido em métricas operacionais — quantas vezes abriu, quão estável está, em qual janela.</p>
+        <ul>
+          <li>Detecção automática de transições</li>
+          <li>Estimativa de aberturas por intervalo</li>
+          <li>Identificação de padrões anômalos</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CAPACIDADES ============ -->
+<section class="secao" id="capacidades" style="padding-top:0">
+  <div class="container">
+    <div class="cabecalho" data-aparece>
+      <span class="olho">O que a plataforma faz</span>
+      <h2>Da telemetria bruta <span class="destaque">à decisão.</span></h2>
+      <p class="legenda">
+        Da leitura crua do sensor até a alerta com recomendação — em uma camada só.
+      </p>
+    </div>
+
+    <div class="cards-capacidades">
+      <article class="cartao-borda-grad" data-aparece>
+        <h3>Tempo real</h3>
+        <p>Conexão direta à API BEM com leituras a cada poucos segundos e atualização contínua no painel.</p>
+      </article>
+      <article class="cartao-borda-grad" data-aparece>
+        <h3>Investigação automática</h3>
+        <p>O sistema percorre cada sensor e responde perguntas-guia de operação, retornando achados classificados por severidade.</p>
+      </article>
+      <article class="cartao-borda-grad" data-aparece>
+        <h3>Arquitetura extensível</h3>
+        <p>Cada sensor é uma classe. Quer adicionar pressão, vibração, vazão? Basta estender a classe base e plugar.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA FINAL ============ -->
+<section class="secao" id="tecnologia" style="padding-top:0">
+  <div class="container">
+    <div class="cta" data-aparece>
+      <h2>Pronto pra ligar a sua planta na DataCold?</h2>
+      <p>Abra o painel, cole sua chave de API e veja a infraestrutura inteira em segundos.</p>
+      <a href="paginas/painel/painel.html" class="btn btn-primario btn-grande">
+        Entrar no painel
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RODAPÉ ============ -->
+<footer class="rodape">
+  <div class="container">
+    <p><strong>DataCold</strong> · Monitoramento inteligente de sensores industriais · 2026</p>
+  </div>
+</footer>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="scripts/nucleo/ApiBEM.js"></script>
+<script src="scripts/nucleo/Sensor.js"></script>
+<script src="scripts/nucleo/SensorEnergia.js"></script>
+<script src="scripts/nucleo/SensorTemperatura.js"></script>
+<script src="scripts/nucleo/SensorPorta.js"></script>
+<script src="scripts/nucleo/FabricaSensor.js"></script>
+<script src="paginas/landing/landing.js"></script>
+
+</body>
+</html>

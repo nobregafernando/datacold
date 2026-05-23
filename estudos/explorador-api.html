@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Datacold · Dashboard</title>
+<style>
+  :root{
+    --bg:#f4f6fb;
+    --panel:#ffffff;
+    --panel2:#f1f4fa;
+    --txt:#0f172a;
+    --muted:#5b6b86;
+    --border:#dde4ef;
+    --accent:#1f6feb;
+    --ok:#16a34a;
+    --warn:#d97706;
+    --danger:#dc2626;
+    --energia:#1f6feb;
+    --temp:#d97706;
+    --porta:#16a34a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.5;
+    display:grid;grid-template-columns:280px 1fr;grid-template-rows:auto 1fr;
+    height:100vh;overflow:hidden;
+  }
+
+  /* ============ TOP BAR ============ */
+  .topbar{
+    grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);
+    padding:12px 20px;display:flex;align-items:center;gap:16px;
+  }
+  .brand{font-weight:700;font-size:16px;letter-spacing:-.3px}
+  .brand small{color:var(--muted);font-weight:400;font-size:12px;margin-left:8px}
+  .top-spacer{flex:1}
+  .top-section{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .top-section label{font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .top-section input{
+    border:1px solid var(--border);border-radius:6px;padding:6px 10px;
+    font-family:ui-monospace,monospace;font-size:11px;background:var(--panel2);
+  }
+  .key-input{width:260px}
+  .key-input:focus{outline:none;border-color:var(--accent);background:#fff}
+
+  .range-bar{display:flex;gap:4px}
+  .range-bar button{
+    padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+    background:var(--panel);font-size:11px;cursor:pointer;font-family:ui-monospace,monospace;color:var(--txt);
+  }
+  .range-bar button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .range-bar button:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+
+  .status-pill{
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    background:var(--panel2);font-size:11px;font-weight:600;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:#cbd2dc}
+  .dot.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+  .dot.err{background:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.18)}
+
+  /* ============ SIDEBAR ============ */
+  .sidebar{
+    background:var(--panel);border-right:1px solid var(--border);
+    overflow-y:auto;padding:14px 12px;
+  }
+  .side-title{
+    font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);
+    font-weight:700;margin:0 0 10px;padding-left:6px;
+  }
+  .filter-row{display:flex;gap:4px;margin-bottom:14px;padding:0 4px}
+  .filter-row button{
+    flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border);
+    background:var(--panel);font-size:10px;cursor:pointer;color:var(--muted);
+    font-weight:600;letter-spacing:.3px;text-transform:uppercase;
+  }
+  .filter-row button.active{background:var(--txt);color:#fff;border-color:var(--txt)}
+  .group-label{
+    font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
+    padding:10px 8px 4px;font-weight:700;
+  }
+  .sensor-item{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    cursor:pointer;transition:background .12s;margin-bottom:2px;
+  }
+  .sensor-item:hover{background:var(--panel2)}
+  .sensor-item.active{background:rgba(31,111,235,.10);border-left:3px solid var(--accent);padding-left:7px}
+  .sensor-dot{
+    width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  }
+  .sensor-dot.energia    {background:var(--energia)}
+  .sensor-dot.temperatura{background:var(--temp)}
+  .sensor-dot.porta      {background:var(--porta)}
+  .sensor-info{flex:1;min-width:0}
+  .sensor-info .nm{font-size:12px;font-weight:600;line-height:1.2}
+  .sensor-info .id{font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);line-height:1.2}
+  .sensor-status{font-size:9px;text-transform:uppercase;letter-spacing:.4px;padding:2px 5px;border-radius:3px;font-weight:600}
+  .sensor-status.ativo{background:rgba(22,163,74,.12);color:var(--ok)}
+  .sensor-status.historico{background:rgba(217,119,6,.12);color:var(--warn)}
+
+  /* ============ MAIN ============ */
+  .main{
+    overflow-y:auto;padding:20px 24px 60px;
+  }
+
+  .placeholder{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:80%;color:var(--muted);text-align:center;
+  }
+  .placeholder .big{font-size:48px;font-weight:200;color:#cbd2dc;line-height:1;margin-bottom:14px}
+  .placeholder h2{margin:0 0 6px;font-size:18px;color:var(--txt);font-weight:600}
+  .placeholder p{margin:0;font-size:13px;max-width:360px}
+
+  .src-banner{
+    background:rgba(31,111,235,.06);border:1px solid rgba(31,111,235,.30);
+    border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .src-banner .icon{
+    width:24px;height:24px;border-radius:50%;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0;
+  }
+  .src-banner strong{color:var(--accent)}
+  .src-banner .meta{color:var(--muted);margin-left:auto;font-family:ui-monospace,monospace;font-size:11px}
+
+  .sensor-header{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px;flex-wrap:wrap;
+  }
+  .inline-range{flex-shrink:0;text-align:right}
+  .inline-range .ir-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .inline-range .ir-hint{font-size:10px;color:var(--muted);margin-top:6px;font-style:italic}
+  .sensor-header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.4px}
+  .sensor-header .sub{margin:0;color:var(--muted);font-size:13px}
+  .sensor-header .badges{display:flex;gap:6px;margin-top:8px}
+  .badge{
+    display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+    font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  }
+  .badge.energia    {background:rgba(31,111,235,.10);color:var(--energia)}
+  .badge.temperatura{background:rgba(217,119,6,.10);color:var(--temp)}
+  .badge.porta      {background:rgba(22,163,74,.10);color:var(--porta)}
+  .badge.grp{background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
+
+  .kpi-row{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;
+  }
+  .kpi{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;
+  }
+  .kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .kpi .v{font-size:24px;font-weight:800;line-height:1.1;letter-spacing:-.5px}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .kpi.ok .v{color:var(--ok)}
+  .kpi.warn .v{color:var(--warn)}
+  .kpi.danger .v{color:var(--danger)}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;margin-bottom:14px;
+  }
+  .panel h3{margin:0 0 12px;font-size:13px;font-weight:600}
+  .panel h3 .hint{color:var(--muted);font-weight:400;margin-left:8px;font-size:11px}
+
+  .chart-wrap{position:relative;height:240px}
+
+  .table-wrap{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:6px}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{background:var(--panel2);color:var(--muted);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0}
+  td.num{font-family:ui-monospace,monospace;text-align:right}
+  td.ts{font-family:ui-monospace,monospace;color:var(--muted);font-size:10px}
+
+  .loading{
+    display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:40px;justify-content:center;
+  }
+  .spinner{
+    width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .err-box{
+    background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.30);border-radius:8px;
+    padding:12px 14px;color:var(--danger);font-size:13px;
+  }
+
+  .empty-data{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* mobile: hide sidebar (out of scope para hackathon, mas evita bug) */
+  @media (max-width:760px){
+    body{grid-template-columns:1fr}
+    .sidebar{display:none}
+  }
+
+  /* === INVESTIGAÇÃO === */
+  .invest-launcher{
+    display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;
+    background:linear-gradient(135deg, #1f6feb, #7c3aed);color:#fff;cursor:pointer;
+    margin:0 4px 16px;transition:transform .12s;
+  }
+  .invest-launcher:hover{transform:translateY(-1px)}
+  .invest-icon{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+  .invest-title{font-size:13px;font-weight:700;line-height:1.1}
+  .invest-sub{font-size:10px;opacity:.85}
+
+  .invest-summary{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;
+  }
+  .invest-summary .item{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;
+  }
+  .invest-summary .item.crit{border-color:rgba(220,38,38,.5);background:rgba(220,38,38,.04)}
+  .invest-summary .item.warn{border-color:rgba(217,119,6,.5);background:rgba(217,119,6,.04)}
+  .invest-summary .item.ok  {border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.04)}
+  .invest-summary .v{font-size:28px;font-weight:800;line-height:1}
+  .invest-summary .item.crit .v{color:var(--danger)}
+  .invest-summary .item.warn .v{color:var(--warn)}
+  .invest-summary .item.ok   .v{color:var(--ok)}
+  .invest-summary .l{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:4px;font-weight:700}
+
+  .sensor-finding{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;margin-bottom:12px;border-left:4px solid var(--border);
+  }
+  .sensor-finding.crit{border-left-color:var(--danger)}
+  .sensor-finding.warn{border-left-color:var(--warn)}
+  .sensor-finding.info{border-left-color:var(--accent)}
+  .sensor-finding.ok{border-left-color:var(--ok)}
+  .sf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+  .sf-title{font-size:15px;font-weight:700}
+  .sf-title .id{font-family:ui-monospace,monospace;font-weight:400;color:var(--muted);font-size:11px;margin-left:8px}
+  .sf-head .right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .sf-flag{
+    padding:3px 10px;border-radius:6px;font-size:10px;font-weight:800;
+    letter-spacing:.6px;text-transform:uppercase;
+  }
+  .sf-flag.crit{background:rgba(220,38,38,.12);color:var(--danger)}
+  .sf-flag.warn{background:rgba(217,119,6,.12);color:var(--warn)}
+  .sf-flag.info{background:rgba(31,111,235,.10);color:var(--accent)}
+  .sf-flag.ok  {background:rgba(22,163,74,.12);color:var(--ok)}
+  .sf-issue{
+    display:grid;grid-template-columns:60px 1fr;gap:12px;padding:8px 0;
+    border-bottom:1px solid var(--border);align-items:flex-start;
+  }
+  .sf-issue:last-child{border-bottom:none}
+  .sf-sev{
+    padding:2px 7px;border-radius:5px;font-size:9px;font-weight:800;
+    letter-spacing:.5px;text-transform:uppercase;text-align:center;
+  }
+  .sf-sev.crit{background:rgba(220,38,38,.12);color:var(--danger)}
+  .sf-sev.warn{background:rgba(217,119,6,.12);color:var(--warn)}
+  .sf-sev.info{background:rgba(31,111,235,.10);color:var(--accent)}
+  .sf-q{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:3px}
+  .sf-msg{font-size:13px;color:var(--txt)}
+  .sf-metrics{
+    margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);
+    display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--muted);
+  }
+  .sf-metrics span{font-family:ui-monospace,monospace;color:var(--txt)}
+  .sf-window{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace;margin-top:4px}
+
+  /* === IDEAL PARAMS === */
+  .ideal-card{
+    background:linear-gradient(135deg, rgba(31,111,235,.04), rgba(124,58,237,.04));
+    border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;
+    border-left:4px solid var(--accent);
+  }
+  .ideal-card h3{margin:0 0 12px;font-size:14px;font-weight:700;letter-spacing:-.2px}
+  .ideal-card h3 .hint{color:var(--muted);font-weight:400;font-size:11px;margin-left:8px}
+  .ideal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+  .ideal-item{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .ideal-item .ip-label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700}
+  .ideal-item .ip-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px dashed var(--border);padding-top:8px}
+  .ideal-item .ip-col .ip-tag{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .ideal-item .ip-col .ip-val{font-family:ui-monospace,monospace;font-size:14px;font-weight:700;line-height:1.2}
+  .ideal-item .ip-ideal .ip-val{color:var(--accent)}
+  .ideal-item .ip-medido .ip-val.ok  {color:var(--ok)}
+  .ideal-item .ip-medido .ip-val.warn{color:var(--warn)}
+  .ideal-item .ip-medido .ip-val.crit{color:var(--danger)}
+  .ideal-item .ip-medido .ip-val.info{color:var(--accent)}
+  .ideal-item .ip-medido .ip-val.muted{color:var(--muted)}
+  .ideal-item .ip-status{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;padding:2px 6px;border-radius:4px;display:inline-block;margin-top:5px}
+  .ideal-item .ip-status.ok  {background:rgba(22,163,74,.12);color:var(--ok)}
+  .ideal-item .ip-status.warn{background:rgba(217,119,6,.12);color:var(--warn)}
+  .ideal-item .ip-status.crit{background:rgba(220,38,38,.12);color:var(--danger)}
+  .ideal-item .ip-status.info{background:rgba(31,111,235,.10);color:var(--accent)}
+  .ideal-source{font-size:10px;color:var(--muted);font-style:italic;margin-top:10px}
+
+  /* === SENSOR ILLUSTRATION === */
+  .sensor-illu{
+    display:flex;align-items:center;gap:14px;margin-bottom:14px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;
+  }
+  .sensor-illu svg{flex-shrink:0}
+  .sensor-illu .descr{font-size:13px;color:var(--muted)}
+  .sensor-illu .descr strong{color:var(--txt)}
+
+  /* === Q&A === */
+  .qa-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .qa-card h3{margin:0 0 4px;font-size:14px;font-weight:700}
+  .qa-card .sub{margin:0 0 14px;font-size:12px;color:var(--muted)}
+  .qa-item{
+    display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .qa-item:last-child{border-bottom:none}
+  .qa-status{
+    padding:3px 8px;border-radius:5px;font-size:10px;font-weight:800;
+    letter-spacing:.5px;text-transform:uppercase;text-align:center;height:fit-content;
+  }
+  .qa-status.crit{background:rgba(220,38,38,.12);color:var(--danger)}
+  .qa-status.warn{background:rgba(217,119,6,.12);color:var(--warn)}
+  .qa-status.ok  {background:rgba(22,163,74,.12);color:var(--ok)}
+  .qa-status.info{background:rgba(31,111,235,.10);color:var(--accent)}
+  .qa-q{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:4px}
+  .qa-a{font-size:13px;color:var(--txt)}
+  .qa-item .qa-diag{
+    margin-top:8px;padding:8px 10px;border-radius:6px;
+    background:rgba(31,111,235,.06);border-left:3px solid var(--accent);
+    font-size:12px;color:var(--txt);
+  }
+  .qa-item .qa-diag strong{color:var(--accent)}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Datacold <small>· dashboard da API BEM</small></div>
+  <span class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">verificando…</span></span>
+  <div class="top-spacer"></div>
+
+  <div class="top-section">
+    <label>chave</label>
+    <input id="apiKey" class="key-input" type="password" value="04379f4f1c57e0a01c5062ab5b224b2e863ad863" autocomplete="off">
+  </div>
+</div>
+
+<aside class="sidebar">
+  <div class="invest-launcher" id="investBtn">
+    <div class="invest-icon">!</div>
+    <div>
+      <div class="invest-title">Investigação geral</div>
+      <div class="invest-sub">14 sensores · achados automáticos</div>
+    </div>
+  </div>
+  <div class="side-title">Sensores</div>
+  <div class="filter-row" id="filterRow">
+    <button data-filter="todos" class="active">Todos</button>
+    <button data-filter="energia">Energia</button>
+    <button data-filter="temperatura">Temp</button>
+    <button data-filter="porta">Porta</button>
+  </div>
+  <div id="sensorList"></div>
+</aside>
+
+<main class="main">
+  <div id="content">
+    <div class="placeholder">
+      <div class="big">←</div>
+      <h2>Escolha um sensor à esquerda</h2>
+      <p>Os dados são puxados ao vivo da API da BEM Inteligência. A chave fica salva só no seu navegador.</p>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const API_BASE = "https://desafio.beminteligencia.com.br";
+const KEY_STORAGE = "datacold_api_key";
+
+const $ = (id)=>document.getElementById(id);
+let sensors=[], groups=[];
+let currentFilter="todos";
+let currentSensor=null;
+let currentRange="-1h";
+let charts=[];
+
+// ============ INIT ============
+async function init(){
+  const saved = localStorage.getItem(KEY_STORAGE);
+  if(saved) $("apiKey").value = saved;
+  // se ainda não há nada salvo, mantém o default já no atributo value
+  $("apiKey").addEventListener("change", ()=>{
+    localStorage.setItem(KEY_STORAGE, $("apiKey").value.trim());
+    if(currentSensor) loadSensor(currentSensor.id);
+  });
+
+  // status
+  try{
+    const h = await fetch(`${API_BASE}/health`).then(r=>r.json());
+    $("statusDot").classList.add("ok");
+    $("statusText").textContent = h.demo_mode ? "API · modo demo" : "API · dados reais";
+  }catch(e){
+    $("statusDot").classList.add("err");
+    $("statusText").textContent = "API offline";
+  }
+
+  // catálogo
+  try{
+    const d = await fetch(`${API_BASE}/api/v1/sensors`).then(r=>r.json());
+    sensors = d.sensors;
+    groups = d.groups;
+    renderSidebar();
+  }catch(e){
+    $("sensorList").innerHTML = "<div class='err-box' style='margin:10px'>Erro ao carregar sensores.</div>";
+  }
+
+  // filtros
+  document.querySelectorAll("#filterRow button").forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll("#filterRow button").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      currentFilter = b.dataset.filter;
+      renderSidebar();
+    };
+  });
+
+}
+
+// ============ SIDEBAR ============
+function renderSidebar(){
+  const cont = $("sensorList");
+  cont.innerHTML = "";
+  const order = ["extrusao","camara_congelados","camara_estoque","graxaria","externo_campo_grande","externo_tres_lagoas"];
+  order.forEach(gid=>{
+    const grp = groups.find(g=>g.id===gid);
+    if(!grp) return;
+    const filtered = grp.sensors.filter(sid=>{
+      const s = sensors.find(x=>x.id===sid);
+      return currentFilter==="todos" || (s && s.type===currentFilter);
+    });
+    if(filtered.length===0) return;
+    const lbl = document.createElement("div");
+    lbl.className = "group-label";
+    lbl.textContent = grp.label;
+    cont.appendChild(lbl);
+    filtered.forEach(sid=>{
+      const s = sensors.find(x=>x.id===sid);
+      if(!s) return;
+      const item = document.createElement("div");
+      item.className = "sensor-item" + (currentSensor && currentSensor.id===s.id ? " active" : "");
+      item.innerHTML = `
+        <span class="sensor-dot ${s.type}"></span>
+        <div class="sensor-info"><div class="nm">${s.label}</div><div class="id">${s.id}</div></div>
+        <span class="sensor-status ${s.status}">${s.status}</span>
+      `;
+      item.onclick = ()=>{
+        currentSensor = s;
+        renderSidebar();
+        loadSensor(s.id);
+      };
+      cont.appendChild(item);
+    });
+  });
+}
+
+// ============ LOAD ============
+async function loadSensor(sensorId){
+  const key = $("apiKey").value.trim();
+  const s = sensors.find(x=>x.id===sensorId);
+  if(!s) return;
+
+  // se for histórico e a janela for recente, ajusta automaticamente
+  let start = currentRange;
+  let stop = "now";
+  if(s.status === "historico" && !["-7d","-24h"].includes(start)){
+    start = "-90d";
+    stop = "-30d";
+  }
+
+  $("content").innerHTML = `
+    <div class="src-banner">
+      <div class="icon">!</div>
+      <div><strong>Carregando…</strong> sensor <code>${sensorId}</code></div>
+    </div>
+    <div class="loading"><div class="spinner"></div> Buscando na API BEM…</div>
+  `;
+
+  if(!key){
+    $("content").innerHTML = renderHeader(s, null) + `
+      <div class="err-box">
+        Cole sua <strong>X-API-Key</strong> no topo da tela. Sem ela, a API não devolve dados (mas o catálogo é público).
+      </div>
+    `;
+    bindInlineRange();
+    return;
+  }
+
+  const url = `${API_BASE}/api/v1/data?sensor=${sensorId}&start=${encodeURIComponent(start)}&stop=${encodeURIComponent(stop)}&limit=1000`;
+  try{
+    const r = await fetch(url, { headers: {"X-API-Key": key} });
+    if(!r.ok){
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status} · ${t.substring(0,140)}`);
+    }
+    const data = await r.json();
+    render(s, data, start, stop);
+  }catch(e){
+    $("content").innerHTML = renderHeader(s, null) + `<div class="err-box">Erro ao buscar dados: ${e.message}</div>`;
+    bindInlineRange();
+  }
+}
+
+function renderHeader(s, data){
+  const grp = groups.find(g=>g.id===s.group);
+  const fetchedAt = new Date().toLocaleString("pt-BR");
+  const ranges = [
+    {v:"-30m",  l:"30m"},
+    {v:"-1h",   l:"1h"},
+    {v:"-6h",   l:"6h"},
+    {v:"-24h",  l:"24h"},
+    {v:"-72h",  l:"3d"},
+    {v:"-167h", l:"7d (máx)"},
+  ];
+  return `
+    <div class="src-banner">
+      <div class="icon">A</div>
+      <div><strong>Dados ao vivo da API BEM</strong> · sensor <code>${s.id}</code></div>
+      <div class="meta">consultado em ${fetchedAt}${data ? ` · ${data.count} pontos` : ""}</div>
+    </div>
+    <div class="sensor-header">
+      <div style="flex:1">
+        <h1>${s.label}</h1>
+        <p class="sub">${grp ? grp.description : ""}</p>
+        <div class="badges">
+          <span class="badge ${s.type}">${s.type}</span>
+          <span class="badge grp">${grp ? grp.label : s.group}</span>
+        </div>
+      </div>
+      <div class="inline-range">
+        <div class="ir-label">Período</div>
+        <div class="range-bar" id="inlineRange">
+          ${ranges.map(r=>`<button data-start="${r.v}" ${r.v===currentRange?'class="active"':''}>${r.l}</button>`).join("")}
+        </div>
+        <div class="ir-hint">limite da API: até 168h por consulta</div>
+      </div>
+    </div>
+  `;
+}
+
+function bindInlineRange(){
+  const ir = document.getElementById("inlineRange");
+  if(!ir) return;
+  ir.querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=>{
+      ir.querySelectorAll("button").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      currentRange = b.dataset.start;
+      if(currentSensor) loadSensor(currentSensor.id);
+    };
+  });
+}
+
+// ============ RENDER ============
+function render(s, data, start, stop){
+  destroyCharts();
+  let html = renderHeader(s, data);
+
+  if(data.points.length === 0){
+    html += `<div class="panel"><div class="empty-data">Sem dados nesse intervalo.<br>Tente uma janela maior (na barra do topo).</div></div>`;
+    $("content").innerHTML = html;
+    return;
+  }
+
+  // Ilustração + descrição
+  html += `<div class="sensor-illu">${svgFor(s.type)}<div class="descr">${descricaoSensor(s.type)}</div></div>`;
+  // Parâmetros ideais
+  html += paramsIdeais(s, data);
+  // KPIs
+  const k = indicators(data);
+  html += `<h3 style="font-size:13px;font-weight:700;margin:8px 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Métricas calculadas</h3>
+  <div class="kpi-row">${k.map(it=>`
+    <div class="kpi ${it.cls||''}">
+      <div class="l">${it.label}</div>
+      <div class="v">${it.value}</div>
+      ${it.sub?`<div class="sub">${it.sub}</div>`:""}
+    </div>`).join("")}</div>`;
+
+  // Charts placeholder
+  html += `<div id="chartsBox"></div>`;
+
+  // Q&A
+  html += qaSection(s.id);
+  // Tabela
+  html += `<div class="panel"><h3>Últimos pontos retornados<span class="hint">${data.count} linhas · janela ${start} → ${stop}</span></h3><div class="table-wrap">${buildTable(data)}</div></div>`;
+
+  $("content").innerHTML = html;
+  bindInlineRange();
+  buildCharts(s, data);
+}
+
+function destroyCharts(){ charts.forEach(c=>c.destroy()); charts=[]; }
+
+// ============ INDICADORES ============
+function avg(a){return a.reduce((s,x)=>s+(+x||0),0)/a.length}
+
+function indicators(data){
+  const k=[];
+  const pts = data.points;
+
+  if(data.type === "energia"){
+    const Ia=avg(pts.map(p=>p.corrente_fase_a)), Ib=avg(pts.map(p=>p.corrente_fase_b)), Ic=avg(pts.map(p=>p.corrente_fase_c));
+    const Va=avg(pts.map(p=>p.tensao_fase_a)),   Vb=avg(pts.map(p=>p.tensao_fase_b)),   Vc=avg(pts.map(p=>p.tensao_fase_c));
+    const FPa=avg(pts.map(p=>p.fator_potencia_a)),FPb=avg(pts.map(p=>p.fator_potencia_b)),FPc=avg(pts.map(p=>p.fator_potencia_c));
+    const P_pts = pts.map(p =>
+      (p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0)
+    + (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0)
+    + (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)
+    );
+    const P_kW = avg(P_pts)/1000;
+    let kWh=0;
+    for(let i=1;i<pts.length;i++){
+      const dt = (new Date(pts[i].time) - new Date(pts[i-1].time))/1000;
+      kWh += ((P_pts[i]+P_pts[i-1])/2) * dt;
+    }
+    kWh = kWh/3600/1000;
+    k.push({label:"Potência média", value: P_kW.toFixed(2)+" kW"});
+    k.push({label:"Energia estimada", value: kWh.toFixed(2)+" kWh", sub:"no intervalo"});
+    k.push({label:"Pontos no intervalo", value: pts.length});
+  }
+  else if(data.type === "temperatura"){
+    const vals = pts.map(p=>p.temperatura);
+    const mean=avg(vals), min=Math.min(...vals), max=Math.max(...vals);
+    k.push({label:"Temperatura média", value: mean.toFixed(2)+" °C"});
+    k.push({label:"Mínima", value: min.toFixed(2)+" °C"});
+    k.push({label:"Máxima", value: max.toFixed(2)+" °C"});
+    k.push({label:"Amplitude", value: (max-min).toFixed(2)+" °C", sub:"max − min"});
+    k.push({label:"Pontos no intervalo", value: pts.length});
+  }
+  else if(data.type === "porta"){
+    const vals = pts.map(p=>p.abertura_porta);
+    const mean=avg(vals), min=Math.min(...vals), max=Math.max(...vals);
+    let trans=0;
+    for(let i=1;i<vals.length;i++) if(Math.abs(vals[i]-vals[i-1]) > (max-min)/3) trans++;
+    k.push({label:"Transições detectadas", value: trans, sub:"mudanças bruscas no sinal"});
+    k.push({label:"Pontos no intervalo", value: pts.length});
+  }
+  return k;
+}
+
+// ============ CHARTS ============
+function buildCharts(s, data){
+  const box = $("chartsBox");
+  box.innerHTML = "";
+  const labels = data.points.map(p => new Date(p.time).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+
+  if(data.type === "energia"){
+    addChart(box, "Corrente por fase (A)", labels, [
+      {label:"Fase A", data:data.points.map(p=>p.corrente_fase_a), borderColor:"#1f6feb"},
+      {label:"Fase B", data:data.points.map(p=>p.corrente_fase_b), borderColor:"#16a34a"},
+      {label:"Fase C", data:data.points.map(p=>p.corrente_fase_c), borderColor:"#d97706"},
+    ]);
+    addChart(box, "Tensão por fase (V)", labels, [
+      {label:"Fase A", data:data.points.map(p=>p.tensao_fase_a), borderColor:"#1f6feb"},
+      {label:"Fase B", data:data.points.map(p=>p.tensao_fase_b), borderColor:"#16a34a"},
+      {label:"Fase C", data:data.points.map(p=>p.tensao_fase_c), borderColor:"#d97706"},
+    ]);
+    addChart(box, "Fator de potência por fase", labels, [
+      {label:"Fase A", data:data.points.map(p=>p.fator_potencia_a), borderColor:"#1f6feb"},
+      {label:"Fase B", data:data.points.map(p=>p.fator_potencia_b), borderColor:"#16a34a"},
+      {label:"Fase C", data:data.points.map(p=>p.fator_potencia_c), borderColor:"#d97706"},
+      {label:"Limite ANEEL (0,92)", data:data.points.map(()=>0.92), borderColor:"#dc2626", borderDash:[6,4], pointRadius:0},
+    ]);
+    const P = data.points.map(p=>(
+      (p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0)
+    + (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0)
+    + (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)
+    )/1000);
+    addChart(box, "Potência ativa total (kW)", labels, [
+      {label:"P", data:P, borderColor:"#7c3aed", fill:true, backgroundColor:"rgba(124,58,237,.10)"},
+    ]);
+  }
+  else if(data.type === "temperatura"){
+    addChart(box, "Temperatura (°C)", labels, [
+      {label:"Temperatura", data:data.points.map(p=>p.temperatura), borderColor:"#d97706", fill:true, backgroundColor:"rgba(217,119,6,.10)"},
+    ]);
+  }
+  else if(data.type === "porta"){
+    addChart(box, "Sinal de abertura (valor bruto)", labels, [
+      {label:"abertura_porta", data:data.points.map(p=>p.abertura_porta), borderColor:"#16a34a", stepped:true},
+    ]);
+  }
+}
+
+function addChart(parent, title, labels, datasets){
+  const wrap = document.createElement("div");
+  wrap.className = "panel";
+  wrap.innerHTML = `<h3>${title}</h3><div class="chart-wrap"><canvas></canvas></div>`;
+  parent.appendChild(wrap);
+  const ds = datasets.map(d=>({
+    ...d,
+    borderWidth: 1.8,
+    pointRadius: 1.2,
+    pointHoverRadius: 4,
+    tension: 0.15,
+    fill: d.fill || false,
+  }));
+  const ch = new Chart(wrap.querySelector("canvas"), {
+    type: "line",
+    data: { labels, datasets: ds },
+    options: {
+      responsive:true, maintainAspectRatio:false, interaction:{mode:"index", intersect:false},
+      plugins: { legend: { position:"bottom", labels:{boxWidth:10, font:{size:11}, padding:10} } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 7, font:{size:10}, color:"#5b6b86" }, grid:{color:"#eef1f7"} },
+        y: { ticks: { font:{size:10}, color:"#5b6b86" }, grid:{color:"#eef1f7"} },
+      },
+    },
+  });
+  charts.push(ch);
+}
+
+// ============ TABLE ============
+function buildTable(data){
+  const cols = ["time", ...data.fields];
+  let html = "<thead><tr>" + cols.map(c=>`<th>${c}</th>`).join("") + "</tr></thead><tbody>";
+  data.points.slice(-50).reverse().forEach(p=>{
+    html += "<tr>";
+    cols.forEach(c=>{
+      if(c==="time") html += `<td class="ts">${new Date(p[c]).toLocaleString("pt-BR")}</td>`;
+      else html += `<td class="num">${typeof p[c]==="number" ? p[c].toFixed(3) : (p[c]??"—")}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody>";
+  return html;
+}
+
+
+const QA = [{"sensor": "extrusora_1", "label": "Extrusora 1", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3505, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "crit", "answer": "Esse: 23.01 kW · pares: extrusora_2=12.53kW, extrusora_3=-8.67kW (média 1.93 kW) · desvio +1091%.", "diagnostico": "Esse equipamento desvia muito (>50%) da média dos pares similares. Carga atípica, manutenção pendente, processo desbalanceado, ou medidor com leitura errada. Comparar com unidades irmãs antes de qualquer ação."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = 0.706 · fases: 0.74 / 0.39 / 0.98.", "diagnostico": "FP muito baixo (<0,85). Provável motor de indução sem correção, banco de capacitores queimado/desligado, ou carga indutiva sem compensação. Concessionária multa todo mês — instalar/restaurar banco de capacitores."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "ok", "answer": "%CUB = 1.7% (NEMA: <5% ideal, >10% crítico). Médias: 91/94/94 A."}, {"q": "A tensão está balanceada entre as fases?", "status": "info", "answer": "%VUB = 1.39% (NEMA: <1% ideal, máx 2%). Médias: 122/125/125 V."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "O consumo está crescendo dentro do próprio período (sinal de degradação)?", "status": "warn", "answer": "Primeira metade: 18.63 kW · segunda: 27.38 kW · variação +47.0%. Mudança grande pode ser carga nova, falha incipiente ou nada — investigar contexto.", "diagnostico": "Consumo mudou ao longo do período (>20%). Carga nova adicionada (sem problema), falha incipiente (rolamento, isolação) ou mudança operacional. Confirmar com supervisão antes de alarmar."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "warn", "answer": "12 quedas detectadas (>80% de drop num passo único). Última: 22/05 18:52 de 2.1kW para 0.0kW.", "diagnostico": "Drops abruptos de consumo. Contator com mau contato (arco elétrico), proteção térmica atuando, queda momentânea de fase. Cada queda traz risco de queima ao motor."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "ok", "answer": "Desvio-padrão primeira metade: 11.00 kW · segunda: 8.12 kW (razão 0.74). Razão > 1,5 = volatilidade crescente."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 156 A em 23/05 14:43 (1.7× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média 23.01 kW · pico 37.14 kW em 23/05 08:33 · mínimo 0.00 kW."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "ok", "answer": "Correlação por hora: r=-0.08 sobre 130 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "warn", "answer": "23 lacunas detectadas em 3505 amostras. Maior: 7161s. Intervalo médio: 145s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "21.94 kWh/hora ao longo de 141.2h."}]}, {"sensor": "extrusora_2", "label": "Extrusora 2", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3961, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "crit", "answer": "Esse: 12.53 kW · pares: extrusora_1=23.01kW, extrusora_3=-8.67kW (média 7.17 kW) · desvio +75%.", "diagnostico": "Esse equipamento desvia muito (>50%) da média dos pares similares. Carga atípica, manutenção pendente, processo desbalanceado, ou medidor com leitura errada. Comparar com unidades irmãs antes de qualquer ação."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = 0.453 · fases: 0.40 / 0.48 / 0.47.", "diagnostico": "FP muito baixo (<0,85). Provável motor de indução sem correção, banco de capacitores queimado/desligado, ou carga indutiva sem compensação. Concessionária multa todo mês — instalar/restaurar banco de capacitores."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "warn", "answer": "%CUB = 6.6% (NEMA: <5% ideal, >10% crítico). Médias: 84/83/92 A.", "diagnostico": "Desequilíbrio moderado (5-10%) de corrente. Inspecionar conexões nos terminais do motor e distribuição de cargas monofásicas no quadro elétrico antes de virar crítico."}, {"q": "A tensão está balanceada entre as fases?", "status": "info", "answer": "%VUB = 1.40% (NEMA: <1% ideal, máx 2%). Médias: 122/124/125 V."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "O consumo está crescendo dentro do próprio período (sinal de degradação)?", "status": "ok", "answer": "Primeira metade: 12.29 kW · segunda: 12.77 kW · variação +3.9%. Mudança grande pode ser carga nova, falha incipiente ou nada — investigar contexto."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "warn", "answer": "29 quedas detectadas (>80% de drop num passo único). Última: 23/05 13:22 de 2.2kW para 0.0kW.", "diagnostico": "Drops abruptos de consumo. Contator com mau contato (arco elétrico), proteção térmica atuando, queda momentânea de fase. Cada queda traz risco de queima ao motor."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "ok", "answer": "Desvio-padrão primeira metade: 7.32 kW · segunda: 5.16 kW (razão 0.71). Razão > 1,5 = volatilidade crescente."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 180 A em 19/05 01:46 (2.1× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média 12.53 kW · pico 25.46 kW em 19/05 01:46 · mínimo 0.00 kW."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "ok", "answer": "Correlação por hora: r=-0.35 sobre 129 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "warn", "answer": "26 lacunas detectadas em 3961 amostras. Maior: 7117s. Intervalo médio: 128s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "11.74 kWh/hora ao longo de 141.0h."}]}, {"sensor": "extrusora_3", "label": "Extrusora 3", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3647, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "crit", "answer": "Esse: -8.67 kW · pares: extrusora_1=23.01kW, extrusora_2=12.53kW (média 17.77 kW) · desvio -149%.", "diagnostico": "Esse equipamento desvia muito (>50%) da média dos pares similares. Carga atípica, manutenção pendente, processo desbalanceado, ou medidor com leitura errada. Comparar com unidades irmãs antes de qualquer ação."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = -0.075 (NEGATIVO — possível fiação invertida do medidor ou fluxo reverso) · fases: -0.10 / -0.05 / -0.07.", "diagnostico": "Fluxo reverso de potência: provável fiação dos transformadores de corrente invertida ou medidor instalado ao contrário. Em sorveteria sem geração própria, não é fluxo real — é erro de leitura. Solução: inverter os TCs no medidor."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "warn", "answer": "%CUB = 5.9% (NEMA: <5% ideal, >10% crítico). Médias: 63/61/68 A.", "diagnostico": "Desequilíbrio moderado (5-10%) de corrente. Inspecionar conexões nos terminais do motor e distribuição de cargas monofásicas no quadro elétrico antes de virar crítico."}, {"q": "A tensão está balanceada entre as fases?", "status": "info", "answer": "%VUB = 1.54% (NEMA: <1% ideal, máx 2%). Médias: 122/125/125 V."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "ok", "answer": "0 quedas detectadas (>80% de drop num passo único). Nenhuma queda anormal."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "ok", "answer": "Desvio-padrão primeira metade: 6.41 kW · segunda: 6.56 kW (razão 1.02). Razão > 1,5 = volatilidade crescente."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 168 A em 21/05 19:26 (2.6× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média -8.67 kW · pico 0.00 kW em 17/05 17:38 · mínimo -20.40 kW."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "info", "answer": "Correlação por hora: r=+0.34 sobre 130 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "warn", "answer": "24 lacunas detectadas em 3647 amostras. Maior: 7382s. Intervalo médio: 139s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "-8.51 kWh/hora ao longo de 141.2h."}]}, {"sensor": "congelados_compressor", "label": "Compressor de Refrigeração", "group": "Câmara de Congelados", "group_id": "camara_congelados", "type": "energia", "status": "ativo", "count": 5000, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "ok", "answer": "Esse: -30.63 kW · pares: estoque_compressor_1=-51.67kW, estoque_compressor_2=-28.33kW (média -40.00 kW) · desvio +0%."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = -0.428 (NEGATIVO — possível fiação invertida do medidor ou fluxo reverso) · fases: -0.39 / -0.50 / -0.39.", "diagnostico": "Fluxo reverso de potência: provável fiação dos transformadores de corrente invertida ou medidor instalado ao contrário. Em sorveteria sem geração própria, não é fluxo real — é erro de leitura. Solução: inverter os TCs no medidor."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "crit", "answer": "%CUB = 11.5% (NEMA: <5% ideal, >10% crítico). Médias: 104/85/91 A.", "diagnostico": "Desequilíbrio severo de corrente (>10%). No motor: curto entre espiras, conexão frouxa, barra rotórica quebrada. Na rede: cargas monofásicas mal distribuídas. Diferenciar checando tensão — se VUB também alto, é da rede; se só corrente, é do motor."}, {"q": "A tensão está balanceada entre as fases?", "status": "ok", "answer": "%VUB = 0.45% (NEMA: <1% ideal, máx 2%). Médias: 124/125/124 V."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "ok", "answer": "0 quedas detectadas (>80% de drop num passo único). Nenhuma queda anormal."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "ok", "answer": "Desvio-padrão primeira metade: 18.35 kW · segunda: 22.67 kW (razão 1.24). Razão > 1,5 = volatilidade crescente."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 219 A em 17/05 07:00 (2.4× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média -30.63 kW · pico 0.00 kW em 16/05 17:09 · mínimo -67.42 kW."}, {"q": "O compressor está rodando mas a câmara não está esfriando?", "status": "crit", "answer": "Compressor médio -30.63 kW · câmara de congelados em -8.6°C (alvo: -28 a -18). Esforço sem resultado — vazamento de gás, válvula travada ou condensador sujo.", "diagnostico": "Compressor trabalha mas não há frio. Causas mais comuns (em ordem): vazamento de gás refrigerante, condensador sujo ou ventoinha parada, válvula de expansão travada. Inspeção urgente — produto em risco."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "ok", "answer": "Correlação por hora: r=-0.30 sobre 26 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "ok", "answer": "Sem lacunas significativas. Intervalo médio: 18s."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "-29.96 kWh/hora ao longo de 24.9h."}]}, {"sensor": "congelados_temperatura", "label": "Temperatura Interna", "group": "Câmara de Congelados", "group_id": "camara_congelados", "type": "temperatura", "status": "ativo", "count": 2761, "window": "-167h → now", "questions": [{"q": "Qual a faixa ideal para essa câmara?", "status": "info", "answer": "câmara de congelados: -28°C a -18°C (referência industrial)."}, {"q": "Quanto tempo a temperatura ficou fora da faixa segura?", "status": "crit", "answer": "100% das 2761 leituras fora de -28 a -18°C. Média: -8.6°C.", "diagnostico": "Câmara de congelados fora da faixa (-25 a -18°C) na maior parte do tempo. Falha grave: vazamento de gás, compressor em falha, válvula travada, ou setpoint errado. Risco real à qualidade do sorvete (RDC 275 da ANVISA)."}, {"q": "Os valores extremos são fisicamente plausíveis?", "status": "crit", "answer": "Mín -17.3°C, máx 85.0°C. Valores fora do envelope físico = sensor com defeito momentâneo ou leitura corrompida.", "diagnostico": "Leituras impossíveis (ex.: +85°C em câmara de congelados). Sensor com defeito intermitente, cabo solto, sensor exposto a fonte de calor pontual, ou interferência elétrica no sinal. Trocar ou recalibrar o sensor."}, {"q": "A temperatura está estável ou oscilando muito?", "status": "warn", "answer": "Desvio-padrão: 15.21°C · amplitude: 102.3°C. Faixa ideal tem 10°C de amplitude — oscilação maior que metade disso é atenção.", "diagnostico": "Oscilação excessiva. Setpoint mal ajustado, ciclo do compressor errático (short-cycling), ou interferência elétrica no sensor. Câmara não está em equilíbrio."}, {"q": "A temperatura tem tendência de subir ou cair ao longo do período?", "status": "ok", "answer": "Tendência baixa (+0.025°C/h). Sistema térmico estável no período."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Variação σ=15.21°C indica leituras dinâmicas — sensor responde."}, {"q": "A câmara não está esfriando mesmo com o compressor rodando?", "status": "warn", "answer": "Câmara fora da faixa (-8.6°C, alvo -18°C) e compressor com consumo baixo (-30.63 kW) — compressor pode estar desligado ou em falha."}, {"q": "Tem picos isolados ou é uma variação contínua?", "status": "warn", "answer": "59 pontos com |z-score|>3 · padrão caótico (picos).", "diagnostico": "Picos de corrente acima de 8× a média. Rolamento desgastado, contator com arco elétrico, ou partidas em condição de travamento mecânico. Investigar logo — falhas catastróficas começam assim."}, {"q": "Comparado a outros sensores de temperatura, esse se destaca?", "status": "info", "answer": "Esse: -8.6°C · outros: estoque_temperatura=-3.9°C, graxaria_temperatura=-9.2°C, externo_cg_temperatura=19.4°C, externo_tl_temperatura=13.0°C."}, {"q": "Qual foi a maior temperatura e quando?", "status": "crit", "answer": "Máxima 85.0°C em 20/05 21:16."}, {"q": "Qual foi a menor temperatura e quando?", "status": "info", "answer": "Mínima -17.3°C em 22/05 08:11."}, {"q": "A temperatura externa influencia essa câmara?", "status": "ok", "answer": "Correlação por hora: r=+0.04 (130 horas). Câmara bem isolada deveria ter correlação baixa."}, {"q": "A telemetria do sensor é confiável?", "status": "warn", "answer": "52 lacunas (>5× média e >5min). Maior: 55401s. Intervalo médio: 217s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "A média da temperatura na segunda metade do período subiu vs primeira metade?", "status": "warn", "answer": "Primeira metade: -10.59°C · segunda: -6.67°C · variação +3.91°C."}]}, {"sensor": "estoque_compressor_1", "label": "Motor do Compressor 1", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "energia", "status": "ativo", "count": 3481, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "ok", "answer": "Esse: -51.67 kW · pares: estoque_compressor_2=-28.33kW (média -28.33 kW) · desvio +0%."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = -0.762 (NEGATIVO — possível fiação invertida do medidor ou fluxo reverso) · fases: -0.69 / -0.92 / -0.67.", "diagnostico": "Fluxo reverso de potência: provável fiação dos transformadores de corrente invertida ou medidor instalado ao contrário. Em sorveteria sem geração própria, não é fluxo real — é erro de leitura. Solução: inverter os TCs no medidor."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "crit", "answer": "%CUB = 22.2% (NEMA: <5% ideal, >10% crítico). Médias: 84/122/93 A.", "diagnostico": "Desequilíbrio severo de corrente (>10%). No motor: curto entre espiras, conexão frouxa, barra rotórica quebrada. Na rede: cargas monofásicas mal distribuídas. Diferenciar checando tensão — se VUB também alto, é da rede; se só corrente, é do motor."}, {"q": "A tensão está balanceada entre as fases?", "status": "warn", "answer": "%VUB = 2.68% (NEMA: <1% ideal, máx 2%). Médias: 222/215/226 V.", "diagnostico": "Desequilíbrio de tensão. Cargas monofásicas mal distribuídas no quadro, conexão frouxa no QGBT, ou transformador da entrada com problema. Acima de 2% reduz vida útil do motor (regra de Arrhenius)."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "warn", "answer": "15 quedas detectadas (>80% de drop num passo único). Última: 23/05 08:48 de 1.6kW para -102.9kW.", "diagnostico": "Drops abruptos de consumo. Contator com mau contato (arco elétrico), proteção térmica atuando, queda momentânea de fase. Cada queda traz risco de queima ao motor."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "ok", "answer": "Desvio-padrão primeira metade: 34.22 kW · segunda: 29.45 kW (razão 0.86). Razão > 1,5 = volatilidade crescente."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 232 A em 17/05 13:10 (2.3× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média -51.67 kW · pico 30.16 kW em 23/05 08:30 · mínimo -125.37 kW."}, {"q": "O compressor está rodando mas a câmara não está esfriando?", "status": "ok", "answer": "Compressor médio -51.67 kW · câmara em -3.9°C — dentro da faixa."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "ok", "answer": "Correlação por hora: r=+0.12 sobre 43 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "warn", "answer": "31 lacunas detectadas em 3481 amostras. Maior: 97055s. Intervalo médio: 160s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "-58.75 kWh/hora ao longo de 154.7h."}]}, {"sensor": "estoque_compressor_2", "label": "Motor do Compressor 2", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "energia", "status": "ativo", "count": 5000, "window": "-167h → now", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "ok", "answer": "Esse: -28.33 kW · pares: estoque_compressor_1=-51.67kW (média -51.67 kW) · desvio +0%."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = -0.694 (NEGATIVO — possível fiação invertida do medidor ou fluxo reverso) · fases: -0.62 / -0.89 / -0.58.", "diagnostico": "Fluxo reverso de potência: provável fiação dos transformadores de corrente invertida ou medidor instalado ao contrário. Em sorveteria sem geração própria, não é fluxo real — é erro de leitura. Solução: inverter os TCs no medidor."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "crit", "answer": "%CUB = 17.9% (NEMA: <5% ideal, >10% crítico). Médias: 49/71/60 A.", "diagnostico": "Desequilíbrio severo de corrente (>10%). No motor: curto entre espiras, conexão frouxa, barra rotórica quebrada. Na rede: cargas monofásicas mal distribuídas. Diferenciar checando tensão — se VUB também alto, é da rede; se só corrente, é do motor."}, {"q": "A tensão está balanceada entre as fases?", "status": "ok", "answer": "%VUB = 0.78% (NEMA: <1% ideal, máx 2%). Médias: 221/224/223 V."}, {"q": "Alguma fase está sem tensão?", "status": "ok", "answer": "Todas as três fases com tensão normal."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "warn", "answer": "11 quedas detectadas (>80% de drop num passo único). Última: 17/05 17:16 de 1.1kW para -17.4kW.", "diagnostico": "Drops abruptos de consumo. Contator com mau contato (arco elétrico), proteção térmica atuando, queda momentânea de fase. Cada queda traz risco de queima ao motor."}, {"q": "A variabilidade do consumo está aumentando (short-cycling)?", "status": "warn", "answer": "Desvio-padrão primeira metade: 10.89 kW · segunda: 20.81 kW (razão 1.91). Razão > 1,5 = volatilidade crescente.", "diagnostico": "Volatilidade crescente em compressor é assinatura clássica de short-cycling: gás baixo, termostato com defeito, ou condensador sujo. Em motor, é rolamento ou isolação degradando."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 112 A em 17/05 07:40 (1.9× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média -28.33 kW · pico 16.17 kW em 17/05 07:40 · mínimo -52.58 kW."}, {"q": "O compressor está rodando mas a câmara não está esfriando?", "status": "ok", "answer": "Compressor médio -28.33 kW · câmara em -3.9°C — dentro da faixa."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "ok", "answer": "Correlação por hora: r=-0.12 sobre 25 horas. Positiva alta = compressor compensando calor lá fora (esperado em refrigeração)."}, {"q": "A telemetria desse sensor é confiável?", "status": "warn", "answer": "32 lacunas detectadas em 5000 amostras. Maior: 4600s. Intervalo médio: 17s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "-29.22 kWh/hora ao longo de 23.6h."}]}, {"sensor": "estoque_temperatura", "label": "Temperatura Interna da Câmara", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "temperatura", "status": "ativo", "count": 4910, "window": "-167h → now", "questions": [{"q": "Qual a faixa ideal para essa câmara?", "status": "info", "answer": "câmara fria de estoque: -4°C a 4°C (referência industrial)."}, {"q": "Quanto tempo a temperatura ficou fora da faixa segura?", "status": "crit", "answer": "55% das 4910 leituras fora de -4 a 4°C. Média: -3.9°C.", "diagnostico": "Câmara fora da faixa controlada na maior parte do tempo. Falha de refrigeração, setpoint errado ou porta esquecida aberta. Risco direto à qualidade do produto."}, {"q": "Os valores extremos são fisicamente plausíveis?", "status": "ok", "answer": "Mín -8.3°C, máx 4.3°C — dentro do envelope físico esperado."}, {"q": "A temperatura está estável ou oscilando muito?", "status": "ok", "answer": "Desvio-padrão: 2.13°C · amplitude: 12.6°C. Faixa ideal tem 8°C de amplitude — oscilação maior que metade disso é atenção."}, {"q": "A temperatura tem tendência de subir ou cair ao longo do período?", "status": "ok", "answer": "Tendência baixa (-0.000°C/h). Sistema térmico estável no período."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Variação σ=2.13°C indica leituras dinâmicas — sensor responde."}, {"q": "A temperatura sobe após abertura de porta?", "status": "ok", "answer": "Variação média +0.46°C nos 30 min após abrir, sobre 10 eventos analisados."}, {"q": "Tem picos isolados ou é uma variação contínua?", "status": "warn", "answer": "17 pontos com |z-score|>3 · padrão caótico (picos).", "diagnostico": "Picos de corrente acima de 8× a média. Rolamento desgastado, contator com arco elétrico, ou partidas em condição de travamento mecânico. Investigar logo — falhas catastróficas começam assim."}, {"q": "Comparado a outros sensores de temperatura, esse se destaca?", "status": "info", "answer": "Esse: -3.9°C · outros: congelados_temperatura=-8.6°C, graxaria_temperatura=-9.2°C, externo_cg_temperatura=19.4°C, externo_tl_temperatura=13.0°C."}, {"q": "Qual foi a maior temperatura e quando?", "status": "info", "answer": "Máxima 4.3°C em 18/05 01:58."}, {"q": "Qual foi a menor temperatura e quando?", "status": "info", "answer": "Mínima -8.3°C em 23/05 08:57."}, {"q": "A temperatura externa influencia essa câmara?", "status": "info", "answer": "Correlação por hora: r=-0.32 (157 horas). Câmara bem isolada deveria ter correlação baixa."}, {"q": "A telemetria do sensor é confiável?", "status": "warn", "answer": "39 lacunas (>5× média e >5min). Maior: 1993s. Intervalo médio: 122s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "A média da temperatura na segunda metade do período subiu vs primeira metade?", "status": "ok", "answer": "Primeira metade: -4.02°C · segunda: -3.88°C · variação +0.14°C."}]}, {"sensor": "estoque_porta", "label": "Abertura de Porta", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "porta", "status": "ativo", "count": 4910, "window": "-167h → now", "questions": [{"q": "Quantas vezes a porta foi aberta no período?", "status": "ok", "answer": "11 aberturas em 167h (0.1 aberturas/hora)."}, {"q": "Quanto tempo a porta fica aberta em média?", "status": "warn", "answer": "Tempo médio: 33973s · mediana: 19074s. Ideal: <60s por evento.", "diagnostico": "Tempo médio aberta acima de 2 minutos. Padrão operacional ruim ou vedação travando a porta semi-aberta. Cada minuto extra = perda direta de frio em R$."}, {"q": "Qual foi o maior tempo de porta aberta?", "status": "crit", "answer": "Maior: 82157s (1369.3 min). Acima de 10 min = porta esquecida (perda real).", "diagnostico": "Porta ficou aberta por mais de 10 minutos num evento. Esquecimento operacional, mercadoria emperrando, ou falha do sensor de fechamento. Investigar o evento específico — toda a câmara perdeu frio."}, {"q": "Houve aberturas anormalmente longas?", "status": "ok", "answer": "0 aberturas com z-score>3. Mediana: 19074s, máx: 82157s."}, {"q": "Há rajadas de aberturas (uso anormal)?", "status": "ok", "answer": "0 aberturas seguidas em menos de 60s. Intervalo médio entre aberturas: 41091s."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Sinal oscilou entre 0.0 e 224.0. Funcionando."}, {"q": "A telemetria do sensor de porta é confiável?", "status": "warn", "answer": "39 lacunas detectadas. Maior: 1993s. Intervalo médio: 122s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "A temperatura da câmara sobe após cada abertura?", "status": "ok", "answer": "Variação média +0.46°C nos 30min após abrir (10 eventos analisados)."}, {"q": "O compressor consome mais depois de cada abertura?", "status": "ok", "answer": "Aumento médio -348069532.9% no consumo do compressor pós-abertura (2 eventos)."}, {"q": "A frequência de aberturas varia muito por hora do dia?", "status": "info", "answer": "Pico às 16h (5) · vale às 18h (1). Distribuição em 24h - operação 24/7."}, {"q": "O padrão de aberturas mudou ao longo do período?", "status": "warn", "answer": "Primeira metade: 3 aberturas · segunda: 8. Mudança +125%.", "diagnostico": "Mudança forte entre as duas metades do período. Mudança operacional (novo turno, novo procedimento) ou problema mecânico evoluindo. Comparar com agenda da operação."}, {"q": "Qual fração do tempo a porta passou aberta?", "status": "warn", "answer": "339726s totais aberta (56.55% do período de 167h).", "diagnostico": "Mais de 5% do tempo com porta aberta. Operação intensa real, vedação ruim deixando porta entreaberta, ou sensor falhando intermitente. Cada % significa kWh extras direto na fatura."}, {"q": "O sinal do sensor é coerente (binário ou perto disso)?", "status": "info", "answer": "22 valores únicos. Sinal não-binário — pode ser sinal analógico ou intermediário."}, {"q": "Qual o intervalo médio entre aberturas?", "status": "info", "answer": "Em média 684.8 min entre aberturas (mediana: 681.3 min)."}, {"q": "Comparado a outras portas, esse sensor se destaca?", "status": "info", "answer": "Esse: 11 aberturas · graxaria_porta: 57 aberturas no período."}]}, {"sensor": "graxaria_energia", "label": "Energia", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "energia", "status": "historico", "count": 5000, "window": "-334h → -167h", "questions": [{"q": "Esse equipamento se comporta como seus pares?", "status": "info", "answer": "Esse sensor não tem par direto (equipamento único na função)."}, {"q": "O fator de potência está dentro do limite ANEEL (≥ 0,92)?", "status": "crit", "answer": "FP composto = 0.371 · fases: 0.84 / 0.90 / -0.63.", "diagnostico": "FP muito baixo (<0,85). Provável motor de indução sem correção, banco de capacitores queimado/desligado, ou carga indutiva sem compensação. Concessionária multa todo mês — instalar/restaurar banco de capacitores."}, {"q": "As fases estão balanceadas (NEMA)?", "status": "ok", "answer": "%CUB = 1.7% (NEMA: <5% ideal, >10% crítico). Médias: 173/170/175 A."}, {"q": "A tensão está balanceada entre as fases?", "status": "warn", "answer": "%VUB = 200.00% (NEMA: <1% ideal, máx 2%). Médias: 0/0/219 V.", "diagnostico": "Desequilíbrio de tensão. Cargas monofásicas mal distribuídas no quadro, conexão frouxa no QGBT, ou transformador da entrada com problema. Acima de 2% reduz vida útil do motor (regra de Arrhenius)."}, {"q": "Alguma fase está sem tensão?", "status": "crit", "answer": "Fases A, B com tensão média próxima de zero. Provável fase ausente ou medidor com defeito.", "diagnostico": "Fase ausente. Fusível queimado, disjuntor desarmado, condutor rompido ou medidor com defeito no canal dessa fase. Equipamento NÃO está rodando trifásico — risco de queima do motor."}, {"q": "Existem quedas bruscas no consumo (possível falha de contator/fase)?", "status": "ok", "answer": "0 quedas detectadas (>80% de drop num passo único). Nenhuma queda anormal."}, {"q": "Há picos de corrente acima do esperado (partida ou falha)?", "status": "ok", "answer": "Pico máximo 385 A em 10/05 18:15 (2.2× média). Esperado partida normal: 5-7×."}, {"q": "Qual o consumo médio e o pico no período?", "status": "info", "answer": "Média -35.93 kW · pico 0.21 kW em 09/05 18:13 · mínimo -81.34 kW."}, {"q": "O compressor está rodando mas a câmara não está esfriando?", "status": "ok", "answer": "Compressor médio -35.93 kW · câmara em -9.2°C — dentro da faixa."}, {"q": "O consumo cresce com a temperatura ambiente externa?", "status": "info", "answer": "Horas comuns insuficientes pra cruzar."}, {"q": "A telemetria desse sensor é confiável?", "status": "ok", "answer": "Sem lacunas significativas. Intervalo médio: 24s."}, {"q": "Qual a taxa de consumo (kWh por hora)?", "status": "info", "answer": "-37.13 kWh/hora ao longo de 32.9h."}]}, {"sensor": "graxaria_temperatura", "label": "Temperatura", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "temperatura", "status": "historico", "count": 5000, "window": "-334h → -167h", "questions": [{"q": "Qual a faixa ideal para essa câmara?", "status": "info", "answer": "câmara da graxaria: -10°C a 4°C (referência industrial)."}, {"q": "Quanto tempo a temperatura ficou fora da faixa segura?", "status": "crit", "answer": "56% das 5000 leituras fora de -10 a 4°C. Média: -9.2°C.", "diagnostico": "Câmara fora da faixa controlada na maior parte do tempo. Falha de refrigeração, setpoint errado ou porta esquecida aberta. Risco direto à qualidade do produto."}, {"q": "Os valores extremos são fisicamente plausíveis?", "status": "ok", "answer": "Mín -13.5°C, máx 1.7°C — dentro do envelope físico esperado."}, {"q": "A temperatura está estável ou oscilando muito?", "status": "ok", "answer": "Desvio-padrão: 3.96°C · amplitude: 15.2°C. Faixa ideal tem 14°C de amplitude — oscilação maior que metade disso é atenção."}, {"q": "A temperatura tem tendência de subir ou cair ao longo do período?", "status": "ok", "answer": "Tendência baixa (-0.088°C/h). Sistema térmico estável no período."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Variação σ=3.96°C indica leituras dinâmicas — sensor responde."}, {"q": "A temperatura sobe após abertura de porta?", "status": "info", "answer": "57 aberturas detectadas mas pares de janela pré/pós insuficientes."}, {"q": "Tem picos isolados ou é uma variação contínua?", "status": "ok", "answer": "0 pontos com |z-score|>3 · padrão estável."}, {"q": "Comparado a outros sensores de temperatura, esse se destaca?", "status": "info", "answer": "Esse: -9.2°C · outros: congelados_temperatura=-8.6°C, estoque_temperatura=-3.9°C, externo_cg_temperatura=19.4°C, externo_tl_temperatura=13.0°C."}, {"q": "Qual foi a maior temperatura e quando?", "status": "info", "answer": "Máxima 1.7°C em 09/05 18:15."}, {"q": "Qual foi a menor temperatura e quando?", "status": "info", "answer": "Mínima -13.5°C em 11/05 05:37."}, {"q": "A telemetria do sensor é confiável?", "status": "info", "answer": "1 lacunas (>5× média e >5min). Maior: 359s. Intervalo médio: 27s."}, {"q": "A média da temperatura na segunda metade do período subiu vs primeira metade?", "status": "ok", "answer": "Primeira metade: -8.43°C · segunda: -9.98°C · variação -1.55°C."}]}, {"sensor": "graxaria_porta", "label": "Abertura de Porta", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "porta", "status": "historico", "count": 2188, "window": "-334h → -167h", "questions": [{"q": "Quantas vezes a porta foi aberta no período?", "status": "ok", "answer": "57 aberturas em 100h (0.6 aberturas/hora)."}, {"q": "Quanto tempo a porta fica aberta em média?", "status": "warn", "answer": "Tempo médio: 3528s · mediana: 902s. Ideal: <60s por evento.", "diagnostico": "Tempo médio aberta acima de 2 minutos. Padrão operacional ruim ou vedação travando a porta semi-aberta. Cada minuto extra = perda direta de frio em R$."}, {"q": "Qual foi o maior tempo de porta aberta?", "status": "crit", "answer": "Maior: 73751s (1229.2 min). Acima de 10 min = porta esquecida (perda real).", "diagnostico": "Porta ficou aberta por mais de 10 minutos num evento. Esquecimento operacional, mercadoria emperrando, ou falha do sensor de fechamento. Investigar o evento específico — toda a câmara perdeu frio."}, {"q": "Houve aberturas anormalmente longas?", "status": "warn", "answer": "2 aberturas com z-score>3. Mediana: 902s, máx: 73751s.", "diagnostico": "Aberturas com z-score >3 (excepcionalmente longas). Esquecimentos ou produto travando a porta. Treinar equipe ou inspecionar mecanismo de fechamento automático."}, {"q": "Há rajadas de aberturas (uso anormal)?", "status": "ok", "answer": "0 aberturas seguidas em menos de 60s. Intervalo médio entre aberturas: 3744s."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Sinal oscilou entre 0.0 e 1.0. Funcionando."}, {"q": "A telemetria do sensor de porta é confiável?", "status": "info", "answer": "3 lacunas detectadas. Maior: 70751s. Intervalo médio: 165s."}, {"q": "A frequência de aberturas varia muito por hora do dia?", "status": "info", "answer": "Pico às 09h (8) · vale às 11h (1). Distribuição em 24h - operação 24/7."}, {"q": "O padrão de aberturas mudou ao longo do período?", "status": "warn", "answer": "Primeira metade: 11 aberturas · segunda: 46. Mudança +292%.", "diagnostico": "Mudança forte entre as duas metades do período. Mudança operacional (novo turno, novo procedimento) ou problema mecânico evoluindo. Comparar com agenda da operação."}, {"q": "Qual fração do tempo a porta passou aberta?", "status": "warn", "answer": "197581s totais aberta (54.75% do período de 100h).", "diagnostico": "Mais de 5% do tempo com porta aberta. Operação intensa real, vedação ruim deixando porta entreaberta, ou sensor falhando intermitente. Cada % significa kWh extras direto na fatura."}, {"q": "O sinal do sensor é coerente (binário ou perto disso)?", "status": "ok", "answer": "Valores observados: [0.0, 1.0]. Coerente."}, {"q": "Qual o intervalo médio entre aberturas?", "status": "info", "answer": "Em média 62.4 min entre aberturas (mediana: 19.3 min)."}, {"q": "Comparado a outras portas, esse sensor se destaca?", "status": "info", "answer": "Esse: 57 aberturas · estoque_porta: 11 aberturas no período."}]}, {"sensor": "externo_cg_temperatura", "label": "Temperatura Ambiente", "group": "Ambiente Externo Campo Grande", "group_id": "externo_campo_grande", "type": "temperatura", "status": "ativo", "count": 5000, "window": "-167h → now", "questions": [{"q": "Qual a faixa ideal para esse ambiente?", "status": "info", "answer": "Sensor ambiente externo — sem faixa controlada (mede o clima)."}, {"q": "Quanto tempo a temperatura ficou fora da faixa segura?", "status": "info", "answer": "Sensor externo — sem faixa de referência."}, {"q": "Os valores extremos são fisicamente plausíveis?", "status": "ok", "answer": "Mín 13.5°C, máx 30.1°C — dentro do envelope físico esperado."}, {"q": "A temperatura está estável ou oscilando muito?", "status": "info", "answer": "σ = 3.82°C, amplitude 16.6°C (sensor externo — variação natural do clima)."}, {"q": "A temperatura tem tendência de subir ou cair ao longo do período?", "status": "ok", "answer": "Tendência baixa (-0.024°C/h). Sistema térmico estável no período."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Variação σ=3.82°C indica leituras dinâmicas — sensor responde."}, {"q": "Tem picos isolados ou é uma variação contínua?", "status": "ok", "answer": "0 pontos com |z-score|>3 · padrão estável."}, {"q": "Comparado a outros sensores de temperatura, esse se destaca?", "status": "info", "answer": "Esse: 19.4°C · outros: congelados_temperatura=-8.6°C, estoque_temperatura=-3.9°C, graxaria_temperatura=-9.2°C, externo_tl_temperatura=13.0°C."}, {"q": "Qual foi a maior temperatura e quando?", "status": "info", "answer": "Máxima 30.1°C em 16/05 16:04."}, {"q": "Qual foi a menor temperatura e quando?", "status": "info", "answer": "Mínima 13.5°C em 19/05 09:46."}, {"q": "A telemetria do sensor é confiável?", "status": "warn", "answer": "35 lacunas (>5× média e >5min). Maior: 1542s. Intervalo médio: 112s.", "diagnostico": "Lacunas frequentes. Link de rede instável (WiFi/4G caindo), gateway com buffer cheio, ou bateria fraca no sensor. Pode mascarar problemas reais que aconteceram durante o silêncio."}, {"q": "A média da temperatura na segunda metade do período subiu vs primeira metade?", "status": "ok", "answer": "Primeira metade: 19.90°C · segunda: 18.88°C · variação -1.02°C."}]}, {"sensor": "externo_tl_temperatura", "label": "Temperatura Ambiente", "group": "Ambiente Externo Três Lagoas", "group_id": "externo_tres_lagoas", "type": "temperatura", "status": "historico", "count": 2188, "window": "-334h → -167h", "questions": [{"q": "Qual a faixa ideal para esse ambiente?", "status": "info", "answer": "Sensor ambiente externo — sem faixa controlada (mede o clima)."}, {"q": "Quanto tempo a temperatura ficou fora da faixa segura?", "status": "info", "answer": "Sensor externo — sem faixa de referência."}, {"q": "Os valores extremos são fisicamente plausíveis?", "status": "crit", "answer": "Mín -3276.8°C, máx 33.4°C. Valores fora do envelope físico = sensor com defeito momentâneo ou leitura corrompida.", "diagnostico": "Leituras impossíveis (ex.: +85°C em câmara de congelados). Sensor com defeito intermitente, cabo solto, sensor exposto a fonte de calor pontual, ou interferência elétrica no sinal. Trocar ou recalibrar o sensor."}, {"q": "A temperatura está estável ou oscilando muito?", "status": "info", "answer": "σ = 140.97°C, amplitude 3310.2°C (sensor externo — variação natural do clima)."}, {"q": "A temperatura tem tendência de subir ou cair ao longo do período?", "status": "info", "answer": "Tendência: -0.179°C/hora. Significa que ao longo do período a média caiu ~17.9°C no total."}, {"q": "O sensor está vivo (não travado)?", "status": "ok", "answer": "Variação σ=140.97°C indica leituras dinâmicas — sensor responde."}, {"q": "Tem picos isolados ou é uma variação contínua?", "status": "info", "answer": "4 pontos com |z-score|>3 · padrão misto."}, {"q": "Comparado a outros sensores de temperatura, esse se destaca?", "status": "info", "answer": "Esse: 13.0°C · outros: congelados_temperatura=-8.6°C, estoque_temperatura=-3.9°C, graxaria_temperatura=-9.2°C, externo_cg_temperatura=19.4°C."}, {"q": "Qual foi a maior temperatura e quando?", "status": "info", "answer": "Máxima 33.4°C em 13/05 18:24."}, {"q": "Qual foi a menor temperatura e quando?", "status": "info", "answer": "Mínima -3276.8°C em 11/05 18:41."}, {"q": "A telemetria do sensor é confiável?", "status": "info", "answer": "3 lacunas (>5× média e >5min). Maior: 70751s. Intervalo médio: 165s."}, {"q": "A média da temperatura na segunda metade do período subiu vs primeira metade?", "status": "ok", "answer": "Primeira metade: 16.85°C · segunda: 9.06°C · variação -7.80°C."}]}];
+
+// Parâmetros ideais por sensor
+const IDEAIS = {
+  // ENERGIA - referências industriais para medidores trifásicos
+  energia_default: {
+    titulo: "Parâmetros ideais · medidor trifásico",
+    fonte: "Referências: PRODIST Módulo 8 da ANEEL, NEMA MG-1, IEEE 141",
+    items: [
+      {label:"Frequência da rede", value:"60 Hz", check:"const"},
+      {label:"Tensão por fase (estrela)", value:"127 V ± 5%", check:"tensao_fase"},
+      {label:"Tensão de linha (delta)", value:"220 V ± 5%", check:"tensao_linha"},
+      {label:"Fator de potência (FP)", value:"≥ 0,92", check:"fp"},
+      {label:"Desequilíbrio de corrente (%CUB)", value:"< 5% (NEMA)", check:"cub"},
+      {label:"Desequilíbrio de tensão (%VUB)", value:"< 1% ideal, máx 2%", check:"vub"},
+      {label:"Pico de partida vs nominal", value:"5× a 7× a corrente nominal", check:"pico"},
+      {label:"Distorção harmônica (THD)", value:"< 8% para Grupo A", check:"const"},
+    ]
+  },
+  // TEMPERATURA por câmara
+  congelados_temperatura: {
+    titulo: "Parâmetros ideais · câmara de congelados",
+    fonte: "Referência: ANVISA RDC 275, Codex Alimentarius para sorvetes (-23 a -18°C)",
+    items: [
+      {label:"Faixa ideal", value:"−25°C a −18°C", check:"faixa", min:-25, max:-18},
+      {label:"Setpoint típico", value:"−22°C", check:"const"},
+      {label:"Variação aceitável", value:"± 2°C", check:"std", limit:2},
+      {label:"Tempo fora da faixa", value:"< 5% das leituras", check:"oor", limit:5},
+      {label:"Tempo de recuperação (D2R)", value:"< 15 min após abertura", check:"const"},
+      {label:"Intervalo de leitura", value:"≤ 5 min entre amostras", check:"interval", limit:300},
+    ]
+  },
+  estoque_temperatura: {
+    titulo: "Parâmetros ideais · câmara fria de estoque",
+    fonte: "Referência: ANVISA RDC 275 para câmaras refrigeradas de matéria-prima",
+    items: [
+      {label:"Faixa ideal", value:"−4°C a +4°C", check:"faixa", min:-4, max:4},
+      {label:"Setpoint típico", value:"0°C a +2°C", check:"const"},
+      {label:"Variação aceitável", value:"± 1,5°C", check:"std", limit:1.5},
+      {label:"Tempo fora da faixa", value:"< 5% das leituras", check:"oor", limit:5},
+      {label:"Tempo de recuperação (D2R)", value:"< 10 min após abertura", check:"const"},
+      {label:"Intervalo de leitura", value:"≤ 5 min entre amostras", check:"interval", limit:300},
+    ]
+  },
+  graxaria_temperatura: {
+    titulo: "Parâmetros ideais · câmara da graxaria",
+    fonte: "Referência: subprodutos animais geralmente entre −10°C e +4°C",
+    items: [
+      {label:"Faixa ideal", value:"−10°C a +4°C", check:"faixa", min:-10, max:4},
+      {label:"Variação aceitável", value:"± 2°C", check:"std", limit:2},
+      {label:"Intervalo de leitura", value:"≤ 5 min entre amostras", check:"interval", limit:300},
+    ]
+  },
+  externo_cg_temperatura: {
+    titulo: "Parâmetros ideais · ambiente externo Campo Grande/MS",
+    fonte: "Climatologia INMET para Campo Grande/MS",
+    items: [
+      {label:"Faixa anual típica", value:"+8°C (inv.) a +38°C (verão)", check:"const"},
+      {label:"Média anual", value:"+24°C", check:"const"},
+      {label:"Intervalo de leitura", value:"≤ 10 min entre amostras", check:"interval", limit:600},
+    ]
+  },
+  externo_tl_temperatura: {
+    titulo: "Parâmetros ideais · ambiente externo Três Lagoas/MS",
+    fonte: "Climatologia INMET para Três Lagoas/MS",
+    items: [
+      {label:"Faixa anual típica", value:"+10°C (inv.) a +40°C (verão)", check:"const"},
+      {label:"Média anual", value:"+25°C", check:"const"},
+      {label:"Intervalo de leitura", value:"≤ 10 min entre amostras", check:"interval", limit:600},
+    ]
+  },
+  porta_default: {
+    titulo: "Parâmetros ideais · sensor de porta",
+    fonte: "Boas práticas de cadeia fria; literatura sobre eficiência em câmaras frias",
+    items: [
+      {label:"Tempo máximo de cada abertura", value:"< 60 s ideal · < 120 s aceitável", check:"open_dur", limit:120},
+      {label:"Frequência de aberturas", value:"< 10 por hora em uso normal", check:"open_freq", limit:10},
+      {label:"Horário operacional", value:"06h-22h em dias úteis", check:"const"},
+      {label:"Aberturas fora do horário", value:"≤ 5% do total", check:"const"},
+      {label:"Estado lógico", value:"0 = fechada · 1 (ou pico) = aberta", check:"const"},
+    ]
+  },
+};
+
+// SVGs ilustrativos por tipo
+function svgFor(type){
+  if(type === "energia"){
+    return `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="14" width="64" height="52" rx="6" fill="#fff" stroke="#1f6feb" stroke-width="2"/>
+      <rect x="14" y="20" width="52" height="20" rx="3" fill="#e8f0ff" stroke="#1f6feb"/>
+      <text x="40" y="34" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#1f6feb" font-weight="700">kWh</text>
+      <line x1="20" y1="50" x2="20" y2="74" stroke="#1f6feb" stroke-width="2"/>
+      <line x1="40" y1="50" x2="40" y2="74" stroke="#16a34a" stroke-width="2"/>
+      <line x1="60" y1="50" x2="60" y2="74" stroke="#d97706" stroke-width="2"/>
+      <circle cx="20" cy="48" r="3" fill="#1f6feb"/>
+      <circle cx="40" cy="48" r="3" fill="#16a34a"/>
+      <circle cx="60" cy="48" r="3" fill="#d97706"/>
+      <text x="20" y="78" text-anchor="middle" font-size="7" fill="#5b6b86">A</text>
+      <text x="40" y="78" text-anchor="middle" font-size="7" fill="#5b6b86">B</text>
+      <text x="60" y="78" text-anchor="middle" font-size="7" fill="#5b6b86">C</text>
+    </svg>`;
+  }
+  if(type === "temperatura"){
+    return `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect x="34" y="14" width="12" height="44" rx="6" fill="#fff" stroke="#d97706" stroke-width="2"/>
+      <circle cx="40" cy="62" r="9" fill="#d97706"/>
+      <rect x="37" y="20" width="6" height="36" fill="#fde9c8"/>
+      <rect x="37" y="40" width="6" height="16" fill="#d97706"/>
+      <line x1="48" y1="22" x2="56" y2="22" stroke="#5b6b86" stroke-width="1.5"/>
+      <line x1="48" y1="30" x2="52" y2="30" stroke="#5b6b86" stroke-width="1.5"/>
+      <line x1="48" y1="38" x2="56" y2="38" stroke="#5b6b86" stroke-width="1.5"/>
+      <line x1="48" y1="46" x2="52" y2="46" stroke="#5b6b86" stroke-width="1.5"/>
+      <line x1="48" y1="54" x2="56" y2="54" stroke="#5b6b86" stroke-width="1.5"/>
+      <text x="60" y="25" font-size="7" fill="#5b6b86">°C</text>
+    </svg>`;
+  }
+  if(type === "porta"){
+    return `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="10" width="38" height="60" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+      <circle cx="45" cy="40" r="2" fill="#16a34a"/>
+      <rect x="54" y="14" width="14" height="6" rx="1" fill="#16a34a" opacity=".7"/>
+      <rect x="54" y="22" width="14" height="6" rx="1" fill="#fff" stroke="#16a34a"/>
+      <line x1="48" y1="17" x2="54" y2="17" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="2,2"/>
+      <text x="61" y="40" text-anchor="middle" font-size="9" font-weight="700" fill="#16a34a">0/1</text>
+      <text x="32" y="60" text-anchor="middle" font-size="7" fill="#5b6b86">PORTA</text>
+    </svg>`;
+  }
+  return "";
+}
+
+function descricaoSensor(type){
+  if(type==="energia") return "<strong>Medidor de energia trifásico:</strong> 3 transformadores de corrente abraçam os cabos das fases A, B, C e medem corrente, tensão e fator de potência. Instalado no quadro elétrico do equipamento.";
+  if(type==="temperatura") return "<strong>Sensor de temperatura:</strong> probe (geralmente PT100/PT1000) instalado dentro da câmara ou exposto ao ambiente. Lê graus Celsius continuamente.";
+  if(type==="porta") return "<strong>Sensor de porta:</strong> chave magnética (reed switch) na moldura. Sinal binário: porta aberta ou fechada.";
+  return "";
+}
+
+function paramsIdeais(s, data){
+  const key = IDEAIS[s.id] ? s.id : (IDEAIS[s.type + "_default"] ? s.type + "_default" : null);
+  if(!key) return "";
+  const I = IDEAIS[key];
+
+  // computar comparações onde for possível
+  const cmp = {};
+  if(data && data.points && data.points.length){
+    const pts = data.points;
+    const times = pts.map(p=>new Date(p.time));
+    if(s.type === "energia"){
+      const Ia=pts.reduce((s,p)=>s+p.corrente_fase_a,0)/pts.length;
+      const Ib=pts.reduce((s,p)=>s+p.corrente_fase_b,0)/pts.length;
+      const Ic=pts.reduce((s,p)=>s+p.corrente_fase_c,0)/pts.length;
+      const Va=pts.reduce((s,p)=>s+p.tensao_fase_a,0)/pts.length;
+      const Vb=pts.reduce((s,p)=>s+p.tensao_fase_b,0)/pts.length;
+      const Vc=pts.reduce((s,p)=>s+p.tensao_fase_c,0)/pts.length;
+      const FPa=pts.reduce((s,p)=>s+p.fator_potencia_a,0)/pts.length;
+      const FPb=pts.reduce((s,p)=>s+p.fator_potencia_b,0)/pts.length;
+      const FPc=pts.reduce((s,p)=>s+p.fator_potencia_c,0)/pts.length;
+      const Imed=(Ia+Ib+Ic)/3, Vmed=(Va+Vb+Vc)/3;
+      const CUB = Imed>0 ? Math.max(Math.abs(Ia-Imed),Math.abs(Ib-Imed),Math.abs(Ic-Imed))/Imed*100 : 0;
+      const VUB = Vmed>0 ? Math.max(Math.abs(Va-Vmed),Math.abs(Vb-Vmed),Math.abs(Vc-Vmed))/Vmed*100 : 0;
+      const FP = (FPa+FPb+FPc)/3;
+      cmp.tensao_fase = {v: `medido ≈ ${Vmed.toFixed(1)} V`, cls: (Vmed>120&&Vmed<134)?"ok":(Vmed>50?"warn":"crit")};
+      cmp.tensao_linha = {v: `medido ≈ ${Vmed.toFixed(1)} V (fase)`, cls: "info"};
+      cmp.fp = {v: `medido = ${FP.toFixed(3)}`, cls: FP<0.85?"crit":FP<0.92?"warn":"ok"};
+      cmp.cub = {v: `medido = ${CUB.toFixed(1)}%`, cls: CUB>10?"crit":CUB>5?"warn":"ok"};
+      cmp.vub = {v: `medido = ${VUB.toFixed(2)}%`, cls: VUB>2?"crit":VUB>1?"warn":"ok"};
+      const Imax = Math.max(...pts.map(p=>Math.max(p.corrente_fase_a,p.corrente_fase_b,p.corrente_fase_c)));
+      if(Imed>0) cmp.pico = {v: `medido = ${(Imax/Imed).toFixed(1)}× a média`, cls: Imax/Imed>8?"warn":"ok"};
+    }
+    if(s.type === "temperatura"){
+      const vals=pts.map(p=>p.temperatura);
+      const m=vals.reduce((a,b)=>a+b,0)/vals.length;
+      const sd=Math.sqrt(vals.reduce((s,v)=>s+(v-m)**2,0)/vals.length);
+      cmp.std = {v: `medido = σ ${sd.toFixed(2)}°C`, cls: "ok"};
+    }
+    if(times.length>1){
+      const deltas=[];
+      for(let i=1;i<times.length;i++) deltas.push((times[i]-times[i-1])/1000);
+      const dmean = deltas.reduce((a,b)=>a+b,0)/deltas.length;
+      cmp.interval = {v: `medido = ${dmean.toFixed(0)}s médios`, cls: dmean>600?"warn":dmean>300?"info":"ok"};
+    }
+    if(s.type === "temperatura" && IDEAIS[s.id]){
+      const ideal = IDEAIS[s.id].items.find(it=>it.check==="faixa");
+      if(ideal){
+        const oor = pts.filter(p=>p.temperatura<ideal.min || p.temperatura>ideal.max).length;
+        const pct = oor/pts.length*100;
+        cmp.faixa = {v: `${pct.toFixed(0)}% das leituras fora`, cls: pct>50?"crit":pct>10?"warn":"ok"};
+        cmp.oor = {v: `${pct.toFixed(0)}% fora`, cls: pct>50?"crit":pct>10?"warn":"ok"};
+      }
+    }
+  }
+
+  const labelStatus = {ok:"normal",warn:"atenção",crit:"problema",info:"info"};
+  return `<div class="ideal-card">
+    <h3>${I.titulo} <span class="hint">valor ideal e valor medido pela API, lado a lado</span></h3>
+    <div class="ideal-grid">
+      ${I.items.map(it=>{
+        const c = cmp[it.check];
+        const measuredVal = c ? c.v.replace(/^medido\s*[=≈]\s*/i,'').trim() : "—";
+        const measuredCls = c ? c.cls : "muted";
+        const statusLabel = c ? (labelStatus[c.cls]||"") : "sem medida";
+        return `<div class="ideal-item">
+          <div class="ip-label">${it.label}</div>
+          <div class="ip-row">
+            <div class="ip-col ip-ideal">
+              <div class="ip-tag">ideal</div>
+              <div class="ip-val">${it.value}</div>
+            </div>
+            <div class="ip-col ip-medido">
+              <div class="ip-tag">medido (API)</div>
+              <div class="ip-val ${measuredCls}">${measuredVal}</div>
+              ${statusLabel ? `<div class="ip-status ${measuredCls}">${statusLabel}</div>` : ""}
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="ideal-source">${I.fonte}</div>
+  </div>`;
+}
+
+function qaSection(sid){
+  const f = QA.find(x=>x.sensor === sid);
+  if(!f || !f.questions || !f.questions.length) return "";
+  const order = {crit:0, warn:1, ok:2, info:3};
+  const sorted = [...f.questions].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9));
+  const counts = {crit:0, warn:0, ok:0, info:0};
+  f.questions.forEach(q=>{ counts[q.status] = (counts[q.status]||0)+1; });
+  return `<div class="qa-card">
+    <h3>Perguntas respondidas pela análise</h3>
+    <p class="sub">${f.questions.length} perguntas-guia avaliadas com base nos ${f.count} pontos do período. Crítico=${counts.crit||0} · atenção=${counts.warn||0} · normal=${counts.ok||0} · info=${counts.info||0}</p>
+    ${sorted.map(q=>`
+      <div class="qa-item">
+        <div class="qa-status ${q.status}">${q.status==="crit"?"problema":q.status==="warn"?"atenção":q.status==="ok"?"normal":"info"}</div>
+        <div>
+          <div class="qa-q">${q.q}</div>
+          <div class="qa-a">${q.answer}</div>
+          ${q.diagnostico ? `<div class="qa-diag"><strong>Provável causa:</strong> ${q.diagnostico}</div>` : ""}
+        </div>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+init();
+
+const FINDINGS = [{"sensor": "extrusora_1", "label": "Extrusora 1", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3483, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "23 lacuna(s) detectada(s). Maior gap: 7161s. Intervalo médio: 145s."}, {"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = 0.706. Bem abaixo do mínimo ANEEL de 0,92. Multa garantida na fatura."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = 0.745. Carga muito desbalanceada nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = 0.390. Carga muito desbalanceada nessa fase."}, {"sev": "info", "q": "Existe desequilíbrio de tensão entre fases?", "msg": "%VUB de tensão = 1.39%. Acima do ideal (<1%) mas dentro do limite NEMA."}, {"sev": "warn", "q": "O consumo está alto em horários sem produção?", "msg": "Noite (23h-05h) = 22.2 kW. Dia (07h-18h) = 23.0 kW. Razão noite/dia = 96%. Suspeita de phantom load."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 154.0 A (média 92.5 A, razão 1.7×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 145.4, "max_gap_s": 7161, "gaps": 23}, "metrics": {"Pmed_kW": 22.939, "kWh": 3079.16, "Ia": 90.9, "Ib": 93.2, "Ic": 93.5, "Va": 122.3, "Vb": 124.8, "Vc": 124.9, "FPa": 0.745, "FPb": 0.39, "FPc": 0.983, "FP_composto": 0.706, "CUB": 1.75, "VUB": 1.39}}, {"sensor": "extrusora_2", "label": "Extrusora 2", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3948, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "26 lacuna(s) detectada(s). Maior gap: 7117s. Intervalo médio: 128s."}, {"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = 0.453. Bem abaixo do mínimo ANEEL de 0,92. Multa garantida na fatura."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = 0.404. Carga muito desbalanceada nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = 0.484. Carga muito desbalanceada nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = 0.471. Carga muito desbalanceada nessa fase."}, {"sev": "warn", "q": "Existe desequilíbrio entre as fases A, B e C?", "msg": "%CUB de corrente = 6.6%. NEMA MG-1 zona de atenção (5-10%)."}, {"sev": "info", "q": "Existe desequilíbrio de tensão entre fases?", "msg": "%VUB de tensão = 1.40%. Acima do ideal (<1%) mas dentro do limite NEMA."}, {"sev": "warn", "q": "O consumo está alto em horários sem produção?", "msg": "Noite (23h-05h) = 14.3 kW. Dia (07h-18h) = 11.6 kW. Razão noite/dia = 124%. Suspeita de phantom load."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 180.0 A (média 86.7 A, razão 2.1×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 128.1, "max_gap_s": 7117, "gaps": 26}, "metrics": {"Pmed_kW": 12.533, "kWh": 1648.65, "Ia": 84.4, "Ib": 83.2, "Ic": 92.4, "Va": 121.8, "Vb": 123.8, "Vc": 125.0, "FPa": 0.404, "FPb": 0.484, "FPc": 0.471, "FP_composto": 0.453, "CUB": 6.64, "VUB": 1.4}}, {"sensor": "extrusora_3", "label": "Extrusora 3", "group": "Linha de Extrusão", "group_id": "extrusao", "type": "energia", "status": "ativo", "count": 3626, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "24 lacuna(s) detectada(s). Maior gap: 7382s. Intervalo médio: 139s."}, {"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = -0.072 (NEGATIVO!). Fluxo reverso de potência ou medidor com fiação invertida. Anomalia grave."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = -0.095 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = -0.052 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = -0.070 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "Existe desequilíbrio entre as fases A, B e C?", "msg": "%CUB de corrente = 5.8%. NEMA MG-1 zona de atenção (5-10%)."}, {"sev": "info", "q": "Existe desequilíbrio de tensão entre fases?", "msg": "%VUB de tensão = 1.54%. Acima do ideal (<1%) mas dentro do limite NEMA."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 168.0 A (média 64.4 A, razão 2.6×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 139.6, "max_gap_s": 7382, "gaps": 24}, "metrics": {"Pmed_kW": -8.694, "kWh": -1198.59, "Ia": 63.4, "Ib": 61.7, "Ic": 68.2, "Va": 122.1, "Vb": 124.7, "Vc": 125.2, "FPa": -0.095, "FPb": -0.052, "FPc": -0.07, "FP_composto": -0.072, "CUB": 5.83, "VUB": 1.54}}, {"sensor": "congelados_compressor", "label": "Compressor de Refrigeração", "group": "Câmara de Congelados", "group_id": "camara_congelados", "type": "energia", "status": "ativo", "count": 5000, "issues": [{"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = -0.431 (NEGATIVO!). Fluxo reverso de potência ou medidor com fiação invertida. Anomalia grave."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = -0.396 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = -0.505 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = -0.391 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "crit", "q": "Existe desequilíbrio entre as fases A, B e C?", "msg": "%CUB de corrente = 11.5%. NEMA MG-1 zona crítica (>10%). Investigar motor."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 219.0 A (média 93.4 A, razão 2.3×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 18.0, "max_gap_s": 131, "gaps": 0}, "metrics": {"Pmed_kW": -30.778, "kWh": -751.42, "Ia": 104.2, "Ib": 84.9, "Ic": 91.2, "Va": 124.4, "Vb": 125.2, "Vc": 124.2, "FPa": -0.396, "FPb": -0.505, "FPc": -0.391, "FP_composto": -0.431, "CUB": 11.5, "VUB": 0.46}}, {"sensor": "congelados_temperatura", "label": "Temperatura Interna", "group": "Câmara de Congelados", "group_id": "camara_congelados", "type": "temperatura", "status": "ativo", "count": 2760, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "53 lacuna(s) detectada(s). Maior gap: 55401s. Intervalo médio: 217s."}, {"sev": "crit", "q": "O sensor está reportando dados corretos?", "msg": "Temperatura máxima registrada = 85.0°C. Fisicamente impossível pra câmara fria. Sensor com defeito ou leitura corrompida."}, {"sev": "crit", "q": "Quanto tempo a temperatura fica fora da faixa segura?", "msg": "100% das leituras fora da faixa ideal (-28°C a -18°C). A câmara de congelados NÃO está cumprindo função. Média: -8.6°C, range: -17.3 a 85.0°C."}, {"sev": "warn", "q": "Existe muita oscilação na temperatura?", "msg": "Desvio-padrão = 15.2°C. Oscilação acima do esperado pra câmara fria estável."}], "window": "-167h → now", "telemetry": {"interval_s": 217.8, "max_gap_s": 55401, "gaps": 53}, "metrics": {"mean": -8.62, "min": -17.3, "max": 85.0, "std": 15.22, "amp": 102.3}}, {"sensor": "estoque_compressor_1", "label": "Motor do Compressor 1", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "energia", "status": "ativo", "count": 3481, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "31 lacuna(s) detectada(s). Maior gap: 97055s. Intervalo médio: 160s."}, {"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = -0.762 (NEGATIVO!). Fluxo reverso de potência ou medidor com fiação invertida. Anomalia grave."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = -0.694 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = -0.922 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = -0.670 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "crit", "q": "Existe desequilíbrio entre as fases A, B e C?", "msg": "%CUB de corrente = 22.2%. NEMA MG-1 zona crítica (>10%). Investigar motor."}, {"sev": "warn", "q": "Existe desequilíbrio de tensão entre fases?", "msg": "%VUB de tensão = 2.68%. NEMA MG-1 máximo 2%."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 232.0 A (média 99.5 A, razão 2.3×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 160.0, "max_gap_s": 97055, "gaps": 31}, "metrics": {"Pmed_kW": -51.667, "kWh": -9087.73, "Ia": 84.1, "Ib": 121.5, "Ic": 92.8, "Va": 222.3, "Vb": 215.1, "Vc": 225.7, "FPa": -0.694, "FPb": -0.922, "FPc": -0.67, "FP_composto": -0.762, "CUB": 22.17, "VUB": 2.68}}, {"sensor": "estoque_compressor_2", "label": "Motor do Compressor 2", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "energia", "status": "ativo", "count": 5000, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "33 lacuna(s) detectada(s). Maior gap: 15530s. Intervalo médio: 20s."}, {"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = -0.694 (NEGATIVO!). Fluxo reverso de potência ou medidor com fiação invertida. Anomalia grave."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = -0.618 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase B = -0.889 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = -0.575 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "crit", "q": "Existe desequilíbrio entre as fases A, B e C?", "msg": "%CUB de corrente = 17.9%. NEMA MG-1 zona crítica (>10%). Investigar motor."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 112.0 A (média 59.9 A, razão 1.9×). Picos podem indicar rolamento ou contator degradando."}], "window": "-167h → now", "telemetry": {"interval_s": 20.2, "max_gap_s": 15530, "gaps": 33}, "metrics": {"Pmed_kW": -28.358, "kWh": -851.51, "Ia": 49.3, "Ib": 70.6, "Ic": 59.8, "Va": 221.0, "Vb": 223.8, "Vc": 223.3, "FPa": -0.618, "FPb": -0.889, "FPc": -0.575, "FP_composto": -0.694, "CUB": 17.89, "VUB": 0.78}}, {"sensor": "estoque_temperatura", "label": "Temperatura Interna da Câmara", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "temperatura", "status": "ativo", "count": 4919, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "39 lacuna(s) detectada(s). Maior gap: 1993s. Intervalo médio: 122s."}, {"sev": "crit", "q": "Quanto tempo a temperatura fica fora da faixa segura?", "msg": "55% das leituras fora da faixa ideal (-4°C a 4°C). A câmara fria de estoque NÃO está cumprindo função. Média: -3.9°C, range: -8.3 a 4.3°C."}], "window": "-167h → now", "telemetry": {"interval_s": 122.2, "max_gap_s": 1993, "gaps": 39}, "metrics": {"mean": -3.95, "min": -8.3, "max": 4.3, "std": 2.13, "amp": 12.6}}, {"sensor": "estoque_porta", "label": "Abertura de Porta", "group": "Câmara Fria Estoque", "group_id": "camara_estoque", "type": "porta", "status": "ativo", "count": 4919, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "39 lacuna(s) detectada(s). Maior gap: 1993s. Intervalo médio: 122s."}], "window": "-167h → now", "telemetry": {"interval_s": 122.2, "max_gap_s": 1993, "gaps": 39}, "metrics": {"mean": 136.99, "min": 0.0, "max": 224.0, "amp": 224.0, "transitions": 22, "opens_estimated": 11, "threshold": 112.0}}, {"sensor": "graxaria_energia", "label": "Energia", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "energia", "status": "historico", "count": 5000, "issues": [{"sev": "crit", "q": "O fator de potência está baixo?", "msg": "FP composto = 0.371. Bem abaixo do mínimo ANEEL de 0,92. Multa garantida na fatura."}, {"sev": "crit", "q": "Existe queda ou interrupção brusca no consumo?", "msg": "Tensão média da fase A = 0.0 V. Provável fase ausente, com defeito no medidor ou na rede."}, {"sev": "crit", "q": "Existe queda ou interrupção brusca no consumo?", "msg": "Tensão média da fase B = 0.0 V. Provável fase ausente, com defeito no medidor ou na rede."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase A = 0.840. Carga muito desbalanceada nessa fase."}, {"sev": "warn", "q": "O fator de potência está baixo?", "msg": "FP da fase C = -0.630 (NEGATIVO). Fluxo reverso nessa fase."}, {"sev": "warn", "q": "Existe desequilíbrio de tensão entre fases?", "msg": "%VUB de tensão = 200.00%. NEMA MG-1 máximo 2%."}, {"sev": "info", "q": "Existe pico de corrente em algum horário específico?", "msg": "Pico de corrente = 385.0 A (média 172.8 A, razão 2.2×). Picos podem indicar rolamento ou contator degradando."}], "window": "-334h → -167h", "telemetry": {"interval_s": 23.6, "max_gap_s": 243, "gaps": 0}, "metrics": {"Pmed_kW": -35.898, "kWh": -1214.55, "Ia": 173.3, "Ib": 169.9, "Ic": 175.2, "Va": 0.0, "Vb": 0.0, "Vc": 219.4, "FPa": 0.84, "FPb": 0.904, "FPc": -0.63, "FP_composto": 0.371, "CUB": 1.65, "VUB": 200.0}}, {"sensor": "graxaria_temperatura", "label": "Temperatura", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "temperatura", "status": "historico", "count": 5000, "issues": [{"sev": "crit", "q": "Quanto tempo a temperatura fica fora da faixa segura?", "msg": "55% das leituras fora da faixa ideal (-10°C a 4°C). A câmara da graxaria NÃO está cumprindo função. Média: -9.2°C, range: -13.4 a 1.7°C."}], "window": "-334h → -167h", "telemetry": {"interval_s": 26.4, "max_gap_s": 237, "gaps": 0}, "metrics": {"mean": -9.16, "min": -13.4, "max": 1.7, "std": 3.93, "amp": 15.1}}, {"sensor": "graxaria_porta", "label": "Abertura de Porta", "group": "Câmara Graxaria", "group_id": "graxaria", "type": "porta", "status": "historico", "count": 2202, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "3 lacuna(s) detectada(s). Maior gap: 70751s. Intervalo médio: 164s."}], "window": "-334h → -167h", "telemetry": {"interval_s": 164.8, "max_gap_s": 70751, "gaps": 3}, "metrics": {"mean": 0.96, "min": 0.0, "max": 1.0, "amp": 1.0, "transitions": 114, "opens_estimated": 57, "threshold": 0.5}}, {"sensor": "externo_cg_temperatura", "label": "Temperatura Ambiente", "group": "Ambiente Externo Campo Grande", "group_id": "externo_campo_grande", "type": "temperatura", "status": "ativo", "count": 5000, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "35 lacuna(s) detectada(s). Maior gap: 1542s. Intervalo médio: 112s."}], "window": "-167h → now", "telemetry": {"interval_s": 112.3, "max_gap_s": 1542, "gaps": 35}, "metrics": {"mean": 19.41, "min": 13.5, "max": 30.1, "std": 3.86, "amp": 16.6}}, {"sensor": "externo_tl_temperatura", "label": "Temperatura Ambiente", "group": "Ambiente Externo Três Lagoas", "group_id": "externo_tres_lagoas", "type": "temperatura", "status": "historico", "count": 2202, "issues": [{"sev": "warn", "q": "Existem lacunas ou atrasos na telemetria do sensor?", "msg": "3 lacuna(s) detectada(s). Maior gap: 70751s. Intervalo médio: 164s."}, {"sev": "crit", "q": "O sensor está reportando dados corretos?", "msg": "Temperatura mínima registrada = -3276.8°C. Fisicamente improvável. Sensor com defeito."}], "window": "-334h → -167h", "telemetry": {"interval_s": 164.8, "max_gap_s": 70751, "gaps": 3}, "metrics": {"mean": 13.07, "min": -3276.8, "max": 33.4, "std": 140.53, "amp": 3310.2}}];
+
+function showInvestigation(){
+  destroyCharts();
+  currentSensor = null;
+  document.querySelectorAll(".sensor-item").forEach(x=>x.classList.remove("active"));
+
+  const nc = FINDINGS.filter(f=>f.issues.some(i=>i.sev==="crit")).length;
+  const nw = FINDINGS.filter(f=>!f.issues.some(i=>i.sev==="crit") && f.issues.some(i=>i.sev==="warn")).length;
+  const ni = FINDINGS.filter(f=>!f.issues.some(i=>["crit","warn"].includes(i.sev)) && f.issues.length>0).length;
+  const ok = FINDINGS.filter(f=>f.issues.length===0).length;
+  const totalIssues = FINDINGS.reduce((s,f)=>s+f.issues.length,0);
+
+  let html = `
+    <div class="src-banner">
+      <div class="icon">!</div>
+      <div><strong>Investigação automática</strong> · análise dos 14 sensores com base nas perguntas-guia</div>
+      <div class="meta">${totalIssues} achados em ${FINDINGS.length} sensores</div>
+    </div>
+    <h1 style="margin:0 0 4px;font-size:24px;letter-spacing:-.4px">Achados por sensor</h1>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px">A análise abaixo foi gerada percorrendo cada sensor da API e respondendo as perguntas definidas no estudo. Vermelho = problema sério, amarelo = atenção, azul = observação.</p>
+
+    <div class="invest-summary">
+      <div class="item crit"><div class="v">${nc}</div><div class="l">Críticos</div></div>
+      <div class="item warn"><div class="v">${nw}</div><div class="l">Atenção</div></div>
+      <div class="item"><div class="v">${ni}</div><div class="l">Informativos</div></div>
+      <div class="item ok"><div class="v">${ok}</div><div class="l">Sem achados</div></div>
+    </div>
+  `;
+
+  // ordenar: críticos primeiro
+  const sevOrder = {crit:0, warn:1, info:2};
+  const sorted = [...FINDINGS].sort((a,b)=>{
+    const sa = a.issues.length ? Math.min(...a.issues.map(i=>sevOrder[i.sev]??3)) : 99;
+    const sb = b.issues.length ? Math.min(...b.issues.map(i=>sevOrder[i.sev]??3)) : 99;
+    return sa - sb;
+  });
+
+  sorted.forEach(f=>{
+    const topSev = f.issues.length ? f.issues.reduce((a,b)=>(sevOrder[a.sev]??9)<(sevOrder[b.sev]??9)?a:b).sev : "ok";
+    const nc_ = f.issues.filter(i=>i.sev==="crit").length;
+    const nw_ = f.issues.filter(i=>i.sev==="warn").length;
+    const ni_ = f.issues.filter(i=>i.sev==="info").length;
+
+    html += `<div class="sensor-finding ${topSev}">
+      <div class="sf-head">
+        <div>
+          <div class="sf-title">${f.label} <span class="id">${f.sensor}</span></div>
+          <div style="font-size:11px;color:var(--muted)">${f.group} · ${f.type}</div>
+        </div>
+        <div class="right">
+          ${nc_?`<span class="sf-flag crit">${nc_} crítico${nc_>1?"s":""}</span>`:""}
+          ${nw_?`<span class="sf-flag warn">${nw_} atenção</span>`:""}
+          ${ni_?`<span class="sf-flag info">${ni_} info</span>`:""}
+          ${!f.issues.length?`<span class="sf-flag ok">sem achados</span>`:""}
+          <button class="btn ghost" onclick="loadSensor('${f.sensor}')" style="padding:4px 10px;font-size:11px">ver dados</button>
+        </div>
+      </div>`;
+
+    f.issues.forEach(i=>{
+      html += `<div class="sf-issue">
+        <div class="sf-sev ${i.sev}">${i.sev==="crit"?"crítico":i.sev==="warn"?"atenção":"info"}</div>
+        <div>
+          ${i.q?`<div class="sf-q">${i.q}</div>`:""}
+          <div class="sf-msg">${i.msg}</div>
+        </div>
+      </div>`;
+    });
+
+    // métricas resumo
+    if(f.metrics){
+      let m = "";
+      if(f.type === "energia"){
+        m = `<span>P=${f.metrics.Pmed_kW}kW</span> <span>kWh=${f.metrics.kWh}</span> <span>FP=${f.metrics.FP_composto}</span> <span>%CUB=${f.metrics.CUB}</span> <span>%VUB=${f.metrics.VUB}</span>`;
+      }else if(f.type === "temperatura"){
+        m = `<span>média=${f.metrics.mean}°C</span> <span>min=${f.metrics.min}°C</span> <span>max=${f.metrics.max}°C</span> <span>σ=${f.metrics.std}°C</span>`;
+      }else if(f.type === "porta"){
+        m = `<span>aberturas≈${f.metrics.opens_estimated}</span> <span>transições=${f.metrics.transitions}</span> <span>range=${f.metrics.min}→${f.metrics.max}</span>`;
+      }
+      if(m) html += `<div class="sf-metrics">${m}</div>`;
+    }
+    if(f.window) html += `<div class="sf-window">janela: ${f.window} · ${f.count} pontos</div>`;
+    html += `</div>`;
+  });
+
+  $("content").innerHTML = html;
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  const ib = document.getElementById("investBtn");
+  if(ib) ib.onclick = showInvestigation;
+});
+
+// abrir investigação automaticamente ao carregar
+window.addEventListener("load", ()=>{ setTimeout(showInvestigation, 200); });
+
+</script>
+</body>
+</html>
