@@ -137,6 +137,12 @@ class MenuLateral {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
           <span>Estudo Conectividade</span>
         </a>
+
+        ${this.usuario?.ehAdmin ? `
+        <a href="${this.raiz}paginas/conta/criar/" class="ml-nav-item ${this.paginaAtiva === "criar-conta" ? "ativo" : ""}" data-nav="criar-conta">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+          <span>Criar conta</span>
+        </a>` : ""}
       </nav>
 
       <div class="ml-rodape">

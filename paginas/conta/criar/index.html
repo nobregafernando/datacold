@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+  }
+  // 2) Apaga todas as caches da Cache API
+  if ('caches' in window) {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
+  try {
+    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        if (anterior && anterior !== v.build_id) {
+          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
+          });
+        }
+        localStorage.setItem('__build_id', v.build_id);
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Criar conta</title>
+
+<link rel="icon" href="/favicon.ico?v=1779577355102" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779577355102">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779577355102">
+<link rel="stylesheet" href="../_conta.css?v=1779577355102">
+</head>
+<body>
+
+<div class="conta-fundo" aria-hidden="true"></div>
+
+<main class="conta-wrap">
+  <section class="conta-card">
+    <a href="../../admin/" class="conta-marca">
+      <img src="../../../logo/01-primary-logo.png" alt="DataCold">
+    </a>
+
+    <h1>Criar nova conta</h1>
+    <p class="conta-sub">Cadastre um novo usuário. Operadores têm acesso de leitura; administradores podem criar outros usuários e injetar incidentes.</p>
+
+    <div class="conta-aviso-admin">
+      <strong>Você está logado como:</strong> <span data-admin-info>—</span>
+    </div>
+
+    <form class="conta-form" data-form novalidate>
+      <label class="campo">
+        <span>Nome completo</span>
+        <input type="text" name="nome" autocomplete="name" required minlength="2" maxlength="100" placeholder="Ex: Maria Silva">
+      </label>
+
+      <label class="campo">
+        <span>E-mail</span>
+        <input type="email" name="email" autocomplete="email" required maxlength="254" placeholder="usuario@empresa.com">
+      </label>
+
+      <label class="campo">
+        <span>Papel</span>
+        <select name="papel" required>
+          <option value="operador">Operador (leitura)</option>
+          <option value="admin">Administrador (acesso total)</option>
+        </select>
+      </label>
+
+      <label class="campo">
+        <span>Senha</span>
+        <input type="password" name="senha" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Mínimo 10 caracteres" data-senha>
+      </label>
+
+      <div class="forca-senha">
+        <div class="forca-segmentos" data-forca-segmentos data-nivel="0">
+          <div></div><div></div><div></div><div></div>
+        </div>
+        <span class="forca-rotulo" data-forca-rotulo>—</span>
+      </div>
+
+      <ul class="requisitos-senha" data-requisitos>
+        <li data-req="len">10 caracteres ou mais</li>
+        <li data-req="maiuscula">1 letra maiúscula</li>
+        <li data-req="minuscula">1 letra minúscula</li>
+        <li data-req="digito">1 número</li>
+        <li data-req="especial">1 caractere especial</li>
+        <li data-req="espaco">Sem espaços</li>
+      </ul>
+
+      <label class="campo">
+        <span>Confirmar senha</span>
+        <input type="password" name="senha2" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Repita a senha">
+      </label>
+
+      <div class="conta-erro" data-erro hidden></div>
+      <div class="conta-ok"   data-ok   hidden></div>
+
+      <button type="submit" class="btn btn-primario btn-grande completo" data-btn-criar>Criar conta</button>
+    </form>
+
+    <div class="conta-links">
+      <a href="../../admin/">← Voltar ao dashboard</a>
+    </div>
+  </section>
+</main>
+
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779577355102"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779577355102"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779577355102"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779577355102"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779577355102"></script>
+<script src="pagina.js?v=1779577355102"></script>
+
+</body>
+</html>

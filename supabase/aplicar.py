@@ -45,6 +45,19 @@ def aplicar_schema(conn):
     print("[ok] schema.sql aplicado")
 
 
+def aplicar_auth(conn):
+    """Aplica auth.sql (perfis_usuarios, trigger, RLS).
+
+    Roda DEPOIS do schema.sql porque depende das tabelas e funções
+    (`fn_tocar_atualizado_em`, `fn_registrar_auditoria`) já existirem.
+    """
+    sql = (Path(__file__).parent / "auth.sql").read_text(encoding="utf-8")
+    with conn.cursor() as cur:
+        cur.execute(sql)
+    conn.commit()
+    print("[ok] auth.sql aplicado (perfis_usuarios + RLS)")
+
+
 def aplicar_seed(conn):
     with conn.cursor() as cur:
         # Grupos
@@ -110,6 +123,7 @@ def mostrar_info(conn):
             "grupos", "sensores",
             "leituras_energia", "leituras_temperatura", "leituras_porta",
             "incidentes", "auditoria",
+            "perfis_usuarios",
         ]:
             try:
                 cur.execute(f"select count(*) from {tabela}")
@@ -128,6 +142,7 @@ def principal():
             return
         if "--so-seed" not in args:
             aplicar_schema(conn)
+            aplicar_auth(conn)
         aplicar_seed(conn)
         print()
         print("=== estado das tabelas ===")

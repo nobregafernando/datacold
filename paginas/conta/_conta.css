@@ -1,0 +1,198 @@
+/* =========================================================
+   DATACOLD · Páginas de conta (criar, recuperar, redefinir)
+   Reaproveita os tokens de login.css mas em um layout focado.
+   ========================================================= */
+
+body{
+  min-height: 100vh;
+  background: var(--branco);
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+}
+
+.conta-fundo{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 10% 10%, rgba(0,184,240,.22), transparent 55%),
+    radial-gradient(ellipse at 90% 90%, rgba(30,111,214,.18), transparent 55%),
+    linear-gradient(180deg, var(--azul-gelo), var(--branco) 70%);
+}
+
+.conta-wrap{
+  width: 100%;
+  max-width: 560px;
+  padding: 28px 18px;
+}
+
+.conta-card{
+  background: var(--branco);
+  border-radius: var(--raio-xl);
+  padding: 42px 42px 32px;
+  box-shadow: 0 30px 80px rgba(11,29,58,.12);
+  border: 1px solid var(--borda);
+  position: relative;
+}
+
+.conta-marca{
+  display: inline-block;
+  margin-bottom: 22px;
+}
+.conta-marca img{
+  height: 38px;
+  width: auto;
+  display: block;
+}
+
+.conta-card h1{
+  font-size: 1.55rem;
+  color: var(--azul-noite);
+  margin-bottom: 6px;
+  letter-spacing: -.02em;
+}
+.conta-sub{
+  color: var(--texto-suave);
+  font-size: .95rem;
+  margin-bottom: 26px;
+  line-height: 1.55;
+}
+
+.conta-form{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.conta-form .campo{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.conta-form .campo span{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+.conta-form .campo input,
+.conta-form .campo select{
+  padding: 12px 14px;
+  font-size: 14px;
+  border-radius: var(--raio-md);
+  background: var(--azul-gelo);
+  border: 1px solid transparent;
+  font-family: var(--fonte);
+  color: var(--azul-noite);
+  transition: background var(--t-rapida), border-color var(--t-rapida), box-shadow var(--t-rapida);
+}
+.conta-form .campo input:focus,
+.conta-form .campo select:focus{
+  background: var(--branco);
+  border-color: var(--azul-medio);
+  box-shadow: 0 0 0 3px rgba(30,111,214,.18);
+  outline: none;
+}
+
+/* Barra de força da senha */
+.forca-senha{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--texto-suave);
+}
+.forca-segmentos{
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+.forca-segmentos > div{
+  height: 5px;
+  border-radius: 999px;
+  background: var(--borda);
+  transition: background var(--t-rapida);
+}
+.forca-segmentos[data-nivel="1"] > div:nth-child(-n+1){ background: var(--erro); }
+.forca-segmentos[data-nivel="2"] > div:nth-child(-n+2){ background: var(--alerta); }
+.forca-segmentos[data-nivel="3"] > div:nth-child(-n+3){ background: #16a34a; }
+.forca-segmentos[data-nivel="4"] > div{ background: #16a34a; }
+.forca-rotulo{ min-width: 70px; text-align: right; font-weight: 700; }
+
+/* Lista de requisitos da senha */
+.requisitos-senha{
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--raio-sm);
+  background: var(--azul-gelo);
+  font-size: 12px;
+  color: var(--texto-suave);
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 14px;
+}
+.requisitos-senha li{
+  position: relative;
+  padding-left: 18px;
+}
+.requisitos-senha li::before{
+  content: "○";
+  position: absolute;
+  left: 0;
+  color: var(--texto-suave);
+}
+.requisitos-senha li.ok{ color: #16a34a; }
+.requisitos-senha li.ok::before{ content: "✓"; color: #16a34a; font-weight: 800; }
+
+/* Mensagens */
+.conta-erro,
+.conta-ok{
+  padding: 10px 14px;
+  border-radius: var(--raio-sm);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.conta-erro{
+  background: rgba(220,38,38,.08);
+  border: 1px solid rgba(220,38,38,.25);
+  color: var(--erro);
+}
+.conta-ok{
+  background: rgba(22,163,74,.08);
+  border: 1px solid rgba(22,163,74,.25);
+  color: #15803d;
+}
+
+.conta-links{
+  margin-top: 22px;
+  text-align: center;
+  font-size: 13px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.conta-links a{
+  color: var(--azul-medio);
+  text-decoration: none;
+  font-weight: 600;
+}
+.conta-links a:hover{ text-decoration: underline; }
+
+.conta-aviso-admin{
+  margin-bottom: 22px;
+  padding: 10px 14px;
+  border-radius: var(--raio-sm);
+  background: rgba(30,111,214,.08);
+  border: 1px solid rgba(30,111,214,.20);
+  color: var(--azul-profundo);
+  font-size: 12.5px;
+}
+.conta-aviso-admin strong{ color: var(--azul-noite); }
+
+@media (max-width: 540px){
+  .conta-card{ padding: 32px 24px; }
+  .requisitos-senha{ grid-template-columns: 1fr; }
+}

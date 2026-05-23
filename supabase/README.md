@@ -11,10 +11,42 @@ puxar dados via REST/PostgREST que o Supabase já expõe pra todas as tabelas.
 ```
 supabase/
 ├── schema.sql          Estrutura: tabelas, índices, triggers, view de conveniência
+├── auth.sql            perfis_usuarios + trigger auth.users + RLS em tudo
 ├── simulador_db.sql    Funções PL/pgSQL que geram dados + agendamento pg_cron
-├── aplicar.py          Aplica schema.sql e popula seed (grupos + sensores)
+├── api_publica.sql     RPCs expostas via PostgREST
+├── aplicar.py          Aplica schema.sql + auth.sql + popula seed
 └── README.md           Este arquivo
 ```
+
+---
+
+## Setup de autenticação (Supabase Dashboard)
+
+Antes do primeiro login real, configure no Dashboard do Supabase
+(<https://supabase.com/dashboard>):
+
+### Authentication → Providers
+- **Email** habilitado.
+- **"Confirm email"** ⇒ **DESABILITADO** (login libera direto, alinhado com a decisão do projeto).
+
+### Authentication → Policies
+- **Minimum password length** ⇒ `10`.
+
+### Authentication → URL Configuration
+- **Site URL** ⇒ `https://datacold.web.app`
+- **Redirect URLs** (adicionar):
+  - `https://datacold.web.app/paginas/conta/redefinir/`
+
+Sem isso, o link de recuperação que o Supabase envia por e-mail pode
+não apontar para a página correta.
+
+### Primeiro admin
+
+O usuário `fernandonobregaalves@gmail.com` é promovido automaticamente
+para `admin` pelo trigger `fn_criar_perfil_padrao` (definido em
+`auth.sql`) assim que cria conta no Supabase. Qualquer outra conta
+começa como `operador` — só admin pode criar usuários via
+`/paginas/conta/criar/`.
 
 ---
 
