@@ -4,10 +4,16 @@
  */
 class ApiBEM {
   static URL_PADRAO = "https://desafio.beminteligencia.com.br";
+  static URL_STORAGE = "datacold_api_url";     // override (ex: simulador local)
   static CHAVE_STORAGE = "datacold_api_key";
 
-  constructor({ urlBase = ApiBEM.URL_PADRAO, chave = null } = {}) {
-    this.urlBase = urlBase;
+  constructor({ urlBase = null, chave = null } = {}) {
+    // Prioridade: argumento > localStorage > URL_PADRAO (BEM real).
+    // Pra apontar pro simulador local:
+    //   localStorage.setItem("datacold_api_url", "http://127.0.0.1:8000")
+    this.urlBase = urlBase
+      ?? localStorage.getItem(ApiBEM.URL_STORAGE)
+      ?? ApiBEM.URL_PADRAO;
     this._chave = chave ?? localStorage.getItem(ApiBEM.CHAVE_STORAGE) ?? "";
   }
 
