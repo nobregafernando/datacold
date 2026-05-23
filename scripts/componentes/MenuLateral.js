@@ -72,6 +72,17 @@ class MenuLateral {
       </div>
 
       <div class="ml-secao">
+        <div class="ml-titulo-secao">Ferramentas</div>
+        <a href="${this.raiz}paginas/admin/sala-controle/index.html" class="ml-item-link">
+          <span class="ml-bolinha" style="background:linear-gradient(135deg,#dc2626,#d97706)"></span>
+          <div class="ml-item-info">
+            <div class="ml-item-nome">Sala de Controle</div>
+            <div class="ml-item-id">simular falhas</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="ml-secao">
         <div class="ml-titulo-secao">Sensores</div>
         <div class="ml-filtros" role="tablist">
           <button data-filtro="todos" class="ativo">Todos</button>

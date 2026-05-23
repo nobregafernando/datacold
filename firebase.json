@@ -1,0 +1,64 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/.*/**",
+      "**/node_modules/**",
+      "**/__pycache__/**",
+      "**/*.md",
+      "**/*.py",
+      "**/*.pyc",
+      "**/*.db",
+      "**/*.db-*",
+      "**/*.sql",
+      "estudos/**",
+      "simulador/**",
+      "supabase/**"
+    ],
+    "cleanUrls": false,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**/*.@(html|js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, max-age=0" }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/paginas/admin/sensores/:sensor",
+        "destination": "/paginas/admin/sensores/:sensor/index.html",
+        "type": 301
+      },
+      {
+        "source": "/paginas/admin/sensores/:sensor/",
+        "destination": "/paginas/admin/sensores/:sensor/index.html",
+        "type": 301
+      },
+      {
+        "source": "/paginas/admin",
+        "destination": "/paginas/admin/admin.html",
+        "type": 301
+      },
+      {
+        "source": "/paginas/admin/",
+        "destination": "/paginas/admin/admin.html",
+        "type": 301
+      },
+      {
+        "source": "/paginas/login",
+        "destination": "/paginas/login/login.html",
+        "type": 301
+      },
+      {
+        "source": "/paginas/login/",
+        "destination": "/paginas/login/login.html",
+        "type": 301
+      }
+    ]
+  }
+}

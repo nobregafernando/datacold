@@ -129,7 +129,8 @@
   padding: 16px 8px 6px;
 }
 
-.ml-item{
+.ml-item,
+.ml-item-link{
   display: flex;
   align-items: center;
   gap: 10px;
@@ -139,6 +140,10 @@
   transition: background var(--t-rapida);
   text-decoration: none;
   border: 1px solid transparent;
+}
+.ml-item-link:hover{ background: var(--azul-gelo); }
+.ml-item-link .ml-bolinha{
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
 }
 .ml-item:hover{ background: var(--azul-gelo); }
 .ml-item.ativo{

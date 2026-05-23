@@ -255,10 +255,12 @@ PERFIS = {
         "tipo": "porta",
         "grupo": "camara_estoque",
         "status": "ativo",
-        "personalidade": "Aberturas raras mas longas. Mediana ~5h aberta. 56% do tempo total aberta.",
+        "personalidade": "Uso intenso em horário comercial, com algumas aberturas demoradas. ~30% do tempo aberta.",
         "parametros": {
-            "aberturas_por_hora": 0.07,
-            "duracao_media_s": 19000,
+            # Ajustado pra ficar visível em janela curta (1h):
+            # 0.6 aberturas/hora × duração média 1800s ≈ porta aberta ~30% do tempo.
+            "aberturas_por_hora": 0.6,
+            "duracao_media_s": 1800,
             "sinal_analogico": True,
             "valor_aberto_max": 224.0,
         },

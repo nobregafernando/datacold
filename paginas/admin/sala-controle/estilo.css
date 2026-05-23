@@ -1,0 +1,500 @@
+/* =========================================================
+   DATACOLD · Sala de Controle do simulador
+   ========================================================= */
+
+.sala-cabecalho{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.sala-cabecalho h1{
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  color: var(--azul-noite);
+  margin: 6px 0 4px;
+  letter-spacing: -.02em;
+}
+.sala-cabecalho .legenda{
+  color: var(--texto-suave);
+  font-size: .95rem;
+  margin: 0;
+  max-width: 720px;
+}
+.sala-acoes-topo{ display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ===== KPIs ===== */
+.sala-kpis{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.sala-kpi{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  padding: 16px 20px;
+  box-shadow: var(--sombra-sm);
+}
+.sala-kpi .sk-v{
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--azul-noite);
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+.sala-kpi .sk-l{
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-top: 4px;
+}
+
+/* ===== Banner de incidentes ===== */
+.incidentes-banner{
+  background: linear-gradient(135deg, rgba(217,119,6,.06), rgba(220,38,38,.04));
+  border: 1px solid rgba(217,119,6,.30);
+  border-radius: var(--raio-lg);
+  padding: 18px 22px;
+  margin-bottom: 22px;
+}
+.incidentes-banner header{
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.incidentes-banner h2{
+  font-size: 14px;
+  color: var(--azul-noite);
+  margin: 0;
+}
+.ib-sub{ font-size: 12px; color: var(--texto-suave); }
+.ib-lista{ display: flex; flex-direction: column; gap: 8px; }
+.ib-vazio{
+  font-size: 13px;
+  color: var(--texto-suave);
+  padding: 8px 0;
+  font-style: italic;
+}
+.ib-item{
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--branco);
+  border: 1px solid rgba(217,119,6,.30);
+  border-left: 3px solid var(--alerta);
+  border-radius: var(--raio-md);
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+.ib-item .ib-tipo{
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 3px 7px;
+  background: rgba(217,119,6,.10);
+  color: var(--alerta);
+  border-radius: var(--raio-sm);
+}
+.ib-item .ib-sensor{
+  font-family: var(--fonte-mono);
+  color: var(--azul-noite);
+  font-weight: 700;
+}
+.ib-item .ib-desc{ color: var(--texto-suave); }
+.ib-item .ib-tempo{
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+.ib-item .ib-cancelar{
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--borda);
+  background: var(--branco);
+  cursor: pointer;
+  display: grid; place-items: center;
+  color: var(--texto-suave);
+  transition: all var(--t-rapida);
+}
+.ib-item .ib-cancelar:hover{
+  border-color: var(--erro);
+  color: var(--erro);
+}
+
+/* ===== Grade de sensores ===== */
+.sala-grade{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+.sala-loading{
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+/* ===== Card de sensor ===== */
+.sc-card{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--sombra-sm);
+  transition: transform var(--t-media), box-shadow var(--t-media);
+  position: relative;
+  overflow: hidden;
+}
+.sc-card:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-md);
+}
+.sc-card .sc-stripe{
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: 4px;
+}
+.sc-card.tipo-energia      .sc-stripe{ background: linear-gradient(180deg, var(--azul-profundo), var(--azul-medio)); }
+.sc-card.tipo-temperatura  .sc-stripe{ background: linear-gradient(180deg, var(--azul-medio), var(--ciano)); }
+.sc-card.tipo-porta        .sc-stripe{ background: linear-gradient(180deg, var(--ciano), var(--azul-claro)); }
+.sc-card.tem-incidente{
+  border-color: var(--alerta);
+  box-shadow: 0 0 0 1px var(--alerta), 0 8px 24px rgba(217,119,6,.18);
+}
+
+.sc-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 6px;
+}
+.sc-head h3{
+  font-size: 1rem;
+  color: var(--azul-noite);
+  margin: 0 0 2px;
+  line-height: 1.2;
+}
+.sc-head code{
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  color: var(--texto-suave);
+  background: var(--painel-soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sc-head .sc-tipo{
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  padding: 3px 8px;
+  border-radius: var(--raio-pill);
+  color: var(--branco);
+  white-space: nowrap;
+}
+.sc-tipo.energia     { background: linear-gradient(135deg, var(--azul-profundo), var(--azul-medio)); }
+.sc-tipo.temperatura { background: linear-gradient(135deg, var(--azul-medio), var(--ciano)); }
+.sc-tipo.porta       { background: linear-gradient(135deg, var(--ciano), var(--azul-claro)); color: var(--azul-noite); }
+
+/* leitura ao vivo */
+.sc-leitura{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--painel-soft);
+  border-radius: var(--raio-md);
+}
+.sc-valor-bloco{ flex: 1; min-width: 0; }
+.sc-valor{
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--azul-noite);
+  letter-spacing: -.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sc-extra{
+  font-size: 11px;
+  color: var(--texto-suave);
+  margin-top: 4px;
+  font-family: var(--fonte-mono);
+}
+.sc-quando{
+  font-size: 10px;
+  color: var(--texto-suave);
+  margin-top: 6px;
+  font-family: var(--fonte-mono);
+}
+.sc-spark{
+  width: 110px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.sc-spark svg{ width: 100%; height: 100%; display: block; }
+.sc-spark path{
+  fill: none;
+  stroke: var(--azul-medio);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sc-spark .area{
+  fill: rgba(30,111,214,.08);
+  stroke: none;
+}
+
+/* botões de ação (preset de falha) */
+.sc-acoes{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.sc-botao{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--borda);
+  border-radius: var(--raio-sm);
+  padding: 8px 12px;
+  font-family: var(--fonte);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--t-rapida);
+}
+.sc-botao:hover{
+  border-color: var(--azul-medio);
+  background: var(--azul-gelo);
+  transform: translateY(-1px);
+}
+.sc-botao .sb-titulo{
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  line-height: 1.2;
+}
+.sc-botao .sb-sub{
+  font-size: 10px;
+  color: var(--texto-suave);
+  font-family: var(--fonte-mono);
+}
+.sc-botao.severidade-critica{ border-left-color: var(--erro); }
+.sc-botao.severidade-alta   { border-left-color: var(--alerta); }
+.sc-botao.severidade-media  { border-left-color: var(--ciano); }
+.sc-botao.severidade-comum  { border-left-color: #9ca3af; }
+.sc-botao.severidade-critica:hover{ border-color: var(--erro); background: rgba(220,38,38,.04); }
+.sc-botao.severidade-alta:hover   { border-color: var(--alerta); background: rgba(217,119,6,.06); }
+
+/* desabilitar visualmente se sensor histórico */
+.sc-card.historico{ opacity: .65; }
+.sc-card.historico .sc-acoes button{ opacity: .5; cursor: not-allowed; }
+
+/* ===== Modal ===== */
+.sala-modal[hidden]{ display: none !important; }
+.sala-modal{
+  position: fixed; inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.sm-backdrop{
+  position: absolute; inset: 0;
+  background: rgba(11,29,58,.55);
+  backdrop-filter: blur(4px);
+}
+.sm-corpo{
+  position: relative;
+  background: var(--branco);
+  border-radius: var(--raio-lg);
+  padding: 22px 26px;
+  width: 440px; max-width: 100%;
+  box-shadow: var(--sombra-lg);
+}
+.sm-corpo header h3{
+  font-size: 1.05rem;
+  color: var(--azul-noite);
+  margin: 0 0 8px;
+}
+.sm-conteudo{
+  font-size: 13.5px;
+  color: var(--texto);
+  margin: 14px 0 22px;
+  line-height: 1.55;
+}
+.sm-conteudo .sm-params{
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 14px;
+  margin: 12px 0 0;
+  font-family: var(--fonte-mono);
+  font-size: 11.5px;
+  background: var(--painel-soft);
+  border-radius: var(--raio-sm);
+  padding: 12px 14px;
+}
+.sm-conteudo .sm-params dt{ color: var(--texto-suave); }
+.sm-conteudo .sm-params dd{ color: var(--azul-noite); font-weight: 700; margin: 0; }
+.sm-corpo footer{
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+
+/* ===== Toasts ===== */
+.sala-toasts{
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 300;
+  display: flex; flex-direction: column; gap: 10px;
+  pointer-events: none;
+}
+.sala-toast{
+  pointer-events: auto;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--ok);
+  border-radius: var(--raio-md);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--texto);
+  min-width: 240px;
+  box-shadow: var(--sombra-md);
+  animation: surgir .4s var(--t-lenta);
+}
+.sala-toast.erro{ border-left-color: var(--erro); }
+.sala-toast.info{ border-left-color: var(--azul-medio); }
+.sala-toast strong{ display: block; margin-bottom: 2px; color: var(--azul-noite); }
+
+/* ===== RECEITA DO FAKE (nova) ===== */
+.sc-receita{
+  background: linear-gradient(135deg, rgba(124,58,237,.06), rgba(30,111,214,.04));
+  border: 1px dashed rgba(124,58,237,.30);
+  border-radius: var(--raio-md);
+  padding: 10px 14px;
+}
+.sc-receita header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.sr-eyebrow{
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7c3aed;
+}
+.sr-toggle{
+  width: 22px; height: 22px;
+  background: transparent;
+  border: 1px solid var(--borda);
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid; place-items: center;
+  color: var(--texto-suave);
+  transition: transform var(--t-rapida);
+}
+.sr-toggle.aberto{ transform: rotate(180deg); }
+.sr-personalidade{
+  font-size: 12px;
+  color: var(--azul-noite);
+  line-height: 1.45;
+  font-style: italic;
+}
+.sr-params{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(124,58,237,.20);
+}
+.sr-param{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--fonte-mono);
+}
+.sr-param .srp-k{ color: var(--texto-suave); }
+.sr-param .srp-v{ color: var(--azul-profundo); font-weight: 700; }
+
+/* ===== COMPARATIVO MEDIDO vs RECEITA ===== */
+.sc-comparativo{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-md);
+  padding: 8px 12px;
+  font-size: 11.5px;
+}
+.sc-cmp-vazio{
+  color: var(--texto-suave);
+  font-style: italic;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px 0;
+}
+.sc-cmp-linha{
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--borda);
+}
+.sc-cmp-linha:last-child{ border-bottom: none; }
+.sl-l{ color: var(--texto-suave); font-size: 11px; }
+.sl-medido{ font-family: var(--fonte-mono); font-weight: 700; color: var(--azul-noite); }
+.sl-vs{ font-family: var(--fonte-mono); color: var(--texto-suave); font-size: 10px; }
+.sl-v{ font-family: var(--fonte-mono); font-weight: 700; color: var(--azul-noite); }
+.sl-diff{
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--raio-pill);
+}
+.sl-diff.ok      { background: rgba(22,163,74,.12);  color: var(--ok); }
+.sl-diff.atencao { background: rgba(217,119,6,.12);  color: var(--alerta); }
+.sl-diff.alerta  { background: rgba(220,38,38,.12);  color: var(--erro); }
+.sl-v.ok         { color: var(--ok); }
+.sl-v.alerta     { color: var(--erro); }
+
+/* ===== Tags adicionais ===== */
+.sc-grupo{ font-size:11px; color: var(--texto-suave); margin-top: 4px; }
+.sc-tags{ display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.sc-status{
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  padding: 2px 7px;
+  border-radius: var(--raio-pill);
+}
+.sc-status.ativo     { background: rgba(22,163,74,.12);  color: var(--ok); }
+.sc-status.historico { background: rgba(217,119,6,.12);  color: var(--alerta); }
+
+/* responsivo */
+@media (max-width: 1100px){
+  .sala-kpis{ grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px){
+  .sc-acoes{ grid-template-columns: 1fr; }
+  .sr-params{ grid-template-columns: 1fr; }
+}

@@ -24,9 +24,9 @@
 
   <main class="sensor-main">
 
-    <!-- Menu superior (componente: status + sino de alertas) -->
     <div id="menu-topo"></div>
 
+    <!-- Cabeçalho do sensor -->
     <header class="sensor-topo">
       <div class="sensor-titulo">
         <a href="../../admin.html" class="voltar">
@@ -40,106 +40,173 @@
       <div class="sensor-meta-topo" data-meta-topo></div>
     </header>
 
-    <!-- Achados automáticos: erros encontrados, possíveis motivos e recomendações.
-         Populado pelo pagina.js a partir de scripts/nucleo/AchadosSensores.js. -->
-    <section class="achados" id="achados" data-achados hidden>
-      <header class="achados-cabecalho">
-        <div>
-          <span class="olho">Análise automática</span>
-          <h2>Erros encontrados, possíveis motivos e recomendações</h2>
-          <p class="achados-intro">
-            Conclusões da investigação automática deste sensor, geradas a partir da
-            janela mais recente disponível na API BEM. Vermelho = sério, amarelo = atenção,
-            azul = observação.
-          </p>
-        </div>
-        <div class="achados-resumo" data-achados-resumo></div>
-      </header>
-      <div class="achados-lista" data-achados-lista></div>
-      <footer class="achados-rodape" data-achados-rodape></footer>
+    <!-- Banner: configurar chave da API (oculto quando há chave salva) -->
+    <section class="aviso-chave" data-aviso-chave hidden>
+      <div class="aviso-chave-texto">
+        <strong>Configure sua chave da API BEM</strong>
+        <span>Sem ela, este sensor não recebe dados em tempo real.</span>
+      </div>
+      <div class="aviso-chave-form">
+        <input type="password" placeholder="X-API-Key" data-chave-input autocomplete="off">
+        <button class="btn btn-primario btn-pequeno" data-acao="salvar-chave">Salvar</button>
+      </div>
     </section>
 
-    <!-- Briefing para os devs construírem esta página -->
-    <section class="roadmap">
-      <span class="olho">Briefing técnico</span>
-      <h2>O que esta página precisa entregar</h2>
-      <p class="roadmap-intro">
-        Os blocos abaixo descrevem o escopo da página deste sensor.
-        Devem ser implementados consumindo a API BEM e a classe <code>Sensor</code> do núcleo.
-      </p>
+    <!-- Banner de conectividade do sensor -->
+    <section class="conectividade conectividade-aguardando" data-conectividade>
+      <span class="conectividade-pill">
+        <span class="conectividade-ponto"></span>
+        <strong>Aguardando…</strong>
+      </span>
+      <span class="conectividade-info">Buscando dados na API BEM.</span>
+    </section>
 
-      <div class="roadmap-grade">
-        <article class="roadmap-card">
-          <div class="roadmap-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+    <!-- Painel lúdico (semáforo + velocímetros/termômetro/porta) -->
+    <section class="painel-ludico" data-ludico hidden>
+      <div class="ludico-status" data-ludico-status></div>
+      <div class="ludico-visual"  data-ludico-visual></div>
+    </section>
+
+    <!-- KPIs (calculados pelo sensor.calcularIndicadores) -->
+    <section class="sensor-kpis" data-kpis>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+      <div class="kpi-card kpi-skel"></div>
+    </section>
+
+    <!-- Grade principal -->
+    <section class="sensor-grade">
+
+      <!-- Coluna larga: gráficos + tabela -->
+      <div class="sensor-coluna-larga">
+
+        <article class="cartao-painel">
+          <header class="cabecalho-com-acoes">
+            <div>
+              <h3>
+                Gráficos em tempo real
+                <span class="pill-aovivo" data-aovivo>
+                  <span class="aovivo-ponto"></span>AO VIVO
+                </span>
+              </h3>
+              <p>Dados chegando direto da API BEM · atualizado <span data-atualizado-em>—</span></p>
+            </div>
+            <div class="acoes-cabecalho">
+              <div class="seletor-janela" data-seletor-janela>
+                <button data-janela="-30m">30m</button>
+                <button data-janela="-1h" class="ativo">1h</button>
+                <button data-janela="-6h">6h</button>
+                <button data-janela="-24h">24h</button>
+                <button data-janela="-72h">3d</button>
+                <button data-janela="-167h">7d</button>
+              </div>
+              <button class="btn btn-ghost btn-pequeno" data-acao="atualizar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                Atualizar
+              </button>
+            </div>
+          </header>
+          <div class="charts-area" data-charts>
+            <div class="carregando-bloco">
+              <div class="spinner"></div>
+              Carregando dados…
+            </div>
           </div>
-          <h3>Monitoramento de conectividade</h3>
-          <p>Status de rede do sensor em tempo real — <strong>online, instável ou offline</strong>. Detecta perda de conexão pelo tempo decorrido desde a última leitura e por lacunas (gaps) excessivas no histórico.</p>
-          <ul class="roadmap-detalhes">
-            <li><strong>Online:</strong> recebeu leitura nos últimos N segundos (configurável por tipo).</li>
-            <li><strong>Instável:</strong> recebeu leitura mas com gaps acima da média habitual.</li>
-            <li><strong>Offline:</strong> sem leitura há mais de X minutos.</li>
-            <li>Indicador visual fixo no topo da página, com cor (verde/amarelo/vermelho).</li>
-            <li>Persistir histórico de mudanças de status para diagnóstico.</li>
-          </ul>
         </article>
 
-        <article class="roadmap-card">
-          <div class="roadmap-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"></polyline><polyline points="14 7 21 7 21 14"></polyline></svg>
+        <article class="cartao-painel">
+          <header>
+            <h3>Últimas leituras</h3>
+            <p>50 pontos mais recentes retornados pela API.</p>
+          </header>
+          <div class="tabela-wrap" data-tabela>
+            <div class="vazio-bloco">Sem dados ainda.</div>
           </div>
-          <h3>Gráficos em tempo real</h3>
-          <p>Plotagem de <strong>séries temporais</strong> dos dados recebidos, com atualização contínua via polling à API BEM (ou websocket quando disponível).</p>
-          <ul class="roadmap-detalhes">
-            <li><strong>Energia:</strong> 3 séries de corrente (A/B/C), 3 de tensão, 3 de FP e 1 de potência ativa.</li>
-            <li><strong>Temperatura:</strong> 1 série principal de temperatura.</li>
-            <li><strong>Porta:</strong> sinal bruto em formato stepped (degraus).</li>
-            <li>Seletor de janela: 30m · 1h · 6h · 24h · 3d · 7d (limite da API).</li>
-            <li>Linhas de referência: limite ANEEL (FP 0,92), faixa segura (temperatura por câmara).</li>
-            <li>Tooltip com timestamp e valor formatado em pt-BR.</li>
-            <li>Atualização sem flicker (preservar zoom/pan se houver).</li>
-          </ul>
         </article>
 
-        <article class="roadmap-card">
-          <div class="roadmap-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-          </div>
-          <h3>Alertas</h3>
-          <p>Notificações automáticas de anomalias com <strong>severidade classificada</strong> (crítico, atenção, informativo).</p>
-          <ul class="roadmap-detalhes">
-            <li><strong>Offline:</strong> ausência de leituras acima do esperado.</li>
-            <li><strong>Oscilação:</strong> desvio padrão acima do baseline histórico do sensor.</li>
-            <li><strong>Superaquecimento:</strong> temperatura fora da faixa segura por X tempo consecutivo.</li>
-            <li><strong>Energia:</strong> FP &lt; 0,92, %CUB &gt; 10%, %VUB &gt; 2%, fluxo reverso (FP negativo).</li>
-            <li><strong>Porta:</strong> aberturas anormalmente longas ou frequentes.</li>
-            <li>Feed cronológico com filtros por severidade.</li>
-            <li>Notificação no navegador (Notifications API) para críticos, opcional.</li>
-            <li>Marcar como lido / arquivar.</li>
-          </ul>
+        <article class="cartao-painel">
+          <header>
+            <h3>Parâmetros recebidos por este sensor</h3>
+            <p>Campos que vêm na resposta da API a cada leitura.</p>
+          </header>
+          <div class="parametros-lista" data-parametros></div>
         </article>
 
-        <article class="roadmap-card">
-          <div class="roadmap-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          </div>
-          <h3>Verificador de latência</h3>
-          <p>Análise do <strong>intervalo médio entre leituras</strong> em milissegundos. Detecta quando está muito baixo (sensor enviando rápido demais → suspeita de duplicação ou loop) ou muito alto (atrasos / perda de pacotes).</p>
-          <ul class="roadmap-detalhes">
-            <li>Cálculo do intervalo médio, mediana, maior gap e número de gaps no período.</li>
-            <li>Comparação com o baseline esperado para o tipo do sensor.</li>
-            <li>Histograma da distribuição do intervalo.</li>
-            <li>Alerta visual quando o intervalo sair do padrão por mais de N amostras.</li>
-            <li>Exportar relatório CSV pra análise externa.</li>
-          </ul>
+        <article class="cartao-painel cartao-painel-suave">
+          <header>
+            <h3>Tipos de alerta possíveis</h3>
+            <p>O que pode ser disparado por sensores deste tipo (catálogo geral).</p>
+          </header>
+          <div class="tipos-alerta" data-tipos-alerta></div>
         </article>
+
       </div>
+
+      <!-- Coluna estreita: alertas + latência -->
+      <aside class="sensor-coluna-estreita">
+
+        <article class="cartao-painel">
+          <header>
+            <h3>
+              Alertas deste sensor
+              <span class="pill-contagem" data-alertas-contagem>0</span>
+            </h3>
+            <p>Notificações específicas. Vazio = tudo certo.</p>
+          </header>
+          <div class="alertas-sensor" data-alertas-sensor></div>
+        </article>
+
+        <article class="cartao-painel">
+          <header>
+            <h3>Latência das leituras</h3>
+            <p>Intervalo entre os pontos.</p>
+          </header>
+          <div class="latencia" data-latencia>
+            <div class="vazio-bloco">Aguardando dados…</div>
+          </div>
+        </article>
+
+      </aside>
+    </section>
+
+    <!-- Análise automática (calculada em tempo real pelos pontos da API) -->
+    <section class="analise" data-analise hidden>
+      <header class="analise-cabecalho">
+        <div>
+          <span class="olho">Análise automática</span>
+          <h2>O que estamos detectando agora</h2>
+          <p class="analise-intro">
+            Cada chip abaixo é uma verificação rodando em cima dos pontos que
+            acabaram de chegar da API. Vermelho = sério, laranja = atenção,
+            azul = observação, verde = tudo certo.
+          </p>
+        </div>
+      </header>
+
+      <!-- Banner geral: tudo certo / atenção / crítico -->
+      <div class="analise-banner" data-analise-banner></div>
+
+      <!-- Régua de chips (resumo por verificação) -->
+      <div class="analise-chips">
+        <div class="chips-rotulo">Verificações desta análise:</div>
+        <div class="chips-lista" data-analise-chips></div>
+      </div>
+
+      <!-- Detalhes (problemas primeiro, ok ao fim ou em colapso) -->
+      <div class="analise-detalhes" data-analise-detalhes></div>
+
+      <footer class="analise-rodape" data-analise-rodape></footer>
     </section>
 
   </main>
 
 </div>
 
+<!-- Chart.js (gráficos) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- Núcleo + componentes -->
 <script src="../../../../scripts/nucleo/ApiBEM.js"></script>
 <script src="../../../../scripts/nucleo/Sensor.js"></script>
 <script src="../../../../scripts/nucleo/SensorEnergia.js"></script>
@@ -151,7 +218,7 @@
 <script src="../../../../scripts/nucleo/Notificacoes.js"></script>
 <script src="../../../../scripts/componentes/MenuLateral.js"></script>
 <script src="../../../../scripts/componentes/MenuTopo.js"></script>
-<script src="../../../../scripts/nucleo/AchadosSensores.js"></script>
+<script src="../../../../scripts/nucleo/AnalisadorSensor.js"></script>
 <script src="pagina.js"></script>
 
 </body>

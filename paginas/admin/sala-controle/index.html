@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataCold · Sala de Controle</title>
+
+<link rel="icon" type="image/png" href="../../../logo/04-icon-standalone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css">
+<link rel="stylesheet" href="../admin.css">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<div class="layout-admin">
+
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="admin-main sala-main">
+
+    <div id="menu-topo"></div>
+
+    <header class="sala-cabecalho">
+      <div>
+        <span class="olho">Simulação ao vivo · backend</span>
+        <h1>Sala de Controle</h1>
+        <p class="legenda">
+          Cada cartão mostra os dados que a função geradora está produzindo agora.
+          Use os botões pra injetar falhas controladas — elas vão refletir no painel público em segundos.
+        </p>
+      </div>
+      <div class="sala-acoes-topo">
+        <button class="btn btn-pequeno btn-ghost" data-acao="cancelar-todos">Cancelar todos incidentes</button>
+        <button class="btn btn-pequeno btn-ghost" data-acao="atualizar">Atualizar agora</button>
+      </div>
+    </header>
+
+    <!-- KPIs rápidos -->
+    <section class="sala-kpis" data-kpis>
+      <div class="sala-kpi"><div class="sk-v" data-kpi="sensores">—</div><div class="sk-l">sensores ativos</div></div>
+      <div class="sala-kpi"><div class="sk-v" data-kpi="incidentes">—</div><div class="sk-l">incidentes ativos</div></div>
+      <div class="sala-kpi"><div class="sk-v" data-kpi="leituras5min">—</div><div class="sk-l">leituras nos últ. 5 min</div></div>
+      <div class="sala-kpi"><div class="sk-v" data-kpi="auto">8s</div><div class="sk-l">intervalo de atualização</div></div>
+    </section>
+
+    <!-- Banner de incidentes ativos -->
+    <section class="incidentes-banner" data-incidentes-ativos>
+      <header>
+        <h2>Incidentes ativos</h2>
+        <span class="ib-sub">Falhas injetadas no momento. Clique em ✕ pra cancelar.</span>
+      </header>
+      <div class="ib-lista" data-ib-lista>
+        <div class="ib-vazio">Nenhum incidente injetado. Use os botões abaixo pra simular falhas.</div>
+      </div>
+    </section>
+
+    <!-- Grid de sensores -->
+    <section class="sala-grade" data-grade>
+      <div class="sala-loading">Carregando catálogo de sensores…</div>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- Modal de confirmação -->
+<div class="sala-modal" data-modal hidden>
+  <div class="sm-backdrop" data-modal-close></div>
+  <div class="sm-corpo">
+    <header><h3 data-modal-titulo>—</h3></header>
+    <div class="sm-conteudo" data-modal-conteudo></div>
+    <footer>
+      <button class="btn btn-pequeno btn-ghost" data-modal-close>Cancelar</button>
+      <button class="btn btn-pequeno btn-primario" data-modal-confirmar>Injetar falha</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="sala-toasts" data-toasts></div>
+
+<script src="../../../scripts/nucleo/ApiBEM.js"></script>
+<script src="../../../scripts/nucleo/Sensor.js"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js"></script>
+<script src="../../../scripts/nucleo/Usuario.js"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js"></script>
+<script src="../../../scripts/componentes/MenuLateral.js"></script>
+<script src="../../../scripts/componentes/MenuTopo.js"></script>
+<script src="pagina.js"></script>
+
+</body>
+</html>
