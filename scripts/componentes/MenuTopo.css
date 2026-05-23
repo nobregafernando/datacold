@@ -4,9 +4,11 @@
    ========================================================= */
 
 .menu-topo{
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 30;
+  left: 280px;            /* depois da sidebar */
+  right: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -16,11 +18,14 @@
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   border-bottom: 1px solid var(--borda);
-  margin: -32px -40px 24px;   /* encosta nas bordas do main */
+  box-shadow: 0 1px 0 rgba(11,29,58,.04);
 }
 
+@media (max-width: 900px){
+  .menu-topo{ left: 240px; }
+}
 @media (max-width: 720px){
-  .menu-topo{ margin: -24px -20px 18px; padding: 12px 20px; }
+  .menu-topo{ left: 0; padding: 12px 20px; }
 }
 
 .mt-esquerda{
@@ -99,6 +104,17 @@
   color: var(--azul-profundo);
   box-shadow: 0 0 0 3px rgba(30,111,214,.12);
 }
+/* sino balança quando há notificação crítica não lida */
+.mt-sino.tem-critica{
+  animation: balanco 1.8s ease-in-out infinite;
+}
+@keyframes balanco{
+  0%, 100% { transform: rotate(0); }
+  10%, 30% { transform: rotate(-12deg); }
+  20%, 40% { transform: rotate(12deg); }
+  50%      { transform: rotate(0); }
+}
+
 .mt-badge{
   position: absolute;
   top: -5px;
@@ -116,13 +132,23 @@
   box-shadow: 0 4px 10px rgba(0,184,240,.40);
   border: 2px solid var(--branco);
 }
+.mt-badge.pulsar{
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 0 0 rgba(220,38,38,.55);
+  animation: badgePulse 1.6s ease-out infinite;
+}
+@keyframes badgePulse{
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
 
 /* ============ Dropdown de alertas ============ */
 .mt-dropdown{
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 360px;
+  width: 400px;
   max-width: calc(100vw - 40px);
   background: var(--branco);
   border: 1px solid var(--borda);
@@ -152,7 +178,21 @@
   margin: 0;
   font-size: 14px;
   color: var(--azul-noite);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+.mt-contagem{
+  background: var(--painel-soft);
+  border: 1px solid var(--borda);
+  color: var(--texto-suave);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--raio-pill);
+}
+.mt-dropdown-acoes{ display: flex; gap: 12px; }
+.mt-link-acao,
 .mt-marcar-lidos{
   background: transparent;
   border: none;
@@ -162,6 +202,7 @@
   cursor: pointer;
   padding: 0;
 }
+.mt-link-acao:hover,
 .mt-marcar-lidos:hover{ color: var(--azul-profundo); }
 
 .mt-dropdown-corpo{
@@ -176,7 +217,14 @@
 .mt-info{
   font-size: 11px;
   color: var(--texto-suave);
-  font-style: italic;
+}
+.mt-info code{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--azul-profundo);
 }
 
 /* ============ Item de alerta ============ */
@@ -199,30 +247,100 @@
   margin-top: 6px;
   flex-shrink: 0;
 }
-.mt-alerta.crit .mt-alerta-marca { background: var(--erro);    box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
-.mt-alerta.warn .mt-alerta-marca { background: var(--alerta);  box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
-.mt-alerta.info .mt-alerta-marca { background: var(--ciano);   box-shadow: 0 0 0 3px rgba(0,184,240,.18); }
+/* severidades (sistema atual): critica/alta/media/comum */
+.mt-alerta.severidade-critica .mt-alerta-marca{ background: #dc2626;       box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+.mt-alerta.severidade-alta    .mt-alerta-marca{ background: #d97706;       box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
+.mt-alerta.severidade-media   .mt-alerta-marca{ background: var(--ciano);  box-shadow: 0 0 0 3px rgba(0,184,240,.18); }
+.mt-alerta.severidade-comum   .mt-alerta-marca{ background: #9ca3af;       box-shadow: 0 0 0 3px rgba(156,163,175,.18); }
+/* mantém compat com classes antigas crit/warn/info, caso ainda apareçam */
+.mt-alerta.crit .mt-alerta-marca { background: #dc2626;       box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+.mt-alerta.warn .mt-alerta-marca { background: #d97706;       box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
+.mt-alerta.info .mt-alerta-marca { background: var(--ciano);  box-shadow: 0 0 0 3px rgba(0,184,240,.18); }
 .mt-alerta.lido .mt-alerta-marca { background: #c8d2e0; box-shadow: none; }
 
 .mt-alerta-conteudo{ flex: 1; min-width: 0; }
+
+.mt-alerta-topo{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
 .mt-alerta-titulo{
   font-size: 13px;
   font-weight: 700;
   color: var(--azul-noite);
   line-height: 1.3;
+  flex: 1;
+  min-width: 0;
 }
+.mt-alerta-pill{
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.mt-alerta.severidade-critica .mt-alerta-pill{ background: rgba(220,38,38,.12); color: #dc2626; }
+.mt-alerta.severidade-alta    .mt-alerta-pill{ background: rgba(217,119,6,.12); color: #d97706; }
+.mt-alerta.severidade-media   .mt-alerta-pill{ background: rgba(0,184,240,.12); color: var(--azul-profundo); }
+.mt-alerta.severidade-comum   .mt-alerta-pill{ background: rgba(156,163,175,.15); color: #6b7280; }
+
 .mt-alerta-msg{
   font-size: 12px;
   color: var(--texto-suave);
-  margin-top: 3px;
+  margin: 2px 0 6px;
   line-height: 1.45;
 }
-.mt-alerta-quando{
-  font-size: 10px;
-  color: var(--texto-suave);
-  margin-top: 6px;
-  font-family: var(--fonte-mono);
+
+.mt-alerta-origem{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--azul-medio);
+  background: rgba(30,111,214,.06);
+  padding: 2px 8px;
+  border-radius: var(--raio-pill);
+  margin: 4px 0;
 }
+.mt-alerta-origem svg{ color: var(--azul-medio); }
+
+.mt-alerta-rodape{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.mt-alerta-quando{
+  font-size: 10.5px;
+  color: var(--texto-suave);
+  font-family: var(--fonte-mono);
+  flex: 1;
+}
+.mt-alerta-acao{
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--azul-medio);
+}
+.mt-alerta-acao:hover{ color: var(--azul-profundo); }
+.mt-alerta-remover{
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--texto-suave);
+  font-size: 16px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  opacity: 0;
+  transition: opacity var(--t-rapida), background var(--t-rapida);
+}
+.mt-alerta:hover .mt-alerta-remover{ opacity: 1; }
+.mt-alerta-remover:hover{ background: rgba(220,38,38,.10); color: var(--erro); }
 
 /* ============ Estado vazio ============ */
 .mt-vazio{

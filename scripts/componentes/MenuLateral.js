@@ -118,7 +118,7 @@ class MenuLateral {
         if (this.aoSelecionarSensor) {
           this.aoSelecionarSensor(id);
         } else {
-          window.location.href = `${this.raiz}paginas/admin/sensores/${encodeURIComponent(id)}/`;
+          window.location.href = `${this.raiz}paginas/admin/sensores/${encodeURIComponent(id)}/index.html`;
         }
       }
     });

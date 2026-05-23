@@ -36,6 +36,47 @@ class PaginaAdmin {
 
     // 7. Botão atualizar
     document.querySelector("[data-acao='atualizar']").addEventListener("click", () => this._recarregar());
+
+    // 8. Demo do sistema de notificações (uma única vez por usuário)
+    this._disparoDemoNotificacoes();
+  }
+
+  /**
+   * Demonstração do sistema de notificações.
+   * Dispara um exemplo de cada severidade na primeira vez que o admin carrega.
+   * REMOVER quando o detector de anomalias real for plugado.
+   */
+  _disparoDemoNotificacoes() {
+    const CHAVE_DEMO = "datacold_demo_notificacoes";
+    if (localStorage.getItem(CHAVE_DEMO)) return;
+    localStorage.setItem(CHAVE_DEMO, "1");
+
+    Notificacoes.critica(
+      "Superaquecimento detectado",
+      "Câmara de congelados acima de -8°C há 5 min — risco de perda de carga.",
+      {
+        origem: { tipo: "sensor", id: "congelados_temperatura", label: "Câmara de Congelados" },
+        acao: { url: "sensores/congelados_temperatura/index.html", texto: "Abrir sensor" },
+      }
+    );
+    Notificacoes.alta(
+      "Fator de potência baixo",
+      "Extrusora 2: FP=0,45 abaixo do limite ANEEL (0,92). Multa garantida.",
+      {
+        origem: { tipo: "sensor", id: "extrusora_2", label: "Extrusora 2" },
+        acao: { url: "sensores/extrusora_2/index.html", texto: "Abrir sensor" },
+      }
+    );
+    Notificacoes.media(
+      "Calibração pendente",
+      "Sensor de porta da câmara de estoque com leituras erráticas — recomenda calibrar.",
+      { origem: { tipo: "sensor", id: "estoque_porta", label: "Porta do Estoque" } }
+    );
+    Notificacoes.comum(
+      "Sincronização concluída",
+      "Catálogo de 14 sensores atualizado a partir da API BEM.",
+      { origem: { tipo: "sistema", label: "Sincronização" } }
+    );
   }
 
   // ===================================================================

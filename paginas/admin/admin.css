@@ -15,7 +15,7 @@ body{
 
 .admin-main{
   min-width: 0;
-  padding: 32px 40px 60px;
+  padding: 96px 40px 60px;     /* 96px topo: dá espaço pro menu-topo fixo (~68px) + respiro */
   overflow-x: hidden;
 }
 
@@ -348,6 +348,6 @@ body{
   .admin-grade{ grid-template-columns: 1fr; }
 }
 @media (max-width: 720px){
-  .admin-main{ padding: 24px 20px 40px; }
+  .admin-main{ padding: 84px 20px 40px; }
   .distribuicao{ grid-template-columns: 1fr; }
 }
