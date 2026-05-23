@@ -75,7 +75,7 @@ class MenuLateral {
     this.raizEl.innerHTML = `
       <div class="ml-topo">
         <a href="${this.raiz}index.html" class="ml-marca" aria-label="DataCold">
-          <img src="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/01-primary-logo.png" alt="DataCold">
+          <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
         </a>
       </div>
 
