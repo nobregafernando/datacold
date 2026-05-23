@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+  }
+  // 2) Apaga todas as caches da Cache API
+  if ('caches' in window) {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
+  try {
+    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        if (anterior && anterior !== v.build_id) {
+          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
+          });
+        }
+        localStorage.setItem('__build_id', v.build_id);
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Login</title>
+
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../estilos/global.css?v=1779567436477">
+<link rel="stylesheet" href="login.css?v=1779567436477">
+</head>
+<body>
+
+<div class="login-fundo" aria-hidden="true"></div>
+
+<main class="login-wrap">
+  <section class="login-card">
+    <a href="../../" class="login-marca">
+      <img src="../../logo/01-primary-logo.png" alt="DataCold">
+    </a>
+
+    <h1>Entre na sua conta</h1>
+    <p class="login-sub">Acesse o painel de monitoramento da sua planta.</p>
+
+    <!-- Acesso rápido MVP -->
+    <button class="btn-mvp" data-acao="mvp">
+      <span class="mvp-avatar">FN</span>
+      <span class="mvp-texto">
+        <span class="mvp-titulo">Entrar como Fernando</span>
+        <span class="mvp-sub">acesso rápido · MVP</span>
+      </span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </button>
+
+    <div class="divisor"><span>ou entre com seu e-mail</span></div>
+
+    <!-- Formulário simbólico -->
+    <form class="login-form" data-form>
+      <label class="campo">
+        <span>E-mail</span>
+        <input type="email" name="email" placeholder="seu@email.com" autocomplete="email" required>
+      </label>
+      <label class="campo">
+        <span>Senha</span>
+        <input type="password" name="senha" placeholder="••••••••" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn btn-primario btn-grande completo">Entrar</button>
+    </form>
+
+    <p class="aviso-mvp">
+      <strong>MVP:</strong> a autenticação ainda não tem backend.
+      Qualquer credencial logada vira o usuário padrão.
+    </p>
+  </section>
+
+  <aside class="login-lateral" aria-hidden="true">
+    <div class="login-lateral-conteudo">
+      <span class="olho">DataCold</span>
+      <h2>Telemetria que vira <span class="destaque">decisão</span>.</h2>
+      <p>Acompanhe energia, temperatura e portas em tempo real — com classificação automática de severidade e recomendações por sensor.</p>
+      <ul class="bullets">
+        <li>14 sensores monitorados</li>
+        <li>Análise automática de anomalias</li>
+        <li>Investigação por perguntas-guia</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="../../scripts/nucleo/Usuario.js?v=1779567436477"></script>
+<script src="../../scripts/nucleo/Autenticacao.js?v=1779567436477"></script>
+<script src="login.js?v=1779567436477"></script>
+
+</body>
+</html>
