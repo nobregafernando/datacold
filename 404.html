@@ -43,17 +43,17 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold - Rota fora do mapa</title>
 <meta name="description" content="A rota acessada nao foi encontrada na plataforma DataCold.">
-<link rel="icon" href="/favicon.ico?v=1779576265330" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779576265330">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779576265330">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779576265330">
+<link rel="icon" href="/favicon.ico?v=1779576567589" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779576567589">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779576567589">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779576567589">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="/estilos/global.css?v=1779576265330">
-<link rel="stylesheet" href="/estilos/erro404.css?v=1779576265330">
+<link rel="stylesheet" href="/estilos/global.css?v=1779576567589">
+<link rel="stylesheet" href="/estilos/erro404.css?v=1779576567589">
 </head>
 <body>
 
@@ -85,6 +85,27 @@
     </div>
   </section>
 </main>
+
+<script>
+(function(){
+  // Sinaliza "pronto" só após carregar tudo (img + fontes) — dispara o
+  // fade-in do CSS (body.erro-pronto). Fallback duro em 2.5s pra não
+  // deixar o texto invisível caso algum recurso fique pendurado.
+  var pronto = false;
+  function sinalizar(){
+    if (pronto) return;
+    pronto = true;
+    document.body.classList.add('erro-pronto');
+  }
+  var pLoad  = new Promise(function(r){
+    if (document.readyState === 'complete') r();
+    else window.addEventListener('load', r, { once: true });
+  });
+  var pFonts = (document.fonts && document.fonts.ready) || Promise.resolve();
+  Promise.all([pLoad, pFonts]).then(sinalizar);
+  setTimeout(sinalizar, 2500);
+})();
+</script>
 
 </body>
 </html>

@@ -42,19 +42,19 @@
 </script>
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Ambiente Controlado</title>
-<link rel="icon" href="/favicon.ico?v=1779576265330" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779576265330">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779576265330">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779576265330">
+<link rel="icon" href="/favicon.ico?v=1779576567589" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779576567589">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779576567589">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779576567589">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779576265330">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779576265330">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779576265330">
-<link rel="stylesheet" href="estilo.css?v=1779576265330">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779576567589">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779576567589">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779576567589">
+<link rel="stylesheet" href="estilo.css?v=1779576567589">
 </head>
 <body>
 
@@ -82,6 +82,35 @@
           mesmo contrato. A diferença: nós controlamos as falhas, garantimos a
           disponibilidade e a planta inteira é reproduzível.
         </p>
+
+        <!-- ====== Pulso do gerador (cadência destacada) ====== -->
+        <div class="amb-tick" data-amb-tick role="status" aria-live="polite">
+          <div class="amb-tick-faixa">
+            <div class="amb-tick-faixa-bar" data-amb-tick-bar></div>
+          </div>
+          <div class="amb-tick-conteudo">
+            <div class="amb-tick-pulso" aria-hidden="true">
+              <span class="amb-tick-onda"></span>
+              <span class="amb-tick-onda"></span>
+              <span class="amb-tick-coracao"></span>
+            </div>
+            <div class="amb-tick-texto">
+              <div class="amb-tick-titulo">
+                <span class="amb-tick-cadencia">A cada 60s</span>
+                <span class="amb-tick-sep">·</span>
+                <span class="amb-tick-frase">o <code>pg_cron</code> dispara <code>sim_tick()</code> no Postgres</span>
+              </div>
+              <div class="amb-tick-sub">
+                14 sensores ativos × 1 leitura cada = <strong>14 novos pontos por minuto</strong>,
+                <strong>20 160 por dia</strong>.
+              </div>
+            </div>
+            <div class="amb-tick-relogio">
+              <div class="amb-tick-relogio-num" data-amb-tick-restante>—</div>
+              <div class="amb-tick-relogio-rotulo">próximo tick</div>
+            </div>
+          </div>
+        </div>
 
         <div class="amb-kpis">
           <div class="amb-kpi">
@@ -479,18 +508,18 @@
 </div>
 
 <!-- Dependências (mesma ordem das outras páginas admin) -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/Sensor.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/SensorPorta.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779576265330"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779576265330"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779576265330"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779576265330"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779576567589"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779576567589"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779576567589"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779576567589"></script>
 
-<script src="pagina.js?v=1779576265330"></script>
+<script src="pagina.js?v=1779576567589"></script>
 </body>
 </html>

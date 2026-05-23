@@ -734,24 +734,43 @@
   // ===================================================================
   //  Incidentes
   // ===================================================================
+  /**
+   * Mapa tipo de incidente → ação de cancelamento (rótulo do botão + ícone).
+   * Cada cenário virou ação reversa explícita pra ficar óbvio o que vai
+   * acontecer ao clicar (em vez de um ✕ genérico).
+   */
+  const ACAO_REVERSA = {
+    gap:              { rotulo: "Reativar internet",  ico: "📡", classe: "rede" },
+    offline:          { rotulo: "Religar equipamento", ico: "⚡", classe: "rede" },
+    spike:            { rotulo: "Cancelar pico",      ico: "↩", classe: "valor" },
+    drift:            { rotulo: "Cancelar drift",     ico: "↩", classe: "valor" },
+    valor_impossivel: { rotulo: "Restaurar leitura",  ico: "↩", classe: "valor" },
+  };
+
   function renderizarIncidentes() {
     const lista = document.querySelector("[data-ib-lista]");
+    const banner = document.querySelector("[data-incidentes-ativos]");
     if (!incidentesAtivos.length) {
       lista.innerHTML = `<div class="ib-vazio">Nenhum incidente injetado. Use os botões abaixo pra simular falhas.</div>`;
+      banner?.classList.remove("tem-ativos");
       return;
     }
+    banner?.classList.add("tem-ativos");
     lista.innerHTML = incidentesAtivos.map(i => {
       const fimTexto = i.fim ? `expira em ${formatarRestante(i.fim)}` : "permanente";
+      const acao = ACAO_REVERSA[i.tipo] || { rotulo: "Cancelar incidente", ico: "✕", classe: "valor" };
+      const sensorLabel = (sensores.find(s => s.id === i.sensor_id)?.label) || i.sensor_id;
       return `
-        <div class="ib-item">
-          <span class="ib-tipo">${i.tipo}</span>
-          <div>
-            <span class="ib-sensor">${i.sensor_id}</span>
-            <span class="ib-desc"> · ${i.descricao || "sem descrição"}</span>
+        <div class="ib-item ib-tipo-${acao.classe}">
+          <span class="ib-tipo">${i.tipo.replace("_", " ")}</span>
+          <div class="ib-info">
+            <div class="ib-sensor">${sensorLabel} <code>${i.sensor_id}</code></div>
+            <div class="ib-desc">${i.descricao || "sem descrição"}</div>
           </div>
           <span class="ib-tempo">${fimTexto}</span>
-          <button class="ib-cancelar" data-cancelar="${i.id}" title="Cancelar incidente">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <button class="ib-reverter ib-acao-${acao.classe}" data-cancelar="${i.id}" title="Cancelar este incidente agora">
+            <span class="ib-rev-ico">${acao.ico}</span>
+            <span class="ib-rev-txt">${acao.rotulo}</span>
           </button>
         </div>
       `;
@@ -759,12 +778,19 @@
 
     lista.querySelectorAll("[data-cancelar]").forEach(btn => {
       btn.onclick = async () => {
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="ib-rev-txt">Cancelando…</span>`;
         try {
           await api.cancelarIncidente(btn.dataset.cancelar);
-          toast("Incidente cancelado", btn.dataset.cancelar, "info");
+          toast("Incidente cancelado", "Sensor voltando ao normal em até 60s.", "info");
           atualizar();
           window.__avisarOutrasAbas?.();
-        } catch (e) { toast("Erro ao cancelar", e.message, "erro"); }
+        } catch (e) {
+          toast("Erro ao cancelar", e.message, "erro");
+          btn.innerHTML = original;
+          btn.disabled = false;
+        }
       };
     });
   }

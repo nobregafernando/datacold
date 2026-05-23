@@ -91,4 +91,38 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderizarPersonagens();
   animarKpis();
+  iniciarPulsoTick();
 });
+
+/**
+ * Pulso do gerador: pg_cron roda `sim_tick()` a cada minuto exato
+ * (no segundo 0 do minuto). Aqui mostramos:
+ *  - contador regressivo grande (60s → 0s)
+ *  - barra de progresso enchendo do tick atual pro próximo
+ *  - flash visual no momento em que o tick bate
+ */
+function iniciarPulsoTick() {
+  const card = document.querySelector("[data-amb-tick]");
+  const num  = document.querySelector("[data-amb-tick-restante]");
+  const bar  = document.querySelector("[data-amb-tick-bar]");
+  if (!card || !num || !bar) return;
+
+  let segAnterior = -1;
+  function tick() {
+    const agora    = new Date();
+    const segAtual = agora.getSeconds();
+    const restante = 60 - segAtual;            // segundos pro próximo tick
+    const progPct  = (segAtual / 60) * 100;
+
+    num.textContent = `${restante}s`;
+    bar.style.width = `${progPct}%`;
+
+    if (segAnterior > segAtual) {              // atravessou o segundo 0
+      card.classList.add("bateu");
+      setTimeout(() => card.classList.remove("bateu"), 900);
+    }
+    segAnterior = segAtual;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
