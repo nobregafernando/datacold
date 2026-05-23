@@ -97,6 +97,68 @@ body{
   outline: none;
 }
 
+/* Estados de validação live */
+.conta-form .campo input.input-erro{
+  border-color: var(--erro);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.12);
+  background: rgba(220,38,38,.04);
+}
+.conta-form .campo input.input-ok{
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,.12);
+  background: rgba(22,163,74,.04);
+}
+
+/* Wrapper de input com olhinho (mostrar/ocultar senha) */
+.input-senha-wrap{
+  position: relative;
+  display: block;
+}
+.input-senha-wrap input{
+  padding-right: 44px !important;
+  width: 100%;
+}
+.input-olho{
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  transition: color var(--t-rapida), background var(--t-rapida);
+}
+.input-olho:hover{
+  color: var(--azul-medio);
+  background: rgba(30,111,214,.08);
+}
+.input-olho:focus-visible{
+  outline: 2px solid var(--azul-medio);
+  outline-offset: 1px;
+}
+
+/* Mensagem live "senhas conferem / diferentes" */
+.conferencia-ok,
+.conferencia-erro{
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--raio-sm);
+  font-weight: 600;
+}
+.conferencia-ok{
+  color: #15803d;
+  background: rgba(22,163,74,.08);
+}
+.conferencia-erro{
+  color: var(--erro);
+  background: rgba(220,38,38,.08);
+}
+
 /* Barra de força da senha */
 .forca-senha{
   display: flex;

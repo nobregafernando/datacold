@@ -49,6 +49,24 @@ class PaginaRedefinir {
 
     this.inSenha?.addEventListener("input", () => this._atualizarForca(this.inSenha.value));
     this.form?.addEventListener("submit", (ev) => this._redefinir(ev));
+
+    // Olhinhos mostrar/ocultar nas duas senhas
+    const inSenha2 = this.form?.querySelector("[name='senha2']");
+    UtilFormulario.acoplarOlhoSenha(this.inSenha);
+    UtilFormulario.acoplarOlhoSenha(inSenha2);
+
+    // Live check "senhas conferem"
+    const msg = this._criarMsgConferencia(inSenha2);
+    UtilFormulario.acoplarConferenciaSenhas(this.inSenha, inSenha2, msg);
+  }
+
+  /** Cria elemento de mensagem de conferência logo após o campo senha2. */
+  _criarMsgConferencia(inSenha2) {
+    if (!inSenha2) return null;
+    const el = document.createElement("div");
+    el.hidden = true;
+    inSenha2.closest("label")?.after(el);
+    return el;
   }
 
   _lerTokenDoHash() {

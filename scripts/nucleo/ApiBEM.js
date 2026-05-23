@@ -142,6 +142,31 @@ class ApiBEM {
   }
 
   // ===================================================================
+  //  Dashboard admin — leituras agregadas
+  // ===================================================================
+
+  async listarPerfisSensores() {
+    try {
+      const r = await this._rpc("listar_perfis_sensores");
+      return Array.isArray(r) ? r : [];
+    } catch { return []; }
+  }
+
+  async listarIncidentesAtivosResumo() {
+    try {
+      const r = await this._rpc("listar_incidentes_ativos_resumo");
+      return Array.isArray(r) ? r : [];
+    } catch { return []; }
+  }
+
+  async listarUltimasLeituras() {
+    try {
+      const r = await this._rpc("listar_ultimas_leituras");
+      return Array.isArray(r) ? r : [];
+    } catch { return []; }
+  }
+
+  // ===================================================================
   //  Notificações multi-usuário (RLS por perfil; sem localStorage)
   // ===================================================================
 

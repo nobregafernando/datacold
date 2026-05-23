@@ -67,6 +67,19 @@ class PaginaDefinir {
 
     this.inSenha?.addEventListener("input", () => this._atualizarForca(this.inSenha.value));
     this.form?.addEventListener("submit", (ev) => this._finalizar(ev));
+
+    // Olhinhos mostrar/ocultar nas duas senhas
+    const inSenha2 = this.form?.querySelector("[name='senha2']");
+    UtilFormulario.acoplarOlhoSenha(this.inSenha);
+    UtilFormulario.acoplarOlhoSenha(inSenha2);
+
+    // Live feedback "senhas conferem"
+    if (inSenha2) {
+      const msg = document.createElement("div");
+      msg.hidden = true;
+      inSenha2.closest("label")?.after(msg);
+      UtilFormulario.acoplarConferenciaSenhas(this.inSenha, inSenha2, msg);
+    }
   }
 
   _lerTokenDoHash() {
@@ -108,6 +121,10 @@ class PaginaDefinir {
     const senha  = (f.get("senha")  || "").toString();
     const senha2 = (f.get("senha2") || "").toString();
     if (senha !== senha2) return this._msg("As senhas não conferem.", null);
+
+    // Anti-injection no nome (sanção de XSS / SQL clássicos)
+    try { UtilFormulario.bloquearInjection(nome); }
+    catch (err) { return this._msg(err.message, null); }
 
     this._carregando(true);
     try {

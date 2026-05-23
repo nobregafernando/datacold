@@ -117,11 +117,7 @@ class PaginaAdmin {
 
   async _carregarPerfis() {
     try {
-      const r = await fetch(`${this.api.urlBase}/rest/v1/sensores?select=id,personalidade,parametros`, {
-        headers: this.api.cabecalhos,
-      });
-      if (!r.ok) return;
-      const linhas = await r.json();
+      const linhas = await this.api.listarPerfisSensores();
       this.perfisPorSensor = {};
       linhas.forEach(l => { this.perfisPorSensor[l.id] = l; });
     } catch (e) { console.error("perfis", e); }
@@ -129,21 +125,14 @@ class PaginaAdmin {
 
   async _carregarIncidentes() {
     try {
-      const r = await fetch(`${this.api.urlBase}/rest/v1/incidentes?removido_em=is.null&select=sensor_id,tipo`, {
-        headers: this.api.cabecalhos,
-      });
-      this.incidentesAtivos = r.ok ? await r.json() : [];
+      this.incidentesAtivos = await this.api.listarIncidentesAtivosResumo();
     } catch { this.incidentesAtivos = []; }
   }
 
-  /** Pega o `momento` da última leitura de cada sensor pela view do Supabase. */
+  /** Pega o `momento` da última leitura de cada sensor via RPC no proxy. */
   async _carregarUltimasLeituras() {
     try {
-      const r = await fetch(`${this.api.urlBase}/rest/v1/ultima_leitura_por_sensor?select=sensor_id,momento`, {
-        headers: this.api.cabecalhos,
-      });
-      if (!r.ok) return;
-      const linhas = await r.json();
+      const linhas = await this.api.listarUltimasLeituras();
       this.ultimaLeituraPorSensor = {};
       linhas.forEach(l => { this.ultimaLeituraPorSensor[l.sensor_id] = l.momento; });
     } catch (e) { console.error("ultimas-leituras", e); }

@@ -11,16 +11,20 @@
 //    }
 //
 //  Variáveis de ambiente (configurar via `supabase secrets set ...`):
-//    SB_URL          ex: https://fcverbceppwdbveustvq.supabase.co
-//    SB_ANON_KEY     anon key pública do Supabase
-//    BEM_API_KEY     chave da BEM Inteligência (não usado hoje, reservado)
+//    SB_URL              ex: https://fcverbceppwdbveustvq.supabase.co
+//    SB_ANON_KEY         anon key pública do Supabase
+//    SB_SERVICE_KEY      service_role key (usada SOMENTE em auth:admin_criar,
+//                        que cria usuários sem cair no rate-limit do /signup
+//                        anônimo). Nunca exposta ao cliente.
+//    BEM_API_KEY         chave da BEM Inteligência (não usado hoje, reservado)
 //
 //  Deploy:
 //    supabase functions deploy proxy --no-verify-jwt
 // =============================================================================
 
-const SB_URL      = Deno.env.get("SB_URL")      ?? "";
-const SB_ANON_KEY = Deno.env.get("SB_ANON_KEY") ?? "";
+const SB_URL         = Deno.env.get("SB_URL")          ?? "";
+const SB_ANON_KEY    = Deno.env.get("SB_ANON_KEY")     ?? "";
+const SB_SERVICE_KEY = Deno.env.get("SB_SERVICE_KEY")  ?? "";
 
 // CORS — em produção restringe ao domínio Firebase Hosting.
 const ORIGENS_PERMITIDAS = new Set([
@@ -44,6 +48,10 @@ const RPCS_PERMITIDAS = new Set([
   "atualizar_parametros_sensor",
   "obter_parametros_sensor",
   "incidentes_ativos",
+  // Dashboard admin (leituras agregadas)
+  "listar_perfis_sensores",
+  "listar_incidentes_ativos_resumo",
+  "listar_ultimas_leituras",
   // Notificações multi-usuário
   "listar_minhas_notificacoes",
   "contar_nao_lidas",
@@ -55,13 +63,14 @@ const RPCS_PERMITIDAS = new Set([
 
 // Whitelist de ações de auth.
 const AUTH_PERMITIDAS = new Set([
-  "signin",    // POST /auth/v1/token?grant_type=password
-  "signup",    // POST /auth/v1/signup
-  "signout",   // POST /auth/v1/logout              (precisa JWT)
-  "recover",   // POST /auth/v1/recover
-  "user",      // GET  /auth/v1/user                (precisa JWT)
-  "atualizar", // PUT  /auth/v1/user                (precisa JWT — define senha/nome)
-  "refresh",   // POST /auth/v1/token?grant_type=refresh_token
+  "signin",      // POST /auth/v1/token?grant_type=password
+  "signup",      // POST /auth/v1/signup  (rate-limited pelo Supabase — evite)
+  "signout",     // POST /auth/v1/logout              (precisa JWT)
+  "recover",     // POST /auth/v1/recover
+  "user",        // GET  /auth/v1/user                (precisa JWT)
+  "atualizar",   // PUT  /auth/v1/user                (precisa JWT — define senha/nome)
+  "refresh",     // POST /auth/v1/token?grant_type=refresh_token
+  "admin_criar", // POST /auth/v1/admin/users  (REQUER admin chamando, usa service_key)
 ]);
 
 function cors(origem: string | null) {
@@ -116,6 +125,11 @@ async function tratarAuth(acao: string, payload: any, jwt?: string) {
     return jsonResposta({ erro: `auth:${acao} não permitido` }, 403);
   }
 
+  // admin_criar é especial: usa service_key e exige que quem chama seja admin.
+  if (acao === "admin_criar") {
+    return await tratarAdminCriar(payload, jwt);
+  }
+
   const mapa: Record<string, { metodo: string; path: string; precisaJwt?: boolean }> = {
     signin:    { metodo: "POST", path: "/auth/v1/token?grant_type=password" },
     signup:    { metodo: "POST", path: "/auth/v1/signup" },
@@ -136,6 +150,96 @@ async function tratarAuth(acao: string, payload: any, jwt?: string) {
     jwt,
   });
   return jsonResposta(r.dados, r.status);
+}
+
+/**
+ * Cria usuário via endpoint admin (sem rate-limit do /signup anônimo) e
+ * já dispara o email de definir senha. Quem chama precisa ter JWT de admin
+ * — validamos consultando perfis_usuarios via PostgREST com o JWT do
+ * usuário. Só então usamos a service_key.
+ */
+async function tratarAdminCriar(payload: any, jwt?: string) {
+  if (!jwt) return jsonResposta({ erro: "JWT obrigatório" }, 401);
+  if (!SB_SERVICE_KEY) return jsonResposta({ erro: "Servidor sem SB_SERVICE_KEY configurada" }, 500);
+
+  // 1) Quem chama tem que ser admin (consulta perfis_usuarios com JWT do
+  //    chamador — RLS garante que só admin veria a coluna `papel` de outros,
+  //    mas o próprio user sempre vê o próprio).
+  const eu = await chamarPostgrest("/auth/v1/user", { method: "GET", jwt });
+  const uid = (eu.dados as any)?.id;
+  if (!uid) return jsonResposta({ erro: "Sessão inválida" }, 401);
+
+  const meuPerfil = await chamarPostgrest(
+    `/rest/v1/perfis_usuarios?id=eq.${encodeURIComponent(uid)}&select=papel`,
+    { method: "GET", jwt },
+  );
+  const papel = (meuPerfil.dados as any[])?.[0]?.papel;
+  if (papel !== "admin") {
+    return jsonResposta({ erro: "Somente admin pode criar contas" }, 403);
+  }
+
+  // 2) Valida payload mínimo
+  const email = String(payload?.email ?? "").trim().toLowerCase();
+  const papelNovo = String(payload?.papel ?? "operador");
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return jsonResposta({ erro: "email inválido" }, 400);
+  }
+  if (!["admin", "operador"].includes(papelNovo)) {
+    return jsonResposta({ erro: "papel inválido" }, 400);
+  }
+
+  // 3) Gera senha aleatória descartável + cria via admin
+  const buf = new Uint8Array(48);
+  crypto.getRandomValues(buf);
+  const senhaTemp = Array.from(buf, (b) =>
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$"[b % 68]
+  ).join("");
+
+  const criar = await fetch(`${SB_URL}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      "apikey": SB_SERVICE_KEY,
+      "Authorization": `Bearer ${SB_SERVICE_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password: senhaTemp,
+      email_confirm: true,
+      user_metadata: { papel: papelNovo, nome: email.split("@")[0] },
+    }),
+  });
+  const txtCriar = await criar.text();
+  if (!criar.ok) {
+    // Já existe? Retorna erro amigável
+    if (/already (registered|exists)|duplicate/i.test(txtCriar)) {
+      return jsonResposta({ erro: "Este e-mail já tem conta." }, 409);
+    }
+    return jsonResposta({ erro: "Falha ao criar usuário", detalhe: txtCriar }, criar.status);
+  }
+  const criado = JSON.parse(txtCriar);
+
+  // 4) Dispara email de "definir senha" (recovery) com redirect pra /conta/definir/
+  const redirectTo = String(payload?.redirect_to ?? "https://datacold.web.app/paginas/conta/definir/");
+  const rec = await fetch(`${SB_URL}/auth/v1/recover`, {
+    method: "POST",
+    headers: {
+      "apikey": SB_ANON_KEY,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ email, redirect_to: redirectTo }),
+  });
+  // Mesmo se /recover falhar (rate limit etc.), a conta foi criada — admin
+  // pode reenviar o link via "esqueci minha senha".
+  const recOk = rec.ok;
+
+  return jsonResposta({
+    ok: true,
+    email,
+    papel: papelNovo,
+    id: criado?.id,
+    convite_enviado: recOk,
+  }, 200);
 }
 
 async function tratarPerfilBuscar(payload: any, jwt?: string) {

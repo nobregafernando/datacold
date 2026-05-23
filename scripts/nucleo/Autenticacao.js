@@ -190,8 +190,10 @@ class Autenticacao {
   }
 
   /**
-   * Admin convida operador. signup + recover via proxy.
-   * Admin nunca sabe a senha do operador.
+   * Admin convida operador via Edge Function. O proxy chama
+   * /auth/v1/admin/users com service_key (sem cair no rate-limit do
+   * /signup anônimo) e já dispara o email "definir senha". Admin
+   * nunca vê a senha do operador.
    */
   static async convidarOperador({ email, papel = "operador" }) {
     const eEmail = Sanitizar.email(email);
@@ -201,26 +203,18 @@ class Autenticacao {
     const eu = Autenticacao.usuarioAtual();
     if (!eu?.ehAdmin) throw new Error("Apenas administradores podem convidar.");
 
-    const senhaTemp = Autenticacao._gerarSenhaAleatoria(48);
-
-    try {
-      await Autenticacao._proxy("auth:signup", {
-        email: eEmail,
-        password: senhaTemp,
-        data: { papel, nome: eEmail.split("@")[0] },
-      });
-    } catch (err) {
-      const m = String(err.message || "");
-      if (/already registered|already exists|duplicate/i.test(m)) {
-        throw new Error("Este e-mail já tem conta.");
-      }
-      throw err;
-    }
-
     const redirectTo = `${location.origin}/paginas/conta/definir/`;
-    await Autenticacao._proxy("auth:recover", { email: eEmail, redirect_to: redirectTo });
+    const r = await Autenticacao._proxy("auth:admin_criar", {
+      email: eEmail,
+      papel,
+      redirect_to: redirectTo,
+    });
 
-    return { email: eEmail, papel };
+    return {
+      email: r?.email || eEmail,
+      papel: r?.papel || papel,
+      convite_enviado: !!r?.convite_enviado,
+    };
   }
 
   /**

@@ -22,6 +22,9 @@ class PaginaLogin {
     this.botaoMvp?.addEventListener("click", () => this._entrarMvp());
     this.form?.addEventListener("submit", (ev) => this._entrarFormulario(ev));
 
+    // Olhinho mostrar/ocultar senha
+    UtilFormulario.acoplarOlhoSenha(this.form?.querySelector("[name='senha']"));
+
     // Pré-preenche email vindo de ?email=... (usado pelo fluxo de convite
     // após o operador definir senha, e por qualquer outro redirecionamento).
     const params = new URLSearchParams(location.search);
@@ -67,6 +70,11 @@ class PaginaLogin {
     const email = Sanitizar.email(emailBruto);
     if (!email)  return this._mostrarErro("Informe um e-mail válido.");
     if (!senha)  return this._mostrarErro("Informe a senha.");
+
+    // Defesa em profundidade: rejeita padrões típicos de SQL/XSS antes
+    // de enviar pro servidor (PostgREST já é parametrizado, mas avisa).
+    try { UtilFormulario.bloquearInjection(emailBruto); }
+    catch (err) { return this._mostrarErro(err.message); }
 
     this._carregando(true);
     try {

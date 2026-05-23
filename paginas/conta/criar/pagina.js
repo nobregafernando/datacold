@@ -37,6 +37,10 @@ class PaginaConvite {
     if (!eEmail) return this._msg("E-mail inválido.", null);
     if (!["admin","operador"].includes(papel)) return this._msg("Papel inválido.", null);
 
+    // Bloqueia padrões clássicos de SQL/XSS antes de enviar
+    try { UtilFormulario.bloquearInjection(email); }
+    catch (err) { return this._msg(err.message, null); }
+
     this._carregando(true);
     try {
       const r = await Autenticacao.convidarOperador({ email: eEmail, papel });

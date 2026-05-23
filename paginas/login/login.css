@@ -178,6 +178,39 @@ body{
   cursor: default;
 }
 
+/* Wrapper de input com olhinho (mostrar/ocultar senha) — compartilhado */
+.input-senha-wrap{
+  position: relative;
+  display: block;
+}
+.input-senha-wrap input{
+  padding-right: 44px !important;
+  width: 100%;
+}
+.input-olho{
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  transition: color var(--t-rapida), background var(--t-rapida);
+}
+.input-olho:hover{
+  color: var(--azul-medio);
+  background: rgba(30,111,214,.08);
+}
+.input-olho:focus-visible{
+  outline: 2px solid var(--azul-medio);
+  outline-offset: 1px;
+}
+
 .aviso-mvp{
   margin-top: 22px;
   padding: 12px 14px;
