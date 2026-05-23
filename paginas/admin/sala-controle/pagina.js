@@ -17,7 +17,7 @@
   const api = new ApiBEM();
   const raiz = "../../../";
 
-  new MenuLateral({ usuario, raiz }).montar("#menu-lateral");
+  new MenuLateral({ usuario, raiz, paginaAtiva: "sala-controle" }).montar("#menu-lateral");
   new MenuTopo({ titulo: "Sala de Controle", raiz }).montar("#menu-topo");
 
   // ===================================================================
@@ -152,16 +152,26 @@
             </div>
           </div>
 
-          <!-- Receita do fake -->
+          <!-- Receita do fake (linguagem leiga, passo a passo) -->
           <div class="sc-receita">
             <header>
-              <span class="sr-eyebrow">Receita do agente fake</span>
+              <span class="sr-eyebrow">Como o agente gera dados deste sensor</span>
               <button class="sr-toggle" data-toggle aria-label="expandir">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
             </header>
-            <div class="sr-personalidade">${perfil.personalidade || "<i>sem personalidade definida</i>"}</div>
-            <div class="sr-params" hidden>${renderizarParams(s.type, params)}</div>
+            <div class="sr-personalidade">
+              <strong>Personalidade:</strong>
+              ${perfil.personalidade || "<i>sem traço específico</i>"}
+            </div>
+            <div class="sr-resumo">${resumoReceita(s.type, params)}</div>
+            <div class="sr-detalhes" hidden>
+              <div class="sr-passos">${passosGeracao(s.type, params)}</div>
+              <div class="sr-aviso">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <span><strong>Como os botões abaixo mexem nisso:</strong> ao clicar, um <code>incidente</code> é inserido no banco. O gerador (pg_cron, roda a cada 1 min) aplica esse incidente no próximo ponto. Você vê o efeito em até ~60s no painel.</span>
+              </div>
+            </div>
           </div>
 
           <!-- Leitura ao vivo -->
@@ -198,11 +208,12 @@
 
     // toggle das receitas
     cont.querySelectorAll(".sc-card").forEach(card => {
-      const toggle = card.querySelector("[data-toggle]");
-      const params = card.querySelector(".sr-params");
+      const toggle   = card.querySelector("[data-toggle]");
+      const detalhes = card.querySelector(".sr-detalhes");
+      if (!toggle || !detalhes) return;
       toggle.onclick = () => {
-        params.hidden = !params.hidden;
-        toggle.classList.toggle("aberto", !params.hidden);
+        detalhes.hidden = !detalhes.hidden;
+        toggle.classList.toggle("aberto", !detalhes.hidden);
       };
     });
 
@@ -215,6 +226,114 @@
       const preset = JSON.parse(btn.dataset.preset.replaceAll("&apos;","'"));
       abrirModal(sensorId, preset);
     });
+  }
+
+  // ===================================================================
+  //  RECEITA EM LINGUAGEM LEIGA
+  // ===================================================================
+
+  function resumoReceita(tipo, p) {
+    if (tipo === "energia") {
+      const fp = p.fp_base ?? 0;
+      const corr = p.corrente_nominal_a ?? 0;
+      const v    = p.tensao_nominal_v ?? 0;
+      const cub  = p.cub_alvo_pct ?? 0;
+      const fase = p.fase_ausente;
+      const drops = p.drops_por_semana ?? 0;
+      return `
+        <p>
+          A cada minuto o agente sintetiza <strong>9 valores</strong>
+          (corrente, tensão e FP das 3 fases) ao redor das médias abaixo,
+          com ruído realista de chão de fábrica.
+        </p>
+        <ul class="sr-bullets">
+          <li><b>Corrente</b> oscila ao redor de <code>${corr} A</code> (variação típica ±${p.corrente_desvio_a ?? 0} A).</li>
+          <li><b>Tensão</b> oscila ao redor de <code>${v} V</code> (variação ±${p.tensao_desvio_v ?? 0} V).</li>
+          <li><b>Fator de potência</b> em torno de <code>${fp}</code> ${fp < 0 ? '(NEGATIVO = TC invertido, fluxo reverso)' : (fp < 0.92 ? '(abaixo do limite ANEEL de 0,92)' : '(saudável)')}.</li>
+          <li><b>Desbalanceamento</b> alvo entre fases: <code>${cub}%</code> ${cub > 10 ? '(crítico NEMA)' : cub > 5 ? '(atenção)' : '(normal)'}.</li>
+          ${fase ? `<li><b>Fase ausente:</b> ${fase.toUpperCase()} (tensão zerada nessas fases — equipamento monofásico forçado).</li>` : ''}
+          ${drops > 0 ? `<li>Cerca de <b>${drops} quedas/semana</b> simuladas (mau contato do contator).</li>` : ''}
+        </ul>
+      `;
+    }
+    if (tipo === "temperatura") {
+      const set = p.setpoint_c ?? 0;
+      const desv = p.desvio_c ?? 0;
+      const ciclo = p.ciclo_diario;
+      const amp = p.amplitude_diaria_c ?? 0;
+      const fmin = p.faixa_ideal_min, fmax = p.faixa_ideal_max;
+      return `
+        <p>
+          A cada minuto o agente gera <strong>1 valor de temperatura</strong>
+          partindo do setpoint e adicionando flutuação realista.
+        </p>
+        <ul class="sr-bullets">
+          <li><b>Setpoint</b> (alvo): <code>${set} °C</code>.</li>
+          <li><b>Variação natural</b> (ruído + ciclo do compressor): ±<code>${desv} °C</code>.</li>
+          ${fmin !== null && fmax !== null ? `<li><b>Faixa segura</b>: entre <code>${fmin}</code> e <code>${fmax} °C</code>.</li>` : '<li>Sensor ambiente — sem faixa controlada.</li>'}
+          ${ciclo ? `<li><b>Ciclo dia/noite</b> ativo: amplitude diária de ±${amp} °C.</li>` : '<li>Sem ciclo dia/noite (câmara fechada).</li>'}
+          ${p.sobe_apos_porta_c > 0 ? `<li>A temperatura sobe <code>+${p.sobe_apos_porta_c} °C</code> após cada abertura de porta.</li>` : ''}
+          ${p.sensor_defeituoso ? `<li><b>Sensor defeituoso:</b> ${(p.prob_pico_defeito * 100).toFixed(1)}% de chance de spike anormal a cada minuto.</li>` : ''}
+          ${p.prob_valor_impossivel > 0 ? `<li><b>Defeito raro:</b> ${(p.prob_valor_impossivel * 100).toFixed(2)}% de chance de leitura impossível (−3276 °C).</li>` : ''}
+        </ul>
+      `;
+    }
+    if (tipo === "porta") {
+      return `
+        <p>
+          A cada minuto o agente decide se a porta está <strong>aberta ou fechada</strong>
+          com base em distribuição estatística (eventos de Poisson).
+        </p>
+        <ul class="sr-bullets">
+          <li>Em média <b><code>${p.aberturas_por_hora ?? 0}</code> aberturas por hora</b>.</li>
+          <li>Duração média de cada abertura: <b><code>${p.duracao_media_s ?? 0}</code> segundos</b>${p.duracao_media_s > 600 ? ' (uso intenso/prolongado)' : ''}.</li>
+          <li>Sinal: <b>${p.sinal_analogico ? 'analógico (0 a ~' + (p.valor_aberto_max ?? 0) + ', threshold no meio)' : 'binário (0 ou 1)'}</b>.</li>
+        </ul>
+      `;
+    }
+    return '';
+  }
+
+  function passosGeracao(tipo, p) {
+    if (tipo === "energia") {
+      return `
+        <ol class="sr-steps">
+          <li><b>Lê personalidade</b> do banco — pega <code>fp_base</code>, <code>corrente_nominal_a</code>, etc.</li>
+          <li><b>Gera ruído aleatório</b> (movimento browniano) ao redor de cada valor nominal.</li>
+          <li><b>Aplica desbalanceamento</b> entre fases A, B, C usando <code>cub_alvo_pct</code>.</li>
+          <li><b>Aplica fase ausente</b> (se configurado) — tensão 0 V naquelas fases.</li>
+          <li><b>Sorteia drops</b> aleatórios baseados em <code>drops_por_semana</code>.</li>
+          <li><b>Aplica incidentes ativos</b> via <code>sim_aplicar_incidentes()</code> — spike, drift, gap, offline.</li>
+          <li><b>Insere</b> em <code>leituras_energia</code> com 9 campos.</li>
+        </ol>
+      `;
+    }
+    if (tipo === "temperatura") {
+      return `
+        <ol class="sr-steps">
+          <li><b>Parte do setpoint</b> <code>${p.setpoint_c} °C</code>.</li>
+          <li><b>Adiciona ruído gaussiano</b> de ±${p.desvio_c} °C (oscilação natural do termostato).</li>
+          ${p.ciclo_diario ? `<li><b>Aplica ciclo dia/noite</b>: ±${p.amplitude_diaria_c} °C conforme a hora.</li>` : ''}
+          ${p.sobe_apos_porta_c > 0 ? `<li><b>Soma +${p.sobe_apos_porta_c} °C</b> nos minutos seguintes a cada abertura de porta detectada.</li>` : ''}
+          ${p.sensor_defeituoso ? `<li><b>Sorteia spike de defeito</b> (${(p.prob_pico_defeito*100).toFixed(1)}% por amostra).</li>` : ''}
+          <li><b>Aplica incidentes ativos</b> via <code>sim_aplicar_incidentes()</code>.</li>
+          <li><b>Insere</b> em <code>leituras_temperatura</code>.</li>
+        </ol>
+      `;
+    }
+    if (tipo === "porta") {
+      return `
+        <ol class="sr-steps">
+          <li><b>Sorteia evento de Poisson</b> com taxa <code>${p.aberturas_por_hora}/h</code> — abre a porta?</li>
+          <li>Se sim, mantém aberta por <code>~${p.duracao_media_s}s</code> em média (exponencial).</li>
+          <li><b>Define o valor bruto</b>: ${p.sinal_analogico ? 'próximo de ' + p.valor_aberto_max + ' quando aberta, próximo de 0 fechada' : '1 = aberta, 0 = fechada'}.</li>
+          <li><b>Adiciona ruído pequeno</b> no sinal (medidor real tem flutuação).</li>
+          <li><b>Aplica incidentes ativos</b> via <code>sim_aplicar_incidentes()</code>.</li>
+          <li><b>Insere</b> em <code>leituras_porta</code>.</li>
+        </ol>
+      `;
+    }
+    return '';
   }
 
   function renderizarParams(tipo, p) {
@@ -300,7 +419,7 @@
   //  Atualizar 1 card
   // ===================================================================
   function atualizarCard(s, pontos) {
-    const card = document.querySelector(`[data-sensor="${s.id}"]`);
+    const card = document.querySelector(`.sc-card[data-sensor="${s.id}"]`);
     if (!card) return;
 
     const elValor  = card.querySelector("[data-valor]");
@@ -492,7 +611,7 @@
     document.querySelector("[data-modal-confirmar]").onclick = async () => {
       modal.hidden = true;
       try {
-        await api.criarIncidente({
+        const r = await api.criarIncidente({
           sensor: sensorId,
           tipo: preset.tipo,
           magnitude: preset.magnitude,
@@ -500,7 +619,18 @@
           duracaoS: preset.duracaoS,
           descricao: preset.descricao,
         });
-        toast(`${preset.titulo} injetado`, `Em ${sensorId} por ${(preset.duracaoS/60).toFixed(1)} min`, "ok");
+        // Cancelamento automático de conflitantes (feito no SQL): se o
+        // sensor estava offline/gap e você dispara um "pico", a função
+        // do banco cancela o silenciador antes — o sensor reconecta.
+        const cancelados = r?.cancelados_substituidos || 0;
+        const extra = cancelados > 0
+          ? ` · ${cancelados} incidente${cancelados>1?'s':''} anterior${cancelados>1?'es':''} cancelado${cancelados>1?'s':''}`
+          : "";
+        toast(
+          `${preset.titulo} injetado`,
+          `Em ${sensorId} por ${(preset.duracaoS/60).toFixed(1)} min${extra}`,
+          "ok"
+        );
         atualizar();
       } catch (e) { toast("Erro ao injetar", e.message, "erro"); }
     };

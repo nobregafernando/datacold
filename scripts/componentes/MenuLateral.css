@@ -1,14 +1,12 @@
 /* =========================================================
    COMPONENTE · Menu Lateral
-   - Posição fixa, rola como bloco único (sem seções fixas).
-   - Sem cores por tipo de sensor (visualmente mais limpo).
+   - Pano único, sem caixinhas concorrendo.
+   - Tipo de sensor = ícone colorido. Ambiente = cabeçalho com ícone.
    ========================================================= */
 
 .menu-lateral{
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: 0; left: 0; bottom: 0;
   width: 280px;
   background: var(--branco);
   border-right: 1px solid var(--borda);
@@ -17,230 +15,417 @@
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 20;
+  transition: transform 220ms ease;
 }
+
+/* ============ Hamburger (sempre visível, alterna o menu) ============ */
+.ml-toggle{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 50;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  color: var(--azul-noite);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(11,29,58,.06);
+  transition: all var(--t-rapida);
+}
+.ml-toggle:hover{
+  border-color: var(--azul-medio);
+  color: var(--azul-medio);
+  transform: scale(1.05);
+}
+/* Quando o menu está aberto, o hamburger fica colado no canto superior do menu */
+.ml-toggle{ left: calc(280px - 52px); }
+
+/* Em mobile, halo extra pra destacar o hamburger sobre o conteúdo */
+@media (max-width: 720px){
+  .layout-admin.menu-fechado .ml-toggle{
+    background: var(--branco);
+    box-shadow: 0 6px 14px rgba(11,29,58,.18);
+    border-color: rgba(30,111,214,.30);
+    color: var(--azul-profundo);
+  }
+  /* Quando o menu está ABERTO em mobile, o hamburger fica no canto superior
+     ESQUERDO do drawer (em vez de colado na borda direita do menu). */
+  .layout-admin:not(.menu-fechado) .ml-toggle{
+    left: 14px;
+    background: var(--branco);
+    color: var(--azul-profundo);
+    border-color: rgba(30,111,214,.30);
+    box-shadow: 0 4px 10px rgba(11,29,58,.12);
+  }
+}
+
+/* Layout fechado: menu sai da tela, conteúdo principal ocupa tudo */
+.layout-admin.menu-fechado .menu-lateral{
+  transform: translateX(-100%);
+}
+.layout-admin.menu-fechado .ml-toggle{
+  left: 14px;
+}
+.layout-admin{ transition: padding-left 220ms ease; }
+.layout-admin.menu-fechado{ padding-left: 0 !important; }
 
 /* ============ Topo / marca ============ */
-.ml-topo{
-  padding: 22px 22px 16px;
-}
-.ml-marca{ display: flex; align-items: center; }
-.ml-marca img{ height: 34px; width: auto; display: block; }
+.ml-topo{ padding: 22px 20px 14px; }
+.ml-marca{ display: inline-flex; align-items: center; }
+.ml-marca img{ height: 30px; width: auto; display: block; }
 
-/* ============ Card do usuário (compacto) ============ */
+/* ============ Usuário (linha simples, sem caixa) ============ */
 .ml-usuario{
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  margin: 0 14px 14px;
-  background: linear-gradient(135deg, rgba(0,184,240,.08), rgba(30,111,214,.08));
-  border: 1px solid rgba(30,111,214,.12);
-  border-radius: var(--raio-md);
+  gap: 10px;
+  padding: 4px 20px 16px;
 }
 .ml-avatar{
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--grad-vibrante);
   color: var(--branco);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: -.02em;
-  box-shadow: 0 6px 14px rgba(0,184,240,.30);
+  font-size: 12px;
   flex-shrink: 0;
 }
 .ml-usuario-info{ min-width: 0; flex: 1; }
 .ml-usuario-nome{
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--azul-noite);
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ml-usuario-email{
-  font-size: 11px;
-  color: var(--texto-suave);
-  font-family: var(--fonte-mono);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ml-papel{ display: none; }  /* simplificado: papel já implícito pelo acesso */
+.ml-usuario-email, .ml-papel{ display: none; }
 
-/* ============ Filtros ============ */
-.ml-secao{
-  padding: 4px 14px 0;
+/* ============ Nav primária (Dashboard / Sala de controle) ============ */
+.ml-nav-primaria{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px;
 }
-.ml-titulo-secao{
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .18em;
+.ml-nav-item{
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: var(--raio-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+  transition: background var(--t-rapida), color var(--t-rapida);
+}
+.ml-nav-item svg{ color: var(--texto-suave); transition: color var(--t-rapida); }
+.ml-nav-item:hover{ background: var(--azul-gelo); color: var(--azul-noite); }
+.ml-nav-item:hover svg{ color: var(--azul-medio); }
+.ml-nav-item.ativo{
+  background: linear-gradient(90deg, rgba(30,111,214,.16), rgba(30,111,214,.04));
+  color: var(--azul-profundo);
+  font-weight: 700;
+  position: relative;
+}
+.ml-nav-item.ativo::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--grad-vibrante);
+  border-radius: 0 3px 3px 0;
+}
+.ml-nav-item.ativo svg{ color: var(--azul-profundo); }
+
+/* ============ Expansor (botão de Sensores) ============ */
+.ml-expansor{
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+}
+.ml-expansor .ml-chevron{
+  margin-left: auto;
   color: var(--texto-suave);
-  font-weight: 800;
-  padding: 4px 8px 10px;
+  transition: transform 200ms;
+}
+.ml-expansor.expandido .ml-chevron{ transform: rotate(180deg); color: var(--azul-medio); }
+.ml-expansor.expandido{
+  background: rgba(30,111,214,.06);
+  color: var(--azul-noite);
+}
+
+/* Sublista de sensores (dentro do expansor) */
+.ml-sublista{
+  padding: 8px 0 10px;
+  margin: 0 4px 4px;
+  border-left: 2px solid var(--borda);
+  margin-left: 22px;
+  padding-left: 8px;
+}
+.ml-sublista[hidden]{ display: none; }
+
+/* ============ Divisor ============ */
+.ml-divisor{
+  height: 1px;
+  background: var(--borda);
+  margin: 16px 20px;
+}
+
+/* ============ Filtros (chips compactos) ============ */
+.ml-secao{ padding: 0 12px; }
+.ml-titulo-secao{
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--texto-suave);
+  font-weight: 600;
+  padding: 0 12px 10px;
 }
 .ml-filtros{
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: 8px;
+  padding: 0 8px 10px;
 }
 .ml-filtros button{
-  padding: 6px 4px;
-  border-radius: var(--raio-sm);
-  border: 1px solid var(--borda);
-  background: var(--branco);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
   color: var(--texto-suave);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .02em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--t-rapida);
 }
-.ml-filtros button:hover{
-  border-color: var(--azul-medio);
-  color: var(--azul-medio);
-}
+.ml-filtros button:hover{ background: var(--azul-gelo); color: var(--azul-noite); }
 .ml-filtros button.ativo{
-  background: var(--grad-vibrante);
+  background: var(--azul-noite);
   color: var(--branco);
-  border-color: transparent;
-  box-shadow: 0 4px 10px rgba(0,184,240,.25);
 }
 
-/* ============ Lista de sensores ============ */
+/* ============ Lista ============ */
 .ml-lista-sensores{
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
-.ml-grupo-rotulo{
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  color: var(--texto-suave);
-  font-weight: 700;
-  padding: 16px 8px 6px;
+  padding-bottom: 8px;
 }
 
-.ml-item,
-.ml-item-link{
+/* Cabeçalho de ambiente */
+.ml-ambiente{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 14px 10px 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  text-decoration: none;
   border-radius: var(--raio-sm);
+  transition: background var(--t-rapida);
+  cursor: pointer;
+}
+.ml-ambiente:first-child{ padding-top: 6px; }
+.ml-ambiente:hover{ background: var(--azul-gelo); color: var(--azul-medio); }
+.ml-ambiente-seta{
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--texto-suave);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity var(--t-rapida), transform var(--t-rapida);
+  font-weight: 700;
+}
+.ml-ambiente:hover .ml-ambiente-seta{
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--azul-medio);
+}
+.ml-ambiente-ico{
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--azul-gelo);
+  color: var(--azul-profundo);
+  flex-shrink: 0;
+}
+/* Identidade por ambiente (cor sutil do quadradinho do ícone) */
+.ml-ambiente-ico[data-amb="extrusao"]              { background: #fff0e6; color: #b25410; }
+.ml-ambiente-ico[data-amb="camara_congelados"]     { background: #e6f6ff; color: #0a83b8; }
+.ml-ambiente-ico[data-amb="camara_estoque"]        { background: #eef2fb; color: #2a4ea0; }
+.ml-ambiente-ico[data-amb="graxaria"]              { background: #f4ecff; color: #6b3eb8; }
+.ml-ambiente-ico[data-amb="externo_campo_grande"]  { background: #e8f7ec; color: #1f7a3a; }
+.ml-ambiente-ico[data-amb="externo_tres_lagoas"]   { background: #fff5e0; color: #9a6a00; }
+
+.ml-ambiente-nome{
+  font-size: 12px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Item de sensor (filho de um grupo) — indentado pra criar hierarquia */
+.ml-item{
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px 8px 28px;     /* indenta pra direita */
+  margin: 0 0 1px 6px;            /* + margem esquerda */
+  border-radius: var(--raio-sm);
+  text-decoration: none;
   cursor: pointer;
   transition: background var(--t-rapida);
-  text-decoration: none;
-  border: 1px solid transparent;
 }
-.ml-item-link:hover{ background: var(--azul-gelo); }
-.ml-item-link .ml-bolinha{
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+/* Linha conectora vertical sutil ligando o grupo aos sensores filhos */
+.ml-item::after{
+  content: "";
+  position: absolute;
+  left: 14px; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--borda);
+  opacity: .6;
 }
 .ml-item:hover{ background: var(--azul-gelo); }
 .ml-item.ativo{
-  background: linear-gradient(135deg, rgba(30,111,214,.10), rgba(0,184,240,.10));
-  border-color: rgba(30,111,214,.20);
+  background: linear-gradient(90deg, rgba(30,111,214,.16), rgba(30,111,214,.02));
 }
+.ml-item.ativo::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 3px;
+  background: var(--grad-vibrante);
+  border-radius: 0 3px 3px 0;
+}
+.ml-item.ativo .ml-item-nome{ color: var(--azul-profundo); font-weight: 700; }
+.ml-item.ativo .ml-tipo-ico{ box-shadow: 0 0 0 2px rgba(30,111,214,.20); }
 
-/* a bolinha colorida foi removida — não fazia sentido pro usuário */
-.ml-bolinha{ display: none; }
+/* Ambiente ativo (quando está numa página de grupo) */
+.ml-ambiente{ position: relative; }
+.ml-ambiente.ativo{
+  background: linear-gradient(90deg, rgba(30,111,214,.10), transparent);
+  border-radius: var(--raio-sm);
+}
+.ml-ambiente.ativo::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  background: var(--grad-vibrante);
+  border-radius: 0 3px 3px 0;
+}
+.ml-ambiente.ativo .ml-ambiente-nome{ color: var(--azul-profundo); font-weight: 800; }
 
-.ml-item-info{ flex: 1; min-width: 0; }
-.ml-item-nome{
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--azul-noite);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ml-item-id{
-  font-family: var(--fonte-mono);
-  font-size: 10px;
-  color: var(--texto-suave);
-  line-height: 1.2;
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ml-status-pill{
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 3px;
+/* Ícone do tipo (cor identifica energia/temp/porta) */
+.ml-tipo-ico{
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
   flex-shrink: 0;
 }
-.ml-status-pill.ativo    { background: rgba(22,163,74,.12); color: var(--ok); }
-.ml-status-pill.historico{ background: rgba(217,119,6,.12); color: var(--alerta); }
+.ml-tipo-ico.tipo-energia{
+  background: rgba(30,111,214,.10);
+  color: #1E6FD6;
+}
+.ml-tipo-ico.tipo-temperatura{
+  background: rgba(0,184,240,.12);
+  color: #0a93c4;
+}
+.ml-tipo-ico.tipo-porta{
+  background: rgba(142,219,255,.30);
+  color: #2a4ea0;
+}
+
+.ml-item-nome{
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ============ Rodapé (sair) ============ */
 .ml-rodape{
-  padding: 16px 14px 18px;
+  padding: 14px 14px 18px;
   margin-top: auto;
+  border-top: 1px solid var(--borda);
 }
 .ml-sair{
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 11px 14px;
+  justify-content: flex-start;
+  gap: 11px;
+  padding: 9px 12px;
   border-radius: var(--raio-sm);
-  background: var(--branco);
-  color: var(--erro);
+  background: transparent;
+  color: var(--texto-suave);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
-  border: 1px solid rgba(220,38,38,.18);
+  border: none;
   transition: all var(--t-rapida);
 }
+.ml-sair svg{ color: var(--texto-suave); }
 .ml-sair:hover{
   background: rgba(220,38,38,.06);
-  border-color: var(--erro);
+  color: var(--erro);
 }
+.ml-sair:hover svg{ color: var(--erro); }
 
-/* ============ Estados especiais ============ */
+/* ============ Estados ============ */
 .ml-loading,
 .ml-vazio,
 .ml-erro{
-  padding: 18px 10px;
+  padding: 18px 12px;
   text-align: center;
   font-size: 12px;
   color: var(--texto-suave);
 }
 .ml-erro{ color: var(--erro); }
 
-/* esconder elementos antigos que ainda existam no HTML */
+/* Esconde elementos antigos que possam restar no DOM */
+.ml-bolinha,
+.ml-item-id,
+.ml-status-pill,
+.ml-item-link,
+.ml-grupo-rotulo,
 .ml-secao-nav,
 .ml-link{ display: none; }
 
-/* scrollbar fininha pro menu todo */
+/* Scrollbar fininha */
 .menu-lateral::-webkit-scrollbar{ width: 6px; }
-.menu-lateral::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.20); border-radius: 6px; }
-.menu-lateral::-webkit-scrollbar-thumb:hover{ background: rgba(30,111,214,.35); }
+.menu-lateral::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.18); border-radius: 6px; }
+.menu-lateral::-webkit-scrollbar-thumb:hover{ background: rgba(30,111,214,.32); }
 
 /* ============ Responsivo ============ */
 @media (max-width: 900px){
-  .menu-lateral{ width: 240px; }
+  .menu-lateral{ width: 260px; }
+  .ml-toggle{ left: calc(260px - 52px); }
 }
 @media (max-width: 720px){
-  .menu-lateral{
-    transform: translateX(-100%);
-    transition: transform var(--t-lenta);
-    box-shadow: 0 0 40px rgba(0,0,0,.25);
-  }
-  .menu-lateral.aberto{ transform: translateX(0); }
+  /* Mobile: menu vira overlay com sombra; fechado por padrão */
+  .menu-lateral{ box-shadow: 4px 0 24px rgba(11,29,58,.18); }
+  .layout-admin .ml-toggle{ left: calc(260px - 52px); }
+  .layout-admin.menu-fechado .menu-lateral{ box-shadow: none; }
+  .layout-admin.menu-fechado .ml-toggle{ left: 14px; }
 }

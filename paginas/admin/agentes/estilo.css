@@ -1,0 +1,434 @@
+/* =====================================================================
+   DataCold · Página de Agentes (organizada por categoria, params editáveis)
+   ===================================================================== */
+
+body{
+  background: linear-gradient(180deg, #eaf4ff 0%, #ffffff 60%);
+  min-height: 100vh;
+  font-family: Inter, system-ui, sans-serif;
+  color: #0f172a;
+}
+
+.layout-admin{ min-height: 100vh; padding-left: 280px; }
+.agentes-main{ min-width: 0; padding: 96px 36px 60px; overflow-x: hidden; }
+
+/* ============ Header ============ */
+.agentes-header{
+  background: linear-gradient(135deg, #ffffff, #f0f7ff);
+  border: 1px solid #e5e9f2; border-radius: 14px;
+  padding: 30px 32px; margin-bottom: 28px;
+  box-shadow: 0 4px 18px rgba(15,23,42,.04);
+}
+.agentes-header .olho{
+  display: inline-block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 1.4px; color: #1E6FD6; font-weight: 700; margin-bottom: 8px;
+}
+.agentes-header h1{
+  font-size: clamp(1.5rem, 2.4vw, 1.85rem); margin: 0 0 10px;
+  letter-spacing: -.4px; color: #0f172a;
+}
+.agentes-header p{
+  color: #475569; font-size: 13.5px; line-height: 1.55; margin: 0; max-width: 780px;
+}
+.agentes-header p strong{ color: #0f172a; font-weight: 600; }
+
+.ag-resumo{
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; margin-top: 22px;
+}
+.ag-numero{
+  background: #fff; border: 1px solid #e5e9f2; border-radius: 10px;
+  padding: 14px 12px; text-align: center;
+}
+.ag-numero span{
+  display: block; font-size: 26px; font-weight: 800; letter-spacing: -.5px;
+  color: #1E6FD6; line-height: 1;
+}
+.ag-numero small{
+  display: block; margin-top: 6px; font-size: 10.5px; color: #64748b;
+  text-transform: uppercase; letter-spacing: .8px; font-weight: 600;
+}
+
+/* ============ Grade dos 3 agentes ============ */
+.ag-grade{ display: grid; gap: 24px; margin-bottom: 28px; }
+
+/* ---- Card grande de cada agente ---- */
+.ag-card{
+  background: #fff; border: 1px solid #e5e9f2; border-radius: 16px;
+  padding: 0; overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15,23,42,.04);
+}
+/* Faixa de cor por tipo (lado esquerdo) */
+.ag-card{ border-left: 6px solid; }
+.ag-card.ag-energia    { border-left-color: #d97706; }
+.ag-card.ag-temperatura{ border-left-color: #0ea5e9; }
+.ag-card.ag-porta      { border-left-color: #16a34a; }
+
+.ag-card-head{
+  display: flex; align-items: center; gap: 22px;
+  padding: 26px 30px 22px;
+  flex-wrap: wrap; border-bottom: 1px solid #e5e9f2;
+  background: linear-gradient(180deg, #fff, #fbfdff);
+}
+.ag-emoji{
+  font-size: 44px; line-height: 1; flex-shrink: 0;
+  width: 76px; height: 76px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+}
+.ag-card.ag-energia    .ag-emoji{ background: linear-gradient(135deg, rgba(217,119,6,.12), rgba(217,119,6,.04)); }
+.ag-card.ag-temperatura .ag-emoji{ background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(14,165,233,.04)); }
+.ag-card.ag-porta      .ag-emoji{ background: linear-gradient(135deg, rgba(22,163,74,.12), rgba(22,163,74,.04)); }
+
+.ag-card-info{ flex: 1; min-width: 220px; }
+.ag-card-info .olho{
+  display: block; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 1.4px; color: #94a3b8; font-weight: 700; margin-bottom: 4px;
+}
+.ag-card-info h2{
+  font-size: 22px; margin: 0; letter-spacing: -.4px;
+  line-height: 1.15; color: #0f172a;
+}
+.ag-apelido{
+  margin: 6px 0 0; color: #475569; font-size: 13.5px;
+}
+
+.ag-stats{ display: flex; gap: 12px; flex-shrink: 0; }
+.ag-stats div{
+  background: #f8fafc; border: 1px solid #e5e9f2;
+  border-radius: 8px; padding: 8px 14px;
+  text-align: center; min-width: 70px;
+}
+.ag-stats strong{ display: block; font-size: 20px; font-weight: 800; color: #0f172a; line-height: 1; }
+.ag-stats span{
+  display: block; margin-top: 4px; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .6px; color: #64748b; font-weight: 600;
+}
+
+/* ---- Sensores cobertos ---- */
+.ag-sensores{
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 14px 30px; background: #f8fafc; border-bottom: 1px solid #e5e9f2;
+}
+.ag-tag-sensor{
+  background: #fff; border: 1px solid #e5e9f2;
+  padding: 3px 10px; border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11.5px; color: #475569;
+}
+.ag-lbl{
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
+  font-weight: 700; color: #94a3b8; margin-right: 4px;
+}
+
+/* ---- Grade densa de regras (todas juntas, categoria vira tag) ---- */
+.ag-regras{
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  padding: 22px 30px 26px;
+}
+.ag-regra{
+  background: #fff;
+  border: 1px solid #e5e9f2; border-radius: 9px;
+  padding: 12px 13px 11px;
+  display: flex; flex-direction: column;
+  transition: border-color .2s, box-shadow .2s, transform .12s;
+}
+.ag-regra:hover{
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 14px rgba(15,23,42,.05);
+  transform: translateY(-1px);
+}
+.ag-regra.compartilhada{
+  background: linear-gradient(180deg, #fff, #f8fafc); border-style: dashed;
+}
+
+.ag-regra-tags{
+  display: flex; gap: 5px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.ag-cat-tag{
+  font-size: 9.5px; padding: 2px 7px; border-radius: 4px;
+  background: #f1f5f9; color: #475569;
+  font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+}
+.ag-card.ag-energia    .ag-cat-tag{ background: rgba(217,119,6,.10); color: #92400e; }
+.ag-card.ag-temperatura .ag-cat-tag{ background: rgba(14,165,233,.10); color: #075985; }
+.ag-card.ag-porta      .ag-cat-tag{ background: rgba(22,163,74,.10); color: #166534; }
+.ag-tag-comum{
+  font-size: 9.5px; padding: 2px 7px; border-radius: 4px;
+  background: rgba(100,116,139,.12); color: #475569;
+  font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+}
+
+.ag-regra-q{
+  font-size: 13px; margin: 0 0 4px; color: #0f172a;
+  font-weight: 600; line-height: 1.3;
+}
+.ag-regra-explica{
+  font-size: 11.5px; color: #64748b; line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+/* Container dos parâmetros — sem decoração, só wrapper */
+.ag-params-bloco{
+  margin-top: auto;            /* empurra params pro fundo, alinhando regras */
+  padding-top: 8px;
+}
+/* Esconde o header "Parâmetros configuráveis · clique pra customizar..." —
+   o título é redundante (cada chip já tem o ✎ ao hover) e quebrava em 3
+   linhas em cards estreitos. */
+.ag-params-head{ display: none; }
+
+/* Lista de parâmetros: chips horizontais que se enrolam */
+.ag-params-lista{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ag-param-card{
+  position: relative;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #f8fafc;
+  border: 1px solid #e5e9f2;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px 4px 7px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0; max-width: 100%;
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.ag-param-card:hover{
+  border-color: var(--ag-sev-cor, #1E6FD6);
+  border-left-color: var(--ag-sev-cor, #1E6FD6);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+/* Severidade aplicada à borda esquerda + ao valor + ao ícone */
+.ag-param-card.sev-critico { --ag-sev-cor: #dc2626; border-left-color: #dc2626; }
+.ag-param-card.sev-atencao { --ag-sev-cor: #d97706; border-left-color: #f59e0b; }
+.ag-param-card.sev-info    { --ag-sev-cor: #1E6FD6; border-left-color: #93c5fd; }
+.ag-param-card.sev-neutro  { --ag-sev-cor: #64748b; border-left-color: #cbd5e1; }
+
+/* Topo do chip: ícone de severidade + rótulo + edit (canto) */
+.ag-param-topo{
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0;
+}
+.ag-param-sev{
+  font-size: 10px;
+  color: var(--ag-sev-cor);
+  line-height: 1; flex-shrink: 0;
+}
+.ag-param-rotulo{
+  font-size: 10.5px; font-weight: 600;
+  color: #475569; letter-spacing: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 130px;
+  text-transform: none;
+}
+.ag-param-edit{
+  font-size: 10px;
+  color: #94a3b8;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+  margin-left: 2px;
+}
+.ag-param-card:hover .ag-param-edit{
+  opacity: 1; color: var(--ag-sev-cor);
+}
+
+/* Meio: valor + unidade, no mesmo chip, padding zero */
+.ag-param-meio{
+  display: inline-flex; align-items: baseline; gap: 2px;
+  background: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.ag-param-valor{
+  font-family: ui-monospace, monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--ag-sev-cor);
+}
+.ag-param-unidade{
+  font-size: 10px; font-weight: 600; color: #94a3b8;
+}
+
+/* Descrição: oculta no card (vira tooltip via title=""), mas visível
+   pra leitores de tela */
+.ag-param-desc{
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); border: 0;
+}
+
+/* Indicador discreto pra regras observacionais (sem parâmetros configuráveis) */
+.ag-sem-params{
+  display: flex; align-items: center; gap: 6px;
+  margin-top: auto;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  font-size: 10.5px;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.4;
+}
+.ag-sem-params-ico{
+  color: #94a3b8; font-size: 12px; flex-shrink: 0; font-style: normal;
+}
+
+.ag-fonte-r{
+  font-size: 10px; color: #94a3b8; margin: 8px 0 0;
+  font-style: italic; line-height: 1.3;
+}
+
+/* ============ Modal ============ */
+.modal-backdrop{
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
+  backdrop-filter: blur(2px);
+}
+/* Atributo HTML `hidden` precisa vencer o display:flex acima */
+.modal-backdrop[hidden]{ display: none !important; }
+.modal-card{
+  background: #fff; border-radius: 16px;
+  max-width: 520px; width: 100%;
+  box-shadow: 0 20px 60px rgba(15,23,42,.30);
+  overflow: hidden;
+  animation: modal-aparece .18s ease-out;
+}
+@keyframes modal-aparece {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.modal-head{
+  padding: 22px 26px 16px;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; border-bottom: 1px solid #e5e9f2;
+  background: linear-gradient(180deg, #fff, #fbfdff);
+}
+.modal-head .olho{
+  display: block; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 1.4px; color: #1E6FD6; font-weight: 700; margin-bottom: 4px;
+}
+.modal-head h3{
+  margin: 0; font-size: 19px; color: #0f172a; letter-spacing: -.3px;
+}
+.modal-subtitulo{
+  margin: 6px 0 0; font-size: 12px; color: #64748b;
+}
+.modal-subtitulo code{
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, monospace; font-size: 11px;
+}
+.modal-subtitulo strong{
+  color: #0f172a; font-family: ui-monospace, monospace; font-size: 12.5px;
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+}
+.modal-close{
+  background: transparent; border: 0; cursor: pointer;
+  font-size: 26px; line-height: 1; color: #64748b;
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover{ background: #f1f5f9; color: #0f172a; }
+
+.modal-body{ padding: 22px 26px; }
+.modal-intro{
+  font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 18px;
+}
+.modal-intro strong{ color: #0f172a; font-weight: 600; }
+
+.modal-campo{
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;
+}
+.modal-campo > span{
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: #475569; font-weight: 700;
+}
+.modal-campo input, .modal-campo select{
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1; border-radius: 8px;
+  font-size: 14px; font-family: inherit;
+  background: #fff; color: #0f172a;
+  transition: border-color .15s, box-shadow .15s;
+}
+.modal-campo input:focus, .modal-campo select:focus{
+  outline: 0; border-color: #1E6FD6;
+  box-shadow: 0 0 0 3px rgba(31,111,235,.18);
+}
+
+.modal-aviso{ margin: 12px 0; font-size: 13px; line-height: 1.5; }
+.modal-aviso:empty{ display: none; }
+.modal-aviso.ok   { color: #166534; background: rgba(22,163,74,.10); border: 1px solid rgba(22,163,74,.30); padding: 10px 12px; border-radius: 8px; }
+.modal-aviso.erro { color: #991b1b; background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.30); padding: 10px 12px; border-radius: 8px; }
+.modal-aviso code{
+  background: rgba(0,0,0,.08); padding: 1px 5px; border-radius: 3px;
+  font-family: ui-monospace, monospace; font-size: 12px;
+}
+
+.modal-acoes{
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-top: 18px;
+}
+.btn-primario, .btn-fantasma{
+  padding: 10px 18px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; border: 1px solid transparent;
+  transition: transform .12s, box-shadow .2s, background .2s;
+}
+.btn-primario{
+  background: linear-gradient(135deg, #1E6FD6, #00B8F0); color: #fff;
+  box-shadow: 0 4px 14px rgba(31,111,235,.30);
+}
+.btn-primario:hover{ transform: translateY(-1px); box-shadow: 0 8px 20px rgba(31,111,235,.35); }
+.btn-primario:disabled{ opacity: .6; cursor: wait; }
+.btn-fantasma{
+  background: #fff; color: #0f172a; border-color: #cbd5e1;
+}
+.btn-fantasma:hover{ background: #f1f5f9; }
+
+/* ============ Rodapé ============ */
+.ag-rodape{
+  background: #fff; border: 1px solid #e5e9f2; border-radius: 14px;
+  padding: 22px 26px;
+}
+.ag-rodape h3{
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  color: #475569; margin: 0 0 12px; font-weight: 700;
+}
+.ag-leg{
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.ag-sev{
+  background: #f8fafc; border: 1px solid #e5e9f2;
+  padding: 6px 12px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600;
+}
+.ag-fonte{
+  font-size: 12.5px; color: #64748b; line-height: 1.55; margin: 0;
+}
+.ag-fonte code{
+  background: #f1f5f9; padding: 1px 5px; border-radius: 4px;
+  font-size: 11.5px; font-family: ui-monospace, monospace;
+}
+
+/* ============ Responsivo ============ */
+@media (max-width: 900px){
+  .layout-admin{ padding-left: 240px; }
+  .ag-card-head, .ag-sensores, .ag-categoria{ padding-left: 20px; padding-right: 20px; }
+  .ag-emoji{ width: 60px; height: 60px; font-size: 32px; }
+}
+@media (max-width: 720px){
+  .layout-admin{ padding-left: 0; }
+  .agentes-main{ padding: 84px 16px 40px; }
+  .ag-card-head{ flex-direction: column; align-items: flex-start; }
+  .ag-stats{ width: 100%; }
+  .modal-card{ max-width: 100%; }
+}

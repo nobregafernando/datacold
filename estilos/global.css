@@ -59,6 +59,12 @@
   --t-rapida: .15s ease;
   --t-media:  .25s ease;
   --t-lenta:  .4s cubic-bezier(.2,.8,.2,1);
+
+  /* === Breakpoints (referência — usar em @media direto) ===
+     --bp-tablet: 900px  → sidebar 340px empilha
+     --bp-mobile: 720px  → menu vira drawer; padding lateral reduz
+     --bp-stretto: 420px → último ponto onde mantemos 2 colunas
+  */
 }
 
 /* === Reset === */
@@ -278,6 +284,9 @@ input:focus, select:focus, textarea:focus{
 /* === Seleção de texto === */
 ::selection{ background: var(--ciano); color: var(--azul-noite); }
 
+/* === Banner de chave de API: sempre oculto (chave padrão hardcoded) === */
+.aviso-chave{ display: none !important; }
+
 /* === Animações utilitárias === */
 @keyframes flutuar{
   0%,100%{ transform: translateY(0); }
@@ -301,10 +310,83 @@ input:focus, select:focus, textarea:focus{
 .surgir-4{ animation-delay: .38s; }
 .surgir-5{ animation-delay: .48s; }
 
+/* =========================================================
+   Helpers compartilhados entre páginas internas
+   (movidos de sensor.css pra evitar dependência cruzada)
+   ========================================================= */
+
+/* Wrapper de tabela com scroll horizontal em telas estreitas */
+.tabela-wrap{
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--raio-md);
+  border: 1px solid var(--borda);
+  background: var(--branco);
+}
+.tabela-wrap::-webkit-scrollbar{ height: 8px; }
+.tabela-wrap::-webkit-scrollbar-thumb{ background: rgba(30,111,214,.25); border-radius: 8px; }
+
+/* Estados vazio / carregando — usados em quase todos os painéis */
+.vazio-bloco{
+  padding: 22px 18px;
+  text-align: center;
+  color: var(--texto-suave);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.vazio-bloco strong{
+  display: block;
+  color: var(--azul-noite);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.carregando-bloco{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 18px;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+.spinner{
+  width: 18px; height: 18px;
+  border: 2.5px solid var(--borda);
+  border-top-color: var(--azul-medio);
+  border-radius: 50%;
+  animation: girar .9s linear infinite;
+}
+
+/* Backdrop pro menu lateral em mobile (drawer overlay) */
+.ml-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(11,29,58,.45);
+  z-index: 19;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
 /* === Responsivo === */
 @media (max-width: 720px){
   .container{ padding: 0 18px; }
   .invisivel-mobile{ display: none; }
   .btn{ padding: 12px 22px; font-size: 14px; }
   .btn-grande{ padding: 15px 28px; font-size: 15px; }
+
+  /* Backdrop ativo só em mobile, quando menu está aberto */
+  .layout-admin:not(.menu-fechado) .ml-backdrop{
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 420px){
+  .container{ padding: 0 14px; }
+  .btn{ padding: 10px 18px; font-size: 13px; }
+  .btn-grande{ padding: 13px 22px; font-size: 14px; }
+  .btn-pequeno{ padding: 7px 12px; font-size: 12px; }
 }

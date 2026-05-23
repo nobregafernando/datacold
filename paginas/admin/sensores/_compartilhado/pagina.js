@@ -1,0 +1,1437 @@
+/**
+ * Página de um sensor específico.
+ *
+ * Responsabilidades:
+ *  - Resolver o id do sensor a partir do nome da pasta na URL.
+ *  - Montar menu lateral, menu topo e cabeçalho.
+ *  - Carregar dados da API BEM e renderizar conectividade, KPIs, gráficos,
+ *    tabela, latência e parâmetros.
+ *  - Disparar notificações automaticamente quando o detector local
+ *    identificar anomalias.
+ *  - Atualizar a cada 30s (pausa quando a aba está escondida).
+ *
+ * Catálogo descritivo (parâmetros, tipos de alerta, faixas térmicas)
+ * fica neste mesmo arquivo, em constantes no topo da classe.
+ */
+class PaginaSensor {
+
+  // =================================================================
+  //  Constantes descritivas
+  // =================================================================
+
+  /** O que cada campo bruto da API significa. */
+  static PARAMETROS = {
+    corrente_fase_a: { desc: "Corrente RMS da fase A",          unidade: "A" },
+    corrente_fase_b: { desc: "Corrente RMS da fase B",          unidade: "A" },
+    corrente_fase_c: { desc: "Corrente RMS da fase C",          unidade: "A" },
+    tensao_fase_a:   { desc: "Tensão fase-neutro A",            unidade: "V" },
+    tensao_fase_b:   { desc: "Tensão fase-neutro B",            unidade: "V" },
+    tensao_fase_c:   { desc: "Tensão fase-neutro C",            unidade: "V" },
+    fator_potencia_a:{ desc: "Fator de potência da fase A",     unidade: "—" },
+    fator_potencia_b:{ desc: "Fator de potência da fase B",     unidade: "—" },
+    fator_potencia_c:{ desc: "Fator de potência da fase C",     unidade: "—" },
+    temperatura:     { desc: "Temperatura interna do ambiente", unidade: "°C" },
+    abertura_porta:  { desc: "Sinal bruto do sensor de porta",  unidade: "—" },
+  };
+
+  /** Faixas térmicas por grupo (usadas em alertas de temperatura). */
+  static FAIXAS_TERMICAS = {
+    camara_congelados:  { min: -28, max: -18, label: "câmara de congelados (-28 a -18°C)" },
+    camara_estoque:     { min:  -4, max:   4, label: "câmara fria de estoque (-4 a 4°C)" },
+    graxaria:           { min: -10, max:   4, label: "câmara da graxaria (-10 a 4°C)" },
+  };
+
+  /** Tipos de alerta que cada tipo de sensor pode disparar. */
+  static TIPOS_ALERTA = {
+    energia: [
+      { sev: "alta",    t: "FP baixo (<0,92)",        d: "Fator de potência abaixo do mínimo ANEEL — concessionária multa." },
+      { sev: "critica", t: "FP muito baixo (<0,85)",  d: "Banco de capacitores queimado, motor sem correção, multa pesada." },
+      { sev: "critica", t: "Fluxo reverso (FP negativo)", d: "Fiação do medidor invertida ou geração não autorizada." },
+      { sev: "alta",    t: "%CUB > 10% (desequilíbrio de corrente)", d: "NEMA MG-1 zona crítica. Motor sob risco." },
+      { sev: "alta",    t: "%VUB > 2% (desequilíbrio de tensão)",    d: "Reduz a vida do motor (regra de Arrhenius)." },
+      { sev: "media",   t: "Pico de corrente",        d: "Pode indicar rolamento, contator degradando, ou partida em falha." },
+      { sev: "media",   t: "Consumo noturno alto",    d: "Suspeita de phantom load — equipamento ligado fora do expediente." },
+    ],
+    temperatura: [
+      { sev: "critica", t: "Superaquecimento",            d: "Temperatura acima da faixa segura por tempo prolongado." },
+      { sev: "critica", t: "Leitura impossível",          d: "Valor fora do envelope físico (ex: +85°C em câmara fria). Sensor com defeito." },
+      { sev: "alta",    t: "Fora da faixa controlada",    d: "Média do período fora dos limites do tipo de câmara." },
+      { sev: "media",   t: "Oscilação alta (σ > limiar)", d: "Setpoint mal ajustado, short-cycling ou interferência no sensor." },
+      { sev: "media",   t: "Lacunas longas na telemetria",d: "Link instável, gateway cheio ou bateria fraca." },
+    ],
+    porta: [
+      { sev: "alta",    t: "Porta esquecida aberta",     d: "Mais de 10 minutos aberta — toda a câmara perde frio." },
+      { sev: "media",   t: "Aberturas anormalmente longas", d: "Mediana acima do esperado. Vedação ou procedimento ruim." },
+      { sev: "media",   t: "Mudança brusca de frequência", d: "Padrão de aberturas mudou — turno novo ou problema mecânico." },
+      { sev: "comum",   t: "Sensor não-binário",         d: "Sinal intermediário pode ser analógico — confirmar configuração." },
+    ],
+  };
+
+  // =================================================================
+  //  Construtor / extrator de id
+  // =================================================================
+
+  constructor() {
+    this.api = new ApiBEM();
+    this.sensorId = PaginaSensor._extrairIdDaUrl();
+    this.sensor = null;
+    this.grupo = null;
+    this.dados = null;
+    this.incidentesAtivos = [];
+    this.janela = "-1h";
+    this.graficos = {};          // chave -> Chart (re-usados entre refreshes)
+    this._tipoGraficoAtual = null;
+    this.autoTimer = null;
+    this.autoIntervalo = 3000;   // auto-refresh a cada 3s (cron gera a cada 10s)
+    this.carregando = false;
+  }
+
+  static _extrairIdDaUrl() {
+    const partes = window.location.pathname.split("/").filter(Boolean);
+    const idx = partes.indexOf("sensores");
+    return idx >= 0 ? partes[idx + 1] : null;
+  }
+
+  // =================================================================
+  //  Boot
+  // =================================================================
+
+  async iniciar() {
+    if (!Autenticacao.protegerPagina("../../../login/login.html")) return;
+
+    this.menu = new MenuLateral({ paginaAtiva: "sensor", raiz: "../../../../" });
+    await this.menu.montar("#menu-lateral");
+    if (this.sensorId) this.menu.destacarSensor(this.sensorId);
+
+    this.sensor = this.menu.sensores.find(s => s.id === this.sensorId) || null;
+    this.grupo  = this.menu.grupos.find(g => g.id === this.sensor?.grupo) || null;
+
+    // Carrega parâmetros configurados no Supabase (sobrepõem defaults do agente).
+    // Mescla no próprio objeto sensor pra que AnalisadorSensor / agentes vejam tudo
+    // via `sensor.parametros`. Falha silenciosa: se Supabase fora, segue com {}.
+    if (this.sensor) {
+      try {
+        const params = await new ApiBEM().obterParametrosSensor(this.sensor.id);
+        this.sensor.parametros = { ...(this.sensor.parametros || {}), ...(params || {}) };
+      } catch (e) {
+        console.warn("[sensor] não foi possível carregar parametros:", e);
+        this.sensor.parametros = this.sensor.parametros || {};
+      }
+    }
+
+    this.topo = new MenuTopo({
+      titulo: this.sensor ? `Sensor · ${this.sensor.rotulo}` : "Sensor",
+      raiz: "../../../../",
+    });
+    this.topo.montar("#menu-topo");
+
+    // Histórico abre numa janela mais larga por padrão
+    if (this.sensor?.historico) this.janela = "-167h";
+
+    this._renderizarCabecalho();
+    this._renderizarParametros();
+    this._renderizarTiposDeAlerta();
+    this._renderizarAlertasDoSensor();
+    this._renderizarAnaliseVazia();
+    this._ligarEventos();
+
+    // Atualiza painel "alertas deste sensor" quando o store muda em qualquer página.
+    this._cancelarAssinatura = Notificacoes.assinar(() => this._renderizarAlertasDoSensor());
+
+    // Marca janela inicial no seletor
+    this._marcarJanelaAtiva();
+
+    await this._carregarDados();
+    this._armarAutoRefresh();
+  }
+
+  // =================================================================
+  //  Cabeçalho
+  // =================================================================
+
+  _renderizarCabecalho() {
+    const elTipo  = document.querySelector("[data-tipo-sensor]");
+    const elNome  = document.querySelector("[data-nome-sensor]");
+    const elGrupo = document.querySelector("[data-grupo-sensor]");
+    const elMeta  = document.querySelector("[data-meta-topo]");
+
+    if (!this.sensor) {
+      elNome.textContent = "Sensor não encontrado";
+      elTipo.textContent = "—";
+      elGrupo.textContent = `id "${this.sensorId || "(vazio)"}" não está no catálogo`;
+      elMeta.innerHTML = "";
+      return;
+    }
+
+    const s = this.sensor;
+    elTipo.textContent  = s.tipo;
+    elNome.textContent  = s.rotulo;
+    elGrupo.textContent = this.grupo ? this.grupo.label : s.grupo;
+    elMeta.innerHTML = `
+      <span class="tag-id">${s.id}</span>
+      <span class="tag-tipo-grande ${s.tipo}">${s.tipo}</span>
+      <span class="tag-status ${s.status}">${s.status}</span>
+    `;
+    document.title = `DataCold · ${s.rotulo}`;
+  }
+
+  // =================================================================
+  //  Eventos
+  // =================================================================
+
+  _ligarEventos() {
+    // seletor de janela
+    document.querySelectorAll("[data-janela]").forEach(b => {
+      b.addEventListener("click", () => {
+        this.janela = b.dataset.janela;
+        this._marcarJanelaAtiva();
+        this._carregarDados();
+      });
+    });
+
+    // botão atualizar
+    document.querySelector("[data-acao='atualizar']")?.addEventListener("click", () => this._carregarDados());
+
+    // banner chave
+    document.querySelector("[data-acao='salvar-chave']")?.addEventListener("click", () => this._salvarChave());
+    document.querySelector("[data-chave-input]")?.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") this._salvarChave();
+    });
+
+    // pausa auto-refresh quando aba não visível
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this._pararAutoRefresh();
+      else                 this._armarAutoRefresh();
+    });
+  }
+
+  _marcarJanelaAtiva() {
+    document.querySelectorAll("[data-janela]").forEach(b => {
+      b.classList.toggle("ativo", b.dataset.janela === this.janela);
+    });
+  }
+
+  _salvarChave() {
+    const input = document.querySelector("[data-chave-input]");
+    const val = input?.value.trim();
+    if (!val) return;
+    this.api.chave = val;
+    document.querySelector("[data-aviso-chave]").hidden = true;
+    this._carregarDados();
+  }
+
+  // =================================================================
+  //  Auto-refresh
+  // =================================================================
+
+  _armarAutoRefresh() {
+    this._pararAutoRefresh();
+    this.autoTimer = setInterval(() => this._carregarDados(), this.autoIntervalo);
+    document.querySelector("[data-aovivo]")?.classList.remove("pausado");
+  }
+
+  _pararAutoRefresh() {
+    if (this.autoTimer) clearInterval(this.autoTimer);
+    this.autoTimer = null;
+    document.querySelector("[data-aovivo]")?.classList.add("pausado");
+  }
+
+  // =================================================================
+  //  Carregamento de dados
+  // =================================================================
+
+  async _carregarDados() {
+    if (this.carregando) return;
+    if (!this.sensor) return;    // (banner de chave removido — chave padrão hardcoded em ApiBEM)
+    this.carregando = true;
+    try {
+      let inicio = this.janela;
+      let fim    = "now";
+      if (this.sensor.historico && !["-72h","-167h","-24h"].includes(inicio)) {
+        inicio = "-90d";
+        fim    = "-30d";
+      }
+
+      // Busca dados e incidentes ativos em paralelo
+      const [dados, incidentes] = await Promise.all([
+        this.api.buscarDados(this.sensorId, { inicio, fim, limite: 1000 }),
+        this.api.incidentesAtivos(this.sensorId),
+      ]);
+      this.dados = dados;
+      this.incidentesAtivos = incidentes || [];
+      this._renderizarIncidentesAtivos();
+
+      // Hora REAL da última leitura recebida (não a hora atual do navegador).
+      const ultimo = this.dados?.points?.[this.dados.points.length - 1];
+      const el = document.querySelector("[data-atualizado-em]");
+      if (el) {
+        if (ultimo) {
+          const d = new Date(ultimo.time);
+          el.textContent = d.toLocaleTimeString("pt-BR", {
+            hour: "2-digit", minute: "2-digit", second: "2-digit"
+          }) + " · " + d.toLocaleDateString("pt-BR", {
+            day: "2-digit", month: "2-digit"
+          });
+        } else {
+          el.textContent = "—";
+        }
+      }
+
+      // Sem pontos no intervalo
+      if (!this.dados?.points?.length) {
+        this._renderizarConectividade(this.dados);
+        this._estadoSemDados({
+          titulo: "Sem leituras na janela",
+          msg: "A API respondeu, mas não retornou pontos nesse intervalo. Tente uma janela maior (ex: 7d).",
+        });
+        return;
+      }
+
+      // Se a Sala de Controle disparou gap/offline, força conectividade pra
+      // offline imediatamente — não esperar a heurística de "10× intervalo".
+      const incOffline = this.incidentesAtivos.find(i => i.tipo === "gap" || i.tipo === "offline");
+      if (incOffline) {
+        const restante = incOffline.segundos_restantes;
+        const tempoLeg = restante != null ? `${restante}s restantes` : "ativo";
+        this._renderizarConectividade(this.dados, "offline",
+          `Simulação "${incOffline.tipo}" disparada pela Sala de Controle · ${tempoLeg}`);
+      } else {
+        this._renderizarConectividade(this.dados);
+      }
+      this._renderizarLudico(this.dados);
+      this._renderizarKpis(this.dados);
+      this._renderizarGraficos(this.dados);
+      this._renderizarTabela(this.dados);
+      this._renderizarLatencia(this.dados);
+      this._renderizarAnalise(this.dados);
+      this._detectarAlertasLocais(this.dados);
+    } catch (e) {
+      this._renderizarConectividade(null, "erro", e.message);
+      const ehAuth = /401|403|chave|key/i.test(e.message);
+      this._estadoSemDados({
+        titulo: ehAuth ? "Chave de API inválida ou recusada" : "Erro ao falar com a API",
+        msg: ehAuth
+          ? "A API rejeitou a chave (HTTP 401/403). Cole uma chave válida no banner amarelo acima."
+          : `A requisição falhou: ${e.message}. Verifique sua conexão, o servidor da API, ou tente atualizar.`,
+      });
+      console.error("carregar dados falhou:", e);
+    } finally {
+      this.carregando = false;
+    }
+  }
+
+  /**
+   * Limpa "Carregando dados…" de TODOS os painéis dependentes da API e mostra
+   * uma mensagem unificada (sem-chave, erro, sem leituras).
+   */
+  _estadoSemDados({ titulo, msg }) {
+    const blocoVazio = `<div class="vazio-bloco"><strong>${this._escapar(titulo)}</strong><span>${this._escapar(msg)}</span></div>`;
+
+    // Gráficos
+    const charts = document.querySelector("[data-charts]");
+    if (charts) { this._destruirGraficos(); charts.innerHTML = blocoVazio; }
+
+    // KPIs (4 placeholders neutros)
+    const kpis = document.querySelector("[data-kpis]");
+    if (kpis) {
+      kpis.innerHTML = Array.from({ length: 4 }, () => `
+        <div class="kpi-card">
+          <div class="kpi-ico" style="background:#e5e9f2;color:var(--texto-suave);box-shadow:none">—</div>
+          <div class="kpi-rotulo">Sem dados</div>
+          <div class="kpi-valor" style="color:var(--texto-suave)">—</div>
+          <div class="kpi-sub">aguardando API</div>
+        </div>
+      `).join("");
+    }
+
+    // Tabela
+    const tab = document.querySelector("[data-tabela]");
+    if (tab) tab.innerHTML = blocoVazio;
+
+    // Latência
+    const lat = document.querySelector("[data-latencia]");
+    if (lat) lat.innerHTML = blocoVazio;
+
+    // Análise (volta pro estado neutro com chips em info)
+    this._renderizarAnaliseVazia();
+
+    // Timestamp
+    const tsEl = document.querySelector("[data-atualizado-em]");
+    if (tsEl) tsEl.textContent = "—";
+  }
+
+  // =================================================================
+  //  Incidentes ativos (disparados pela Sala de Controle)
+  // =================================================================
+
+  _renderizarIncidentesAtivos() {
+    const el = document.querySelector("[data-incidentes-ativos]");
+    if (!el) return;
+    const lista = this.incidentesAtivos || [];
+    if (!lista.length) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = `
+      <div class="ia-cabecalho">
+        <span class="ia-icone">🎛️</span>
+        <div class="ia-textos">
+          <strong>${lista.length} simulação${lista.length > 1 ? "ões" : ""} ativa${lista.length > 1 ? "s" : ""}</strong>
+          <span>Disparado pela Sala de Controle — o sinal do sensor está sendo distorcido em tempo real.</span>
+        </div>
+      </div>
+      <div class="ia-lista">
+        ${lista.map(i => this._htmlIncidente(i)).join("")}
+      </div>
+    `;
+    el.querySelectorAll("[data-cancelar-incidente]").forEach(b => {
+      b.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        const id = b.dataset.cancelarIncidente;
+        b.disabled = true; b.textContent = "Cancelando…";
+        try {
+          await this.api.cancelarIncidente(id);
+          await this._carregarDados();
+        } catch (e) {
+          b.disabled = false; b.textContent = "Tentar de novo";
+          console.error("cancelar incidente falhou:", e);
+        }
+      });
+    });
+  }
+
+  _htmlIncidente(i) {
+    const sev = ({ offline: "crit", gap: "crit", spike: "warn", drift: "warn", valor_impossivel: "crit" })[i.tipo] || "info";
+    const ico = ({ offline: "📴", gap: "📡", spike: "⚡", drift: "📈", valor_impossivel: "🛑" })[i.tipo] || "ℹ️";
+    const rotulo = ({
+      offline: "Equipamento offline",
+      gap: "Sem conectividade",
+      spike: `Pico ${i.magnitude != null ? Number(i.magnitude).toFixed(2) + "×" : ""}`,
+      drift: `Drift ${i.magnitude != null ? (Number(i.magnitude) >= 0 ? "+" : "") + Number(i.magnitude).toFixed(2) : ""}`,
+      valor_impossivel: `Valor forçado = ${i.valor}`,
+    })[i.tipo] || i.tipo;
+    const restanteStr = i.segundos_restantes != null
+      ? (i.segundos_restantes >= 60
+          ? `${Math.floor(i.segundos_restantes / 60)} min ${i.segundos_restantes % 60}s`
+          : `${i.segundos_restantes}s`)
+      : "sem prazo";
+    return `
+      <div class="ia-item sev-${sev}">
+        <span class="ia-ico">${ico}</span>
+        <div class="ia-corpo">
+          <div class="ia-titulo">${rotulo}</div>
+          <div class="ia-meta">resta <strong>${restanteStr}</strong>${i.descricao ? ` · ${i.descricao}` : ""}</div>
+        </div>
+        <button class="ia-cancelar" data-cancelar-incidente="${i.id}">Cancelar</button>
+      </div>
+    `;
+  }
+
+  // =================================================================
+  //  Conectividade
+  // =================================================================
+
+  _renderizarConectividade(dados, estadoForcado = null, mensagem = null) {
+    const el = document.querySelector("[data-conectividade]");
+    if (!el) return;
+
+    let status = "online";
+    let titulo = "Online";
+    let info   = "";
+    let pontosBadge = "";
+
+    if (estadoForcado === "sem-chave") {
+      status = "sem-chave"; titulo = "Sem chave"; info = "Configure a chave da API BEM acima.";
+    } else if (estadoForcado === "erro") {
+      status = "erro"; titulo = "Erro"; info = mensagem || "Falha ao consultar a API.";
+    } else if (!dados || !dados.points?.length) {
+      status = "offline"; titulo = "Sem leituras"; info = "Sem dados retornados na janela.";
+    } else {
+      const ultimo = new Date(dados.points[dados.points.length - 1].time);
+      const diff = (Date.now() - ultimo.getTime()) / 1000;
+      const intervalos = [];
+      for (let i = 1; i < dados.points.length; i++) {
+        intervalos.push((new Date(dados.points[i].time) - new Date(dados.points[i-1].time)) / 1000);
+      }
+      const intMedio = intervalos.length ? intervalos.reduce((s,x)=>s+x,0) / intervalos.length : 0;
+
+      if (intMedio > 0 && diff > intMedio * 10)      { status = "offline";  titulo = "Offline";  }
+      else if (intMedio > 0 && diff > intMedio * 3)  { status = "instavel"; titulo = "Instável"; }
+
+      info = `Última leitura ${this._formatarTempoAbs(diff)} · ~${this._formatarIntervalo(intMedio)} entre leituras`;
+      pontosBadge = `<span class="conectividade-pontos">${dados.points.length} pontos · ${this.janela}</span>`;
+    }
+
+    el.className = `conectividade conectividade-${status}`;
+    el.innerHTML = `
+      <span class="conectividade-pill">
+        <span class="conectividade-ponto"></span>
+        <strong>${titulo}</strong>
+      </span>
+      <span class="conectividade-info">${info}</span>
+      ${pontosBadge}
+    `;
+  }
+
+  _formatarTempoAbs(segundos) {
+    if (!isFinite(segundos) || segundos < 0) return "—";
+    if (segundos < 90)   return `há ${Math.round(segundos)}s`;
+    const min = segundos / 60;
+    if (min < 90)        return `há ${Math.round(min)} min`;
+    const h = min / 60;
+    if (h < 36)          return `há ${h.toFixed(1)} h`;
+    return `há ${(h / 24).toFixed(1)} dias`;
+  }
+
+  _formatarIntervalo(segundos) {
+    if (!isFinite(segundos) || segundos <= 0) return "—";
+    if (segundos < 1)    return `${Math.round(segundos*1000)} ms`;
+    if (segundos < 90)   return `${segundos.toFixed(1)} s`;
+    return `${(segundos/60).toFixed(1)} min`;
+  }
+
+  // =================================================================
+  //  KPIs
+  // =================================================================
+
+  _renderizarKpis(dados) {
+    const cont = document.querySelector("[data-kpis]");
+    if (!cont) return;
+
+    const itens = this.sensor.calcularIndicadores(dados.points);
+    if (!itens.length) {
+      cont.innerHTML = `<div class="vazio-bloco" style="grid-column:1/-1"><strong>Sem KPIs</strong><span>Sem dados pra calcular.</span></div>`;
+      return;
+    }
+
+    const tipo = this.sensor.tipo;
+    // pega só os 4 primeiros pra manter o layout
+    const top = itens.slice(0, 4);
+    cont.innerHTML = top.map(it => {
+      const sev = it.severidade ? `sev-${it.severidade}` : "";
+      return `
+        <div class="kpi-card ${tipo} ${sev}">
+          <div class="kpi-ico">${this._iconeTipo(tipo)}</div>
+          <div class="kpi-rotulo">${it.rotulo}</div>
+          <div class="kpi-valor">${it.valor}</div>
+          ${it.sub ? `<div class="kpi-sub">${it.sub}</div>` : ""}
+        </div>
+      `;
+    }).join("");
+  }
+
+  _iconeTipo(tipo) {
+    if (tipo === "energia") return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+    if (tipo === "temperatura") return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4 4 0 1 0 5 0z"></path></svg>`;
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="15" y1="12" x2="15.01" y2="12"></line></svg>`;
+  }
+
+  // =================================================================
+  //  Painel lúdico (semáforo + velocímetros / termômetro / porta)
+  // =================================================================
+
+  _renderizarLudico(dados) {
+    const secao = document.querySelector("[data-ludico]");
+    if (!secao || !dados?.points?.length) return;
+    secao.hidden = false;
+
+    const ultimo = dados.points[dados.points.length - 1];
+    this._renderizarBannerStatus(dados, ultimo);
+
+    const visual = document.querySelector("[data-ludico-visual]");
+    if (!visual) return;
+
+    if (this.sensor.tipo === "energia") {
+      this._renderizarVelocimetrosEnergia(visual, ultimo);
+    } else if (this.sensor.tipo === "temperatura") {
+      this._renderizarTermometro(visual, dados, ultimo);
+    } else if (this.sensor.tipo === "porta") {
+      this._renderizarPorta(visual, dados, ultimo);
+    }
+  }
+
+  /** Banner grande com semáforo + frase humana + valor destacado. */
+  _renderizarBannerStatus(dados, ultimo) {
+    const el = document.querySelector("[data-ludico-status]");
+    if (!el) return;
+
+    const { sev, emoji, titulo, sub, valor } = this._avaliarStatus(dados, ultimo);
+
+    // Upsert (não recria DOM se já existe — evita flash)
+    if (!el.querySelector(".banner-status")) {
+      el.innerHTML = `
+        <div class="banner-status">
+          <div class="bs-emoji"></div>
+          <div class="bs-texto">
+            <p class="bs-titulo"></p>
+            <p class="bs-sub"></p>
+          </div>
+          <div class="bs-valor"></div>
+        </div>`;
+    }
+    const banner = el.querySelector(".banner-status");
+    banner.className = `banner-status ${sev}`;
+    banner.querySelector(".bs-emoji").textContent  = emoji;
+    banner.querySelector(".bs-titulo").textContent = titulo;
+    banner.querySelector(".bs-sub").textContent    = sub;
+    banner.querySelector(".bs-valor").textContent  = valor;
+  }
+
+  /**
+   * Resolve um threshold lendo (1) `sensor.parametros[chave]` se existir;
+   * (2) `NORMAS[grupo][chave].valor` se NORMAS estiver carregado;
+   * (3) o fallback hardcoded.
+   */
+  _threshold(chave, fallback, grupoNorma = null) {
+    const p = this.sensor?.parametros || {};
+    if (p[chave] != null) return Number(p[chave]);
+    if (grupoNorma && typeof NORMAS !== "undefined") {
+      const n = NORMAS[grupoNorma]?.[chave];
+      if (n?.valor != null) return Number(n.valor);
+    }
+    return fallback;
+  }
+
+  _avaliarStatus(dados, ultimo) {
+    if (this.sensor.tipo === "energia") {
+      const fpComp = (
+        (Math.abs(ultimo.fator_potencia_a || 0) +
+         Math.abs(ultimo.fator_potencia_b || 0) +
+         Math.abs(ultimo.fator_potencia_c || 0)) / 3
+      );
+      const pot = (
+        (ultimo.tensao_fase_a || 0)*(ultimo.corrente_fase_a || 0)*(ultimo.fator_potencia_a || 0) +
+        (ultimo.tensao_fase_b || 0)*(ultimo.corrente_fase_b || 0)*(ultimo.fator_potencia_b || 0) +
+        (ultimo.tensao_fase_c || 0)*(ultimo.corrente_fase_c || 0)*(ultimo.fator_potencia_c || 0)
+      ) / 1000;
+      const fpNeg = (ultimo.fator_potencia_a < 0 || ultimo.fator_potencia_b < 0 || ultimo.fator_potencia_c < 0);
+
+      // Thresholds vêm do agente (sensor.parametros) ou caem nos defaults ANEEL.
+      const fpAten = this._threshold("limite_atencao", 0.92, "ANEEL");
+      const fpCrit = this._threshold("limite_critico", 0.85, "ANEEL");
+
+      if (fpNeg)              return { sev: "crit", emoji: "⚠️", titulo: "Fluxo reverso detectado",  sub: "FP negativo — fiação do medidor pode estar invertida.", valor: `${pot.toFixed(1)} kW` };
+      if (fpComp < fpCrit)    return { sev: "crit", emoji: "🔴", titulo: "FP crítico",                sub: `FP composto = ${fpComp.toFixed(2)} (mínimo ANEEL ${fpCrit.toFixed(2)}). Multa garantida.`, valor: `${pot.toFixed(1)} kW` };
+      if (fpComp < fpAten)    return { sev: "warn", emoji: "🟡", titulo: "FP em zona de atenção",     sub: `FP composto = ${fpComp.toFixed(2)} (ideal ≥ ${fpAten.toFixed(2)}).`, valor: `${pot.toFixed(1)} kW` };
+      return                         { sev: "ok",   emoji: "✅", titulo: "Energia saudável",          sub: `FP ${fpComp.toFixed(2)} · operando normalmente.`, valor: `${pot.toFixed(1)} kW` };
+    }
+    if (this.sensor.tipo === "temperatura") {
+      const t = ultimo.temperatura;
+      // Faixa: parametros do sensor sobrescrevem o default por ambiente
+      const faixaPadrao = PaginaSensor.FAIXAS_TERMICAS[this.sensor.grupo];
+      const faixa = (this.sensor.parametros?.faixa_min != null || this.sensor.parametros?.faixa_max != null)
+        ? { min: Number(this.sensor.parametros.faixa_min ?? faixaPadrao?.min ?? -50),
+            max: Number(this.sensor.parametros.faixa_max ?? faixaPadrao?.max ?? 50) }
+        : faixaPadrao;
+      const envMin = this._threshold("envelope_min", -50);
+      const envMax = this._threshold("envelope_max", 100);
+
+      if (t < envMin || t > envMax) return { sev: "crit", emoji: "🛑", titulo: "Leitura impossível", sub: "Fora do envelope físico — sensor com defeito.", valor: `${t.toFixed(1)}°C` };
+      if (faixa) {
+        if (t < faixa.min) return { sev: "warn", emoji: "🥶", titulo: "Abaixo da faixa ideal",  sub: `Ideal ${faixa.min}°C a ${faixa.max}°C.`, valor: `${t.toFixed(1)}°C` };
+        if (t > faixa.max) return { sev: "crit", emoji: "🔥", titulo: "Acima da faixa ideal",   sub: `Câmara em ${t.toFixed(1)}°C, alvo até ${faixa.max}°C — risco ao produto.`, valor: `${t.toFixed(1)}°C` };
+        return                    { sev: "ok",   emoji: "✅", titulo: "Temperatura na faixa ideal", sub: `Ideal ${faixa.min}°C a ${faixa.max}°C.`, valor: `${t.toFixed(1)}°C` };
+      }
+      return { sev: "ok", emoji: "🌡️", titulo: "Temperatura ambiente", sub: "Sensor externo — sem faixa controlada.", valor: `${t.toFixed(1)}°C` };
+    }
+    if (this.sensor.tipo === "porta") {
+      const aberta = (ultimo.abertura_porta || 0) > 0;
+      return aberta
+        ? { sev: "warn", emoji: "🚪", titulo: "Porta aberta agora", sub: "Quanto mais tempo aberta, mais frio escapa.", valor: "ABERTA" }
+        : { sev: "ok", emoji: "✅", titulo: "Porta fechada", sub: "Câmara vedada — frio sendo mantido.", valor: "FECHADA" };
+    }
+    return { sev: "ok", emoji: "✅", titulo: "Sensor online", sub: "", valor: "OK" };
+  }
+
+  /** 3 velocímetros lado a lado (uma fase cada). */
+  _renderizarVelocimetrosEnergia(visual, ultimo) {
+    if (!visual.querySelector(".gauge-card")) {
+      visual.innerHTML = ["a","b","c"].map(f => `
+        <div class="gauge-card" data-gauge="${f}">
+          <h4>Corrente fase ${f.toUpperCase()}</h4>
+          ${this._svgGauge()}
+          <div class="gauge-valor" data-valor>—</div>
+          <div class="gauge-unidade">amperes (A)</div>
+        </div>`).join("");
+    }
+    // Escala honesta: usa a corrente nominal do equipamento (do parametros)
+    // quando disponível; senão cai num default genérico de 250A. Como cada
+    // motor tem sua nominal, a cor passa a refletir carga relativa real.
+    const nominal = Number(this.sensor?.parametros?.corrente_nominal_a) || 250;
+    // Acima de 100% do nominal é zona vermelha; >60% é amarelo.
+    const limWarn = 0.60;
+    const limCrit = 0.85;
+    ["a","b","c"].forEach(f => {
+      const card = visual.querySelector(`[data-gauge="${f}"]`);
+      const v = ultimo[`corrente_fase_${f}`] || 0;
+      const pct = Math.max(0, Math.min(1, Math.abs(v) / nominal));
+      const sev = pct < limWarn ? "ok" : pct < limCrit ? "warn" : "crit";
+      const arco  = card.querySelector(".gauge-arco");
+      const agulha = card.querySelector(".gauge-agulha");
+      const dash = 251.3;   // perímetro do arco SVG (calculado abaixo)
+      arco.setAttribute("stroke-dashoffset", String(dash - dash * pct));
+      arco.setAttribute("class", `gauge-arco ${sev}`);
+      const angulo = -90 + pct * 180;
+      agulha.style.transform = `rotate(${angulo}deg)`;
+      card.querySelector("[data-valor]").textContent = `${v.toFixed(1)} A`;
+    });
+  }
+
+  _svgGauge() {
+    // Semicírculo de raio 80, centrado em (90,90). perímetro = π·80 ≈ 251.3
+    return `
+      <svg class="gauge-svg" viewBox="0 0 180 110" aria-hidden="true">
+        <path class="gauge-fundo" d="M 10 90 A 80 80 0 0 1 170 90"/>
+        <path class="gauge-arco ok" d="M 10 90 A 80 80 0 0 1 170 90"
+              stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+        <line class="gauge-agulha" x1="90" y1="90" x2="90" y2="20"/>
+        <circle cx="90" cy="90" r="5" fill="#0f172a"/>
+      </svg>`;
+  }
+
+  /** Termômetro vertical animado. */
+  _renderizarTermometro(visual, dados, ultimo) {
+    const faixa = PaginaSensor.FAIXAS_TERMICAS[this.sensor.grupo];
+    if (!visual.querySelector(".termometro-card")) {
+      visual.innerHTML = `
+        <div class="termometro-card">
+          <h4 class="term-titulo">Temperatura agora</h4>
+          <div class="term-vidro">
+            <div class="term-faixa-ideal" data-faixa-ideal></div>
+            <div class="term-mercurio" data-mercurio style="height:0"></div>
+            <div class="term-bulbo" data-bulbo></div>
+          </div>
+          <div class="term-info">
+            <div class="term-leitura" data-leitura>—</div>
+            <p data-info-faixa></p>
+            <p data-info-tend></p>
+          </div>
+        </div>`;
+    }
+    const card     = visual.querySelector(".termometro-card");
+    const mercurio = card.querySelector("[data-mercurio]");
+    const bulbo    = card.querySelector("[data-bulbo]");
+    const leitura  = card.querySelector("[data-leitura]");
+    const faixaEl  = card.querySelector("[data-faixa-ideal]");
+    const infoFaixa= card.querySelector("[data-info-faixa]");
+    const infoTend = card.querySelector("[data-info-tend]");
+
+    // Escala visual: -30°C a +40°C (cobre câmara congelados e ambiente externo)
+    const escMin = -30, escMax = 40, escRange = escMax - escMin;
+    const t = ultimo.temperatura;
+    const tClamp = Math.max(escMin, Math.min(escMax, t));
+    const pct = (tClamp - escMin) / escRange * 100;
+    mercurio.style.height = `${pct}%`;
+
+    // Classifica cor
+    let classe = "ideal";
+    if (Math.abs(t) > 100)                   classe = "crit";
+    else if (faixa) {
+      if (t < faixa.min || t > faixa.max)    classe = (t > faixa.max ? "crit" : "warn");
+      else                                    classe = "ideal";
+    } else {
+      classe = t < 10 ? "frio" : "ideal";
+    }
+    mercurio.className = `term-mercurio ${classe}`;
+    bulbo.style.background = (classe === "frio" || classe === "ideal")
+      ? "linear-gradient(135deg,#1E6FD6,#00B8F0)"
+      : "linear-gradient(135deg,#ef4444,#f87171)";
+
+    leitura.innerHTML = `${t.toFixed(1)}<span class="unid">°C</span>`;
+    leitura.className = `term-leitura ${classe === "crit" ? "crit" : classe === "warn" ? "warn" : "ok"}`;
+
+    // Faixa ideal sobreposta no vidro
+    if (faixa) {
+      const min = Math.max(escMin, Math.min(escMax, faixa.min));
+      const max = Math.max(escMin, Math.min(escMax, faixa.max));
+      const bottom = (min - escMin) / escRange * 100;
+      const top    = (max - escMin) / escRange * 100;
+      faixaEl.style.bottom = `${bottom}%`;
+      faixaEl.style.height = `${top - bottom}%`;
+      faixaEl.style.display = "block";
+      infoFaixa.innerHTML = `Faixa ideal: <strong>${faixa.min}°C a ${faixa.max}°C</strong>`;
+    } else {
+      faixaEl.style.display = "none";
+      infoFaixa.innerHTML = "Sensor de ambiente — sem faixa controlada";
+    }
+
+    // Tendência simples (últimos 10 vs anteriores)
+    const pts = dados.points;
+    if (pts.length >= 20) {
+      const n = pts.length;
+      const recente = pts.slice(n - 10).reduce((s,p) => s + p.temperatura, 0) / 10;
+      const antes   = pts.slice(n - 20, n - 10).reduce((s,p) => s + p.temperatura, 0) / 10;
+      const delta = recente - antes;
+      const seta = delta > 0.1 ? "↗ subindo" : delta < -0.1 ? "↘ caindo" : "→ estável";
+      infoTend.innerHTML = `Tendência recente: <strong>${seta}</strong> (${delta >= 0 ? "+" : ""}${delta.toFixed(2)}°C)`;
+    } else {
+      infoTend.textContent = "";
+    }
+  }
+
+  /** Porta aberta/fechada com timer de quanto tempo está nesse estado. */
+  _renderizarPorta(visual, dados, ultimo) {
+    if (!visual.querySelector(".porta-card")) {
+      visual.innerHTML = `
+        <div class="porta-card" data-porta>
+          <div class="porta-icone" data-icone>🚪</div>
+          <div class="porta-texto">
+            <p class="porta-estado" data-estado>—</p>
+            <p class="porta-timer"  data-timer>—</p>
+          </div>
+        </div>`;
+    }
+    const card = visual.querySelector(".porta-card");
+    const aberta = (ultimo.abertura_porta || 0) > 0;
+
+    // Procura quanto tempo está no estado atual (último ponto que mudou)
+    const pts = dados.points;
+    let inicio = new Date(pts[0].time);
+    for (let i = pts.length - 1; i >= 1; i--) {
+      const atualAberta = (pts[i].abertura_porta || 0) > 0;
+      const antAberta   = (pts[i - 1].abertura_porta || 0) > 0;
+      if (atualAberta !== antAberta) {
+        inicio = new Date(pts[i].time);
+        break;
+      }
+    }
+    const agora = new Date(pts[pts.length - 1].time);
+    const segs = Math.floor((agora - inicio) / 1000);
+    const tempo = segs < 60 ? `${segs}s`
+                : segs < 3600 ? `${Math.floor(segs/60)} min`
+                : `${Math.floor(segs/3600)}h ${Math.floor((segs%3600)/60)}min`;
+
+    card.className = `porta-card ${aberta ? "aberta" : "fechada"}`;
+    card.querySelector("[data-icone]").textContent  = aberta ? "🚪" : "🔒";
+    card.querySelector("[data-estado]").textContent = aberta ? "PORTA ABERTA" : "PORTA FECHADA";
+    card.querySelector("[data-timer]").innerHTML    =
+      `Está nesse estado há <strong>${tempo}</strong>`;
+  }
+
+  // =================================================================
+  //  Gráficos
+  // =================================================================
+
+  _renderizarGraficos(dados) {
+    const box = document.querySelector("[data-charts]");
+    if (!box) return;
+
+    // Se mudou de tipo de sensor, recria tudo do zero.
+    if (this._tipoGraficoAtual !== this.sensor.tipo) {
+      this._destruirGraficos();
+      box.innerHTML = "";
+      this._tipoGraficoAtual = this.sensor.tipo;
+    }
+
+    if (!dados.points.length) {
+      this._destruirGraficos();
+      box.innerHTML = `<div class="vazio-bloco"><strong>Sem dados</strong><span>Sem pontos no intervalo.</span></div>`;
+      this._tipoGraficoAtual = null;
+      return;
+    }
+
+    const labels = dados.points.map(p => new Date(p.time).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+
+    if (this.sensor.tipo === "energia") {
+      this._upsertChart("corrente", box, "Corrente por fase (A)", labels, [
+        { label: "Fase A", data: dados.points.map(p => p.corrente_fase_a), borderColor: "#123B7A" },
+        { label: "Fase B", data: dados.points.map(p => p.corrente_fase_b), borderColor: "#1E6FD6" },
+        { label: "Fase C", data: dados.points.map(p => p.corrente_fase_c), borderColor: "#00B8F0" },
+      ]);
+      this._upsertChart("tensao", box, "Tensão por fase (V)", labels, [
+        { label: "Fase A", data: dados.points.map(p => p.tensao_fase_a), borderColor: "#123B7A" },
+        { label: "Fase B", data: dados.points.map(p => p.tensao_fase_b), borderColor: "#1E6FD6" },
+        { label: "Fase C", data: dados.points.map(p => p.tensao_fase_c), borderColor: "#00B8F0" },
+      ]);
+      this._upsertChart("fp", box, "Fator de potência", labels, [
+        { label: "Fase A", data: dados.points.map(p => p.fator_potencia_a), borderColor: "#123B7A" },
+        { label: "Fase B", data: dados.points.map(p => p.fator_potencia_b), borderColor: "#1E6FD6" },
+        { label: "Fase C", data: dados.points.map(p => p.fator_potencia_c), borderColor: "#00B8F0" },
+        { label: "Limite ANEEL (0,92)", data: dados.points.map(() => 0.92), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 },
+      ]);
+      const pot = dados.points.map(p =>
+        ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
+         (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
+         (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000
+      );
+      this._upsertChart("potencia", box, "Potência ativa total (kW)", labels, [
+        { label: "P", data: pot, borderColor: "#1E6FD6", fill: true, backgroundColor: "rgba(30,111,214,.10)" },
+      ]);
+    }
+    else if (this.sensor.tipo === "temperatura") {
+      const faixa = PaginaSensor.FAIXAS_TERMICAS[this.sensor.grupo];
+      const ds = [{ label: "Temperatura", data: dados.points.map(p => p.temperatura), borderColor: "#00B8F0", fill: true, backgroundColor: "rgba(0,184,240,.10)" }];
+      if (faixa) {
+        ds.push({ label: `Mínima ideal (${faixa.min}°C)`, data: dados.points.map(() => faixa.min), borderColor: "#16a34a", borderDash: [6,4], pointRadius: 0 });
+        ds.push({ label: `Máxima ideal (${faixa.max}°C)`, data: dados.points.map(() => faixa.max), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 });
+      }
+      this._upsertChart("temperatura", box, "Temperatura (°C)", labels, ds);
+    }
+    else if (this.sensor.tipo === "porta") {
+      this._upsertChart("porta", box, "Sinal de abertura", labels, [
+        { label: "abertura_porta", data: dados.points.map(p => p.abertura_porta), borderColor: "#1E6FD6", stepped: true, fill: true, backgroundColor: "rgba(30,111,214,.08)" },
+      ]);
+    }
+  }
+
+  /**
+   * Cria o gráfico se não existe; se já existe, só atualiza os dados.
+   * `chart.update('none')` evita o flash de animação a cada refresh —
+   * as linhas crescem suavemente como uma serpente em vez de piscar.
+   */
+  _upsertChart(chave, parent, titulo, labels, datasets) {
+    const existente = this.graficos[chave];
+    if (existente) {
+      existente.data.labels = labels;
+      datasets.forEach((novo, i) => {
+        const ds = existente.data.datasets[i];
+        if (!ds) {
+          existente.data.datasets[i] = this._estilizarDataset(novo, existente.canvas);
+        } else {
+          ds.data = novo.data;
+          if (novo.borderColor) ds.borderColor = novo.borderColor;
+          if (novo.fill && novo.backgroundColor) {
+            ds.backgroundColor = this._gradiente(existente.canvas, novo.borderColor || novo.backgroundColor);
+          }
+        }
+      });
+      existente.update("none");
+      return;
+    }
+
+    if (typeof Chart === "undefined") {
+      const wrap = document.createElement("div");
+      wrap.className = "chart-bloco";
+      wrap.innerHTML = `<h4>${titulo}</h4><div class="vazio-bloco">Chart.js não carregou.</div>`;
+      parent.appendChild(wrap);
+      return;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "chart-bloco";
+    wrap.innerHTML = `<h4>${titulo}</h4><div class="chart-wrap"><canvas></canvas></div>`;
+    parent.appendChild(wrap);
+
+    const canvas = wrap.querySelector("canvas");
+    const ds = datasets.map(d => this._estilizarDataset(d, canvas));
+
+    const ch = new Chart(canvas, {
+      type: "line",
+      data: { labels, datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        animation: { duration: 700, easing: "easeOutCubic" },
+        animations: { y: { duration: 0 } },
+        plugins: {
+          legend: {
+            position: "bottom",
+            align: "start",
+            labels: {
+              boxWidth: 8, boxHeight: 8, usePointStyle: true, pointStyle: "circle",
+              font: { size: 11, family: "Inter, sans-serif", weight: "500" },
+              color: "#5b6b86",
+              padding: 14,
+            },
+          },
+          tooltip: {
+            backgroundColor: "rgba(11,29,58,.96)",
+            titleColor: "#ffffff",
+            titleFont: { size: 11, family: "Inter, sans-serif", weight: "600" },
+            bodyColor: "#cfd8e8",
+            bodyFont: { size: 12, family: "Inter, sans-serif" },
+            borderColor: "rgba(30,111,214,.4)",
+            borderWidth: 1,
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: true,
+            boxPadding: 6,
+            usePointStyle: true,
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 7,
+              font: { size: 10, family: "Inter, sans-serif" },
+              color: "#8b95a8",
+              padding: 8,
+            },
+            grid: { display: false },
+            border: { color: "#e6ebf3" },
+          },
+          y: {
+            ticks: {
+              font: { size: 10, family: "Inter, sans-serif" },
+              color: "#8b95a8",
+              padding: 8,
+            },
+            grid: { color: "#f1f4f9", drawTicks: false },
+            border: { display: false },
+          },
+        },
+      },
+    });
+    this.graficos[chave] = ch;
+  }
+
+  _estilizarDataset(d, canvas) {
+    const cor = d.borderColor || "#1E6FD6";
+    const tem_fill = !!d.fill;
+    const bg = tem_fill ? this._gradiente(canvas, cor) : (d.backgroundColor || "transparent");
+    return {
+      ...d,
+      borderColor: cor,
+      backgroundColor: bg,
+      borderWidth: d.borderDash ? 1.6 : 2.4,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: cor,
+      pointHoverBorderColor: "#ffffff",
+      pointHoverBorderWidth: 2,
+      tension: d.stepped ? 0 : 0.35,
+      fill: tem_fill,
+    };
+  }
+
+  _gradiente(canvas, corHex) {
+    const ctx = canvas.getContext("2d");
+    const h = canvas.height || 280;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    const rgb = this._hexParaRgb(corHex);
+    g.addColorStop(0,    `rgba(${rgb}, .35)`);
+    g.addColorStop(0.55, `rgba(${rgb}, .10)`);
+    g.addColorStop(1,    `rgba(${rgb}, 0)`);
+    return g;
+  }
+
+  _hexParaRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
+    return m ? `${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)}` : "30,111,214";
+  }
+
+  _destruirGraficos() {
+    Object.values(this.graficos).forEach(c => { try { c.destroy(); } catch {} });
+    this.graficos = {};
+  }
+
+  // =================================================================
+  //  Tabela
+  // =================================================================
+
+  _renderizarTabela(dados) {
+    const box = document.querySelector("[data-tabela]");
+    if (!box) return;
+    if (!dados.points.length) {
+      box.innerHTML = `<div class="vazio-bloco">Sem pontos.</div>`;
+      return;
+    }
+    const colunas = ["time", ...dados.fields];
+    const linhas = dados.points.slice(-50).reverse();
+    box.innerHTML = `
+      <table class="tabela-pontos">
+        <thead><tr>${colunas.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${linhas.map(p => `
+            <tr>
+              ${colunas.map(c => {
+                if (c === "time") return `<td class="ts">${new Date(p[c]).toLocaleString("pt-BR")}</td>`;
+                const v = p[c];
+                return `<td class="num">${typeof v === "number" ? v.toFixed(3) : (v ?? "—")}</td>`;
+              }).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // =================================================================
+  //  Latência
+  // =================================================================
+
+  _renderizarLatencia(dados) {
+    const box = document.querySelector("[data-latencia]");
+    if (!box) return;
+    if (dados.points.length < 2) {
+      box.innerHTML = `<div class="vazio-bloco">Poucos pontos pra calcular.</div>`;
+      return;
+    }
+    const intervalos = [];
+    for (let i = 1; i < dados.points.length; i++) {
+      intervalos.push((new Date(dados.points[i].time) - new Date(dados.points[i-1].time)) / 1000);
+    }
+    intervalos.sort((a,b)=>a-b);
+    const medio = intervalos.reduce((s,x)=>s+x,0) / intervalos.length;
+    const mediana = intervalos[Math.floor(intervalos.length / 2)];
+    const maior = intervalos[intervalos.length - 1];
+    const gaps = intervalos.filter(x => x > medio * 2).length;
+    const razaoGaps = gaps / intervalos.length;
+
+    // Saúde da latência: ok / atenção / problema
+    let saude = "ok", saudeLabel = "Saudável", saudeMsg = "Sensor está enviando leituras com regularidade.";
+    if (razaoGaps > 0.10 || maior > medio * 20) {
+      saude = "crit"; saudeLabel = "Problemas";
+      saudeMsg = "Lacunas frequentes ou muito longas — link instável, gateway com fila ou bateria fraca.";
+    } else if (razaoGaps > 0.03 || maior > medio * 10) {
+      saude = "warn"; saudeLabel = "Atenção";
+      saudeMsg = "Algumas lacunas detectadas. Pode mascarar eventos reais durante o silêncio.";
+    }
+
+    // Indicador visual de "saúde do intervalo"
+    // diferença entre mediana e médio indica skew
+    const skew = medio > 0 ? Math.abs(medio - mediana) / medio * 100 : 0;
+
+    box.innerHTML = `
+      <div class="latencia-saude saude-${saude}">
+        <span class="latencia-saude-ponto"></span>
+        <div>
+          <div class="latencia-saude-titulo">${saudeLabel}</div>
+          <div class="latencia-saude-msg">${saudeMsg}</div>
+        </div>
+      </div>
+
+      <div class="latencia-grid">
+        <div class="latencia-item"><div class="l">Intervalo médio</div><div class="v">${this._formatarIntervalo(medio)}</div></div>
+        <div class="latencia-item"><div class="l">Mediana</div><div class="v">${this._formatarIntervalo(mediana)}</div></div>
+        <div class="latencia-item"><div class="l">Maior gap</div><div class="v">${this._formatarIntervalo(maior)}</div></div>
+        <div class="latencia-item ${gaps > 0 ? 'tem' : ''}"><div class="l">Gaps detectados</div><div class="v">${gaps}</div></div>
+      </div>
+
+      <div class="latencia-extra">
+        <strong>${dados.points.length}</strong> leituras analisadas · skew médio↔mediana <strong>${skew.toFixed(0)}%</strong>
+      </div>
+    `;
+  }
+
+  // =================================================================
+  //  Parâmetros recebidos
+  // =================================================================
+
+  _renderizarParametros() {
+    const box = document.querySelector("[data-parametros]");
+    if (!box) return;
+    const campos = this.sensor?.campos || [];
+    if (!campos.length) {
+      box.innerHTML = `<div class="vazio-bloco">Catálogo não traz campos.</div>`;
+      return;
+    }
+    box.innerHTML = campos.map(c => {
+      const meta = PaginaSensor.PARAMETROS[c] || { desc: "Campo bruto da API.", unidade: "—" };
+      return `
+        <div class="parametro-item">
+          <div class="nome">${c}</div>
+          <div class="desc">${meta.desc}</div>
+          <span class="unidade">${meta.unidade}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // =================================================================
+  //  Tipos de alerta possíveis
+  // =================================================================
+
+  _renderizarTiposDeAlerta() {
+    const box = document.querySelector("[data-tipos-alerta]");
+    if (!box) return;
+    const tipos = PaginaSensor.TIPOS_ALERTA[this.sensor?.tipo] || [];
+    if (!tipos.length) {
+      box.innerHTML = `<div class="vazio-bloco">Sem catálogo de alertas pra este tipo.</div>`;
+      return;
+    }
+    box.innerHTML = tipos.map(t => `
+      <div class="tipo-alerta-item">
+        <span class="tipo-alerta-sev ${t.sev}">${Notificacoes.rotuloSeveridade(t.sev)}</span>
+        <div class="tipo-alerta-corpo">
+          <div class="t">${t.t}</div>
+          <div class="d">${t.d}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // =================================================================
+  //  Alertas deste sensor (filtra Notificacoes pelo id)
+  // =================================================================
+
+  _renderizarAlertasDoSensor() {
+    const box  = document.querySelector("[data-alertas-sensor]");
+    const pill = document.querySelector("[data-alertas-contagem]");
+    if (!box) return;
+
+    const todas = Notificacoes.listar().filter(n => n.origem?.id === this.sensorId);
+    if (pill) {
+      pill.textContent = todas.length;
+      pill.classList.toggle("tem", todas.length > 0);
+    }
+
+    if (!todas.length) {
+      box.innerHTML = `
+        <div class="vazio-bloco">
+          <strong>Sem alertas</strong>
+          <span>Tudo certo até agora. Novos alertas aparecem aqui automaticamente.</span>
+        </div>
+      `;
+      return;
+    }
+
+    box.innerHTML = todas.map(n => `
+      <div class="alerta-sensor-item sev-${n.severidade} ${n.lido ? 'lido' : ''}">
+        <span class="alerta-marca"></span>
+        <div class="alerta-corpo">
+          <div class="alerta-titulo">${this._escapar(n.titulo)}</div>
+          ${n.mensagem ? `<div class="alerta-mensagem">${this._escapar(n.mensagem)}</div>` : ""}
+          <div class="alerta-quando">${Notificacoes.formatarQuando(n.criadoEm)}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // =================================================================
+  //  Detector local de alertas (dispara Notificacoes)
+  // =================================================================
+
+  _detectarAlertasLocais(dados) {
+    if (!dados?.points?.length || !this.sensor) return;
+
+    const indicadores = this.sensor.calcularIndicadores(dados.points);
+    const get = (rotulo) => indicadores.find(i => i.rotulo === rotulo);
+    const sensor = this.sensor;
+
+    // helper pra disparar com dedupe por código
+    const disparar = (severidade, titulo, mensagem, codigo, extras = {}) => {
+      const jaExiste = Notificacoes.listar().some(n =>
+        n.origem?.id === sensor.id &&
+        n.metadados?.codigo === codigo &&
+        !n.lido
+      );
+      if (jaExiste) return;
+      Notificacoes.enviar({
+        severidade, titulo, mensagem,
+        origem: { tipo: "sensor", id: sensor.id, label: sensor.rotulo },
+        acao:   { url: "index.html", texto: "Ver detalhes" },
+        metadados: { codigo, ...extras },
+      });
+    };
+
+    if (sensor.tipo === "energia") {
+      const fp = parseFloat(get("FP composto")?.valor);
+      if (Number.isFinite(fp)) {
+        if (fp < 0)         disparar("critica", "Fluxo reverso detectado",
+          `${sensor.rotulo}: FP=${fp.toFixed(2)} negativo. Provável fiação do medidor invertida.`, "fp-reverso", { valor: fp });
+        else if (fp < 0.85) disparar("critica", "FP muito baixo",
+          `${sensor.rotulo}: FP=${fp.toFixed(2)} bem abaixo do limite ANEEL (0,92). Multa garantida.`, "fp-critico", { valor: fp });
+        else if (fp < 0.92) disparar("alta", "FP abaixo do limite ANEEL",
+          `${sensor.rotulo}: FP=${fp.toFixed(2)} abaixo de 0,92. Verificar capacitores.`, "fp-baixo", { valor: fp });
+      }
+
+      const cub = parseFloat(get("%CUB corrente")?.valor);
+      if (Number.isFinite(cub) && cub > 10) {
+        disparar("alta", "Desequilíbrio severo de corrente",
+          `${sensor.rotulo}: %CUB=${cub.toFixed(1)}% na zona crítica do NEMA MG-1.`, "cub-alto", { valor: cub });
+      }
+      const vub = parseFloat(get("%VUB tensão")?.valor);
+      if (Number.isFinite(vub) && vub > 2) {
+        disparar("alta", "Desequilíbrio de tensão",
+          `${sensor.rotulo}: %VUB=${vub.toFixed(2)}% acima do limite NEMA (2%).`, "vub-alto", { valor: vub });
+      }
+    }
+    else if (sensor.tipo === "temperatura") {
+      const media = parseFloat(get("Temperatura média")?.valor);
+      const max   = parseFloat(get("Máxima")?.valor);
+      const min   = parseFloat(get("Mínima")?.valor);
+      const sigma = parseFloat(get("Desvio padrão")?.valor);
+
+      // Leituras impossíveis
+      if (Number.isFinite(max) && max > 50) {
+        disparar("critica", "Leitura impossível",
+          `${sensor.rotulo}: máxima ${max.toFixed(1)}°C fora do envelope físico. Sensor com defeito.`, "leitura-impossivel-max", { valor: max });
+      }
+      if (Number.isFinite(min) && min < -100) {
+        disparar("critica", "Leitura impossível",
+          `${sensor.rotulo}: mínima ${min.toFixed(1)}°C fora do envelope físico.`, "leitura-impossivel-min", { valor: min });
+      }
+
+      // Fora da faixa
+      const faixa = PaginaSensor.FAIXAS_TERMICAS[sensor.grupo];
+      if (faixa && Number.isFinite(media)) {
+        if (media < faixa.min || media > faixa.max) {
+          disparar("alta", "Temperatura fora da faixa controlada",
+            `${sensor.rotulo}: média ${media.toFixed(1)}°C fora de ${faixa.label}.`, "fora-faixa", { valor: media });
+        }
+      }
+
+      // Oscilação
+      if (Number.isFinite(sigma) && sigma > 5) {
+        disparar("media", "Oscilação alta de temperatura",
+          `${sensor.rotulo}: σ=${sigma.toFixed(1)}°C indica instabilidade térmica.`, "sigma-alto", { valor: sigma });
+      }
+    }
+  }
+
+  // =================================================================
+  //  Análise automática em tempo real (substitui achados estáticos)
+  // =================================================================
+
+  /**
+   * Renderiza a seção de análise no estado "aguardando dados".
+   * Mostra a régua de chips com as verificações que este tipo de sensor faz,
+   * em estado neutro, antes mesmo de os dados chegarem.
+   */
+  _renderizarAnaliseVazia() {
+    const secao    = document.querySelector("[data-analise]");
+    const banner   = document.querySelector("[data-analise-banner]");
+    const chips    = document.querySelector("[data-analise-chips]");
+    const detalhes = document.querySelector("[data-analise-detalhes]");
+    const rodape   = document.querySelector("[data-analise-rodape]");
+    if (!secao) return;
+
+    const cat = AnalisadorSensor.catalogo(this.sensor?.tipo);
+    banner.className = "analise-banner atencao";
+    banner.innerHTML = `
+      <span class="analise-banner-icone">…</span>
+      <div class="analise-banner-conteudo">
+        <div class="analise-banner-titulo">Aguardando dados</div>
+        <div class="analise-banner-sub">Quando os pontos chegarem, cada verificação abaixo recebe um status (crítico, atenção, info ou ok).</div>
+      </div>
+    `;
+    chips.innerHTML = cat.map(c => `
+      <span class="chip status-info">
+        <span class="chip-icone">·</span>
+        <span class="chip-rotulo">${c.categoria}</span>
+        <span class="chip-valor">· ${c.label}</span>
+      </span>
+    `).join("");
+    detalhes.innerHTML = "";
+    rodape.innerHTML = `<span>Lista do que este sensor de tipo <strong>${this.sensor?.tipo || "—"}</strong> verifica em tempo real.</span>`;
+    secao.hidden = false;
+  }
+
+  _renderizarAnalise(dados) {
+    const secao    = document.querySelector("[data-analise]");
+    const banner   = document.querySelector("[data-analise-banner]");
+    const chips    = document.querySelector("[data-analise-chips]");
+    const detalhes = document.querySelector("[data-analise-detalhes]");
+    const rodape   = document.querySelector("[data-analise-rodape]");
+    if (!secao) return;
+
+    const verifs = new AnalisadorSensor(this.sensor, dados.points || []).avaliar();
+    const cont = { crit: 0, warn: 0, info: 0, ok: 0 };
+    verifs.forEach(v => { cont[v.status] = (cont[v.status] || 0) + 1; });
+
+    // ---------- Banner geral ----------
+    let bannerClass, bannerIcone, bannerTitulo, bannerSub;
+    if (cont.crit > 0) {
+      bannerClass = "critico";
+      bannerIcone = "✗";
+      bannerTitulo = `Atenção urgente · ${cont.crit} ${cont.crit === 1 ? "verificação crítica" : "verificações críticas"}`;
+      bannerSub = `${cont.warn} atenção · ${cont.info} info · ${cont.ok} ok`;
+    } else if (cont.warn > 0) {
+      bannerClass = "atencao";
+      bannerIcone = "!";
+      bannerTitulo = `${cont.warn} ${cont.warn === 1 ? "ponto de atenção" : "pontos de atenção"}`;
+      bannerSub = `${cont.info} info · ${cont.ok} dentro da normalidade`;
+    } else {
+      bannerClass = "tudo-certo";
+      bannerIcone = "✓";
+      bannerTitulo = "Tudo dentro da normalidade";
+      bannerSub = `${cont.ok} verificação${cont.ok === 1 ? "" : "ões"} ok${cont.info ? ` · ${cont.info} observação${cont.info === 1 ? "" : "ões"}` : ""}`;
+    }
+    banner.className = `analise-banner ${bannerClass}`;
+    banner.innerHTML = `
+      <span class="analise-banner-icone">${bannerIcone}</span>
+      <div class="analise-banner-conteudo">
+        <div class="analise-banner-titulo">${bannerTitulo}</div>
+        <div class="analise-banner-sub">${bannerSub}</div>
+      </div>
+    `;
+
+    // ---------- Chips ----------
+    chips.innerHTML = verifs.map(v => `
+      <button class="chip status-${v.status}" data-ir-para="${v.id}" title="${this._escapar(v.label)}">
+        <span class="chip-icone">${this._iconeStatus(v.status)}</span>
+        <span class="chip-rotulo">${this._escapar(v.categoria)}</span>
+        ${v.resumo ? `<span class="chip-valor">· ${this._escapar(v.resumo)}</span>` : ""}
+      </button>
+    `).join("");
+
+    chips.querySelectorAll("[data-ir-para]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.irPara;
+        document.getElementById(`verif-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+
+    // ---------- Detalhes (problemas primeiro, OK colapsado) ----------
+    const ordem = { crit: 0, warn: 1, info: 2, ok: 3 };
+    const ordenadas = [...verifs].sort((a, b) => (ordem[a.status] ?? 9) - (ordem[b.status] ?? 9));
+    const problemas = ordenadas.filter(v => v.status !== "ok");
+    const oks       = ordenadas.filter(v => v.status === "ok");
+
+    let html = "";
+    if (problemas.length) {
+      html += `<div class="analise-detalhes-titulo">Pontos que pedem atenção</div>`;
+      html += problemas.map(v => this._htmlDetalhe(v)).join("");
+    }
+    if (oks.length) {
+      html += `<button class="analise-toggle-ok" data-toggle-ok>✓ Ver as ${oks.length} verificação${oks.length === 1 ? " que está" : "ões que estão"} ok</button>`;
+      html += `<div class="analise-detalhes-titulo analise-detalhes-ok" hidden style="margin-top:14px">Verificações dentro da normalidade</div>`;
+      html += `<div data-bloco-ok hidden>${oks.map(v => this._htmlDetalhe(v)).join("")}</div>`;
+    }
+    detalhes.innerHTML = html;
+
+    detalhes.querySelector("[data-toggle-ok]")?.addEventListener("click", (ev) => {
+      const btn = ev.currentTarget;
+      const bloco = detalhes.querySelector("[data-bloco-ok]");
+      const titulo = detalhes.querySelector(".analise-detalhes-ok");
+      const aberto = !bloco.hidden;
+      bloco.hidden = aberto;
+      titulo.hidden = aberto;
+      btn.textContent = aberto
+        ? `✓ Ver as ${oks.length} verificação${oks.length === 1 ? " que está" : "ões que estão"} ok`
+        : `Ocultar verificações ok`;
+    });
+
+    // ---------- Rodapé ----------
+    rodape.innerHTML = `
+      <span>Baseado em <strong>${dados.points.length}</strong> pontos da janela <code>${this.janela}</code> · sensor <strong>${this.sensor.tipo}</strong> · ${verifs.length} verificações executadas</span>
+    `;
+
+    secao.hidden = false;
+  }
+
+  _htmlDetalhe(v) {
+    const rotuloSev = { crit: "crítico", warn: "atenção", info: "info", ok: "ok" }[v.status] || v.status;
+    const diag = v.diagnostico
+      ? `<div class="detalhe-diagnostico"><strong>Possível motivo e recomendação</strong>${this._escapar(v.diagnostico)}</div>`
+      : "";
+    return `
+      <article class="detalhe-item status-${v.status}" id="verif-${v.id}">
+        <div class="detalhe-topo">
+          <span class="detalhe-sev status-${v.status}">${rotuloSev}</span>
+          <span class="detalhe-categoria">${this._escapar(v.categoria)}</span>
+          <span class="detalhe-label">${this._escapar(v.label)}</span>
+        </div>
+        <div class="detalhe-texto">${this._escapar(v.detalhe || "—")}</div>
+        ${diag}
+      </article>
+    `;
+  }
+
+  _iconeStatus(status) {
+    return { crit: "✗", warn: "!", info: "i", ok: "✓" }[status] || "·";
+  }
+
+  _escapar(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  new PaginaSensor().iniciar();
+});

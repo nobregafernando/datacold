@@ -225,6 +225,96 @@ end;
 $$;
 
 
+-- =====================================================================
+-- Atualizar parâmetros de um sensor (merge no jsonb existente)
+-- =====================================================================
+create or replace function atualizar_parametros_sensor(
+  p_sensor      text,
+  p_parametros  jsonb
+) returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public
+as $$
+declare
+  v_atualizados int;
+  v_atual       jsonb;
+begin
+  update sensores
+     set parametros     = coalesce(parametros, '{}'::jsonb) || coalesce(p_parametros, '{}'::jsonb),
+         atualizado_em  = now(),
+         atualizado_por = 'admin'
+   where id = p_sensor
+   returning parametros into v_atual;
+  get diagnostics v_atualizados = row_count;
+
+  if v_atualizados = 0 then
+    return jsonb_build_object('error', 'sensor não encontrado: ' || p_sensor);
+  end if;
+  return jsonb_build_object(
+    'ok',         true,
+    'sensor',     p_sensor,
+    'parametros', v_atual
+  );
+end;
+$$;
+
+-- =====================================================================
+-- Ler parâmetros de um sensor (devolve só o jsonb)
+-- =====================================================================
+create or replace function obter_parametros_sensor(p_sensor text)
+returns jsonb
+  language sql
+  security definer
+  set search_path = public
+as $$
+  select coalesce(parametros, '{}'::jsonb)
+    from sensores
+   where id = p_sensor;
+$$;
+
+-- =====================================================================
+-- Listar incidentes ATIVOS de um sensor (ou de todos)
+-- Ativo = inicio<=now() AND removido_em IS NULL AND (fim IS NULL OR fim>now())
+-- Usado pela página individual do sensor pra mostrar "simulação em curso"
+-- e forçar banner offline imediato em gap/offline.
+-- =====================================================================
+create or replace function incidentes_ativos(p_sensor text default null)
+returns table (
+  id           uuid,
+  sensor_id    text,
+  tipo         text,
+  magnitude    numeric,
+  valor        numeric,
+  inicio       timestamptz,
+  fim          timestamptz,
+  segundos_restantes int,
+  descricao    text
+)
+  language sql
+  security definer
+  set search_path = public
+as $$
+  select
+    i.id,
+    i.sensor_id,
+    i.tipo,
+    i.magnitude,
+    i.valor,
+    i.inicio,
+    i.fim,
+    case when i.fim is null then null
+         else greatest(0, extract(epoch from (i.fim - now()))::int)
+    end as segundos_restantes,
+    i.descricao
+    from incidentes i
+   where i.removido_em is null
+     and i.inicio <= now()
+     and (i.fim is null or i.fim > now())
+     and (p_sensor is null or i.sensor_id = p_sensor)
+   order by i.inicio desc;
+$$;
+
 -- ===== GRANTS para anon e authenticated =====
 grant execute on function sim_parse_tempo(text, timestamptz) to anon, authenticated;
 grant execute on function verificar_saude() to anon, authenticated;
@@ -232,3 +322,6 @@ grant execute on function listar_catalogo() to anon, authenticated;
 grant execute on function buscar_dados(text, text, text, int) to anon, authenticated;
 grant execute on function criar_incidente(text, text, int, numeric, numeric, text) to anon, authenticated;
 grant execute on function cancelar_incidente(uuid) to anon, authenticated;
+grant execute on function atualizar_parametros_sensor(text, jsonb) to anon, authenticated;
+grant execute on function obter_parametros_sensor(text) to anon, authenticated;
+grant execute on function incidentes_ativos(text) to anon, authenticated;
