@@ -39,12 +39,6 @@ body{
   padding: 48px 24px;
 }
 
-.erro-marca img{
-  width: min(260px, 70vw);
-  height: auto;
-  filter: drop-shadow(0 12px 28px rgba(11,29,58,.12));
-}
-
 .erro-card{
   width: min(680px, 100%);
   text-align: center;
