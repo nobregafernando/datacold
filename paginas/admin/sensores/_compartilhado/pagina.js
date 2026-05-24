@@ -194,12 +194,6 @@ class PaginaSensor {
     // botão atualizar
     document.querySelector("[data-acao='atualizar']")?.addEventListener("click", () => this._carregarDados(true));
 
-    // banner chave
-    document.querySelector("[data-acao='salvar-chave']")?.addEventListener("click", () => this._salvarChave());
-    document.querySelector("[data-chave-input]")?.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") this._salvarChave();
-    });
-
     // pausa auto-refresh quando aba não visível
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this._pararAutoRefresh();
@@ -221,15 +215,6 @@ class PaginaSensor {
     document.querySelectorAll("[data-janela]").forEach(b => {
       b.classList.toggle("ativo", b.dataset.janela === this.janela);
     });
-  }
-
-  _salvarChave() {
-    const input = document.querySelector("[data-chave-input]");
-    const val = input?.value.trim();
-    if (!val) return;
-    this.api.chave = val;
-    document.querySelector("[data-aviso-chave]").hidden = true;
-    this._carregarDados();
   }
 
   // =================================================================
@@ -326,7 +311,7 @@ class PaginaSensor {
     try {
       let inicio = this.janela;
       let fim    = "now";
-      if (this.sensor.historico && !["-72h","-167h","-24h"].includes(inicio)) {
+      if (this.sensor.historico && !["-72h","-167h","-24h","-15d","-30d"].includes(inicio)) {
         inicio = "-90d";
         fim    = "-30d";
       }

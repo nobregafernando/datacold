@@ -98,9 +98,10 @@ const AUTH_PERMITIDAS = new Set([
   "user",            // GET  /auth/v1/user                (precisa JWT)
   "atualizar",       // PUT  /auth/v1/user                (precisa JWT — define senha/nome)
   "refresh",         // POST /auth/v1/token?grant_type=refresh_token
-  "admin_criar",     // POST /auth/v1/admin/users  (REQUER admin chamando, usa service_key)
-  "admin_deletar",   // DELETE /auth/v1/admin/users/{id}  (REQUER admin chamando, usa service_key)
-  "recuperar_senha", // gera link admin + envia via Gmail SMTP (template DataCold)
+  "admin_criar",        // POST /auth/v1/admin/users  (REQUER admin chamando, usa service_key)
+  "admin_deletar",      // DELETE /auth/v1/admin/users/{id}  (REQUER admin chamando, usa service_key)
+  "recuperar_senha",    // gera link admin (Supabase manda via Custom SMTP)
+  "verificar_recovery", // troca ?code= PKCE por access_token (fallback links antigos)
 ]);
 
 function cors(origem: string | null) {
@@ -163,9 +164,13 @@ async function tratarAuth(acao: string, payload: any, jwt?: string) {
   if (acao === "admin_deletar") {
     return await tratarAdminDeletar(payload, jwt);
   }
-  // recuperar_senha: gera link admin + envia via Gmail SMTP (template DataCold).
+  // recuperar_senha: gera link admin (Supabase manda email via Custom SMTP).
   if (acao === "recuperar_senha") {
     return await tratarRecuperarSenha(payload);
+  }
+  // verificar_recovery: troca ?code= PKCE por access_token (fallback).
+  if (acao === "verificar_recovery") {
+    return await tratarVerificarRecovery(payload);
   }
 
   const mapa: Record<string, { metodo: string; path: string; precisaJwt?: boolean }> = {
@@ -408,6 +413,47 @@ function montarTextoRecuperacao(link: string, email: string, siteUrl: string): s
     "",
     `DataCold · ${siteUrl}`,
   ].join("\n");
+}
+
+/**
+ * Troca `?code=` (PKCE) por session via /auth/v1/token?grant_type=pkce.
+ * Usado como fallback quando algum email antigo chega com formato PKCE
+ * em vez do hash implicit. Sem code_verifier (que seria gerado no client
+ * original), tentamos via /auth/v1/verify também.
+ */
+async function tratarVerificarRecovery(payload: any) {
+  const code = String(payload?.code ?? "").trim();
+  if (!code) return jsonResposta({ erro: "code obrigatório" }, 400);
+
+  // Tentativa 1: PKCE exchange (precisa code_verifier — geralmente falha aqui)
+  const tentativas = [
+    {
+      url: `${SB_URL}/auth/v1/token?grant_type=pkce`,
+      body: { auth_code: code, code_verifier: "" },
+    },
+    // Tentativa 2: verify com o code como token_hash
+    {
+      url: `${SB_URL}/auth/v1/verify`,
+      body: { type: "recovery", token_hash: code },
+    },
+  ];
+
+  for (const t of tentativas) {
+    const r = await fetch(t.url, {
+      method: "POST",
+      headers: {
+        "apikey": SB_ANON_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(t.body),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      if (d?.access_token) return jsonResposta(d, 200);
+    }
+  }
+
+  return jsonResposta({ erro: "Link inválido ou expirado." }, 400);
 }
 
 /**

@@ -7,12 +7,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/recuperar_senha_screen.dart';
-import 'features/dashboard/dashboard_placeholder.dart';
+import 'features/dashboard/dashboard_screen.dart';
+import 'features/sensores/lista_sensores_screen.dart';
+import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
+import 'features/stubs.dart';
 
 class DataColdApp extends StatefulWidget {
   const DataColdApp({super.key});
-
   @override
   State<DataColdApp> createState() => _DataColdAppState();
 }
@@ -27,20 +29,35 @@ class _DataColdAppState extends State<DataColdApp> {
       initialLocation: '/',
       refreshListenable: _SupabaseRefresh(),
       routes: [
-        GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-        GoRoute(path: '/recuperar-senha', builder: (_, __) => const RecuperarSenhaScreen()),
-        GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPlaceholder()),
+        // Públicas
+        GoRoute(path: '/',                  builder: (_, __) => const SplashScreen()),
+        GoRoute(path: '/login',             builder: (_, __) => const LoginScreen()),
+        GoRoute(path: '/recuperar-senha',   builder: (_, __) => const RecuperarSenhaScreen()),
+
+        // Autenticadas — todas dentro do shell (menu lateral + appbar)
+        ShellRoute(
+          builder: (_, __, child) => MainShell(child: child),
+          routes: [
+            GoRoute(path: '/dashboard',     builder: (_, __) => const DashboardScreen()),
+            GoRoute(path: '/sala-controle', builder: (_, __) => const SalaControleStub()),
+            GoRoute(path: '/sensores',      builder: (_, __) => const ListaSensoresScreen()),
+            GoRoute(path: '/sensores/:id',  builder: (_, s)  => SensorDetalheStub(sensorId: s.pathParameters['id']!)),
+            GoRoute(path: '/ambientes',     builder: (_, __) => const AmbientesStub()),
+            GoRoute(path: '/notificacoes',  builder: (_, __) => const NotificacoesStub()),
+            GoRoute(path: '/agentes',       builder: (_, __) => const AgentesStub()),
+            GoRoute(path: '/prototipo',     builder: (_, __) => const PrototipoStub()),
+            GoRoute(path: '/apresentacao',  builder: (_, __) => const ApresentacaoStub()),
+            GoRoute(path: '/usuarios',      builder: (_, __) => const UsuariosStub()),
+            GoRoute(path: '/conta',         builder: (_, __) => const ContaStub()),
+          ],
+        ),
       ],
       redirect: (context, state) {
         final loc = state.matchedLocation;
         final temSessao = Supabase.instance.client.auth.currentSession != null;
         final emPublica = loc == '/' || loc == '/login' || loc == '/recuperar-senha';
-
-        // Sem sessão tentando acessar área protegida → manda pro login.
         if (!temSessao && !emPublica) return '/login';
-        // Com sessão tentando voltar pro login → manda pro dashboard.
-        if (temSessao && (loc == '/login')) return '/dashboard';
+        if (temSessao && loc == '/login') return '/dashboard';
         return null;
       },
     );
@@ -58,7 +75,6 @@ class _DataColdAppState extends State<DataColdApp> {
 }
 
 /// Adapta `onAuthStateChange` (Stream) ao `Listenable` que o GoRouter espera.
-/// Sempre que login/logout/refresh acontece, o router reavalia redirects.
 class _SupabaseRefresh extends ChangeNotifier {
   _SupabaseRefresh() {
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((_) => notifyListeners());
@@ -66,8 +82,5 @@ class _SupabaseRefresh extends ChangeNotifier {
   late final StreamSubscription _sub;
 
   @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
+  void dispose() { _sub.cancel(); super.dispose(); }
 }

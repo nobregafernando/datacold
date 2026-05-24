@@ -49,6 +49,8 @@ class Downsample {
     "-24h":  300,    // 1 ponto a cada ~5 min
     "-72h":  300,    // 1 ponto a cada ~15 min
     "-167h": 300,    // 1 ponto a cada ~35 min
+    "-15d":  350,    // 1 ponto a cada ~60 min
+    "-30d":  400,    // 1 ponto a cada ~108 min
   };
   static ALVO_PADRAO = 400;
 

@@ -10,6 +10,19 @@
  */
 class PaginaGrupo {
 
+  /** Limite (qtde de pontos) por janela. Cresce nas janelas longas pra
+   *  não cortar a série (a API devolve os mais recentes). Valores
+   *  alinhados com sim_tick de 1 ponto/minuto. */
+  static _limitePorJanela(j) {
+    const mapa = {
+      "-30m": 60, "-1h": 120, "-6h": 720, "-24h": 2000,
+      "-72h": 4500, "-167h": 10000, "-15d": 22000, "-30d": 44000,
+      "-90d": 100000,
+    };
+    return mapa[j] ?? 1000;
+  }
+
+
   /** Sequência de cores pra atribuir uma cor única a cada sensor. */
   static CORES = ["#123B7A", "#1E6FD6", "#00B8F0", "#8EDBFF", "#7c3aed", "#d97706", "#16a34a", "#dc2626"];
 
@@ -123,8 +136,6 @@ class PaginaGrupo {
       });
     });
     document.querySelector("[data-acao='atualizar']")?.addEventListener("click", () => this._carregarDados());
-    document.querySelector("[data-acao='salvar-chave']")?.addEventListener("click", () => this._salvarChave());
-    document.querySelector("[data-chave-input]")?.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") this._salvarChave();
     });
     document.addEventListener("visibilitychange", () => {
@@ -137,15 +148,6 @@ class PaginaGrupo {
     document.querySelectorAll("[data-janela]").forEach(b => {
       b.classList.toggle("ativo", b.dataset.janela === this.janela);
     });
-  }
-
-  _salvarChave() {
-    const input = document.querySelector("[data-chave-input]");
-    const val = input?.value.trim();
-    if (!val) return;
-    this.api.chave = val;
-    document.querySelector("[data-aviso-chave]").hidden = true;
-    this._carregarDados();
   }
 
   _armarAutoRefresh() {
@@ -171,12 +173,15 @@ class PaginaGrupo {
     try {
       const ehHistorico = this.sensores.some(s => s.historico);
       let inicio = this.janela, fim = "now";
-      if (ehHistorico && !["-72h","-167h","-24h"].includes(inicio)) {
+      if (ehHistorico && !["-72h","-167h","-24h","-15d","-30d"].includes(inicio)) {
         inicio = "-90d"; fim = "-30d";
       }
 
+      // Limite proporcional à janela (default 1000 cobre até ~16h em sensores
+      // que enviam 1 ponto/min; 15-30d precisa de muito mais).
+      const limite = PaginaGrupo._limitePorJanela(inicio);
       const promessas = this.sensores.map(s =>
-        this.api.buscarDados(s.id, { inicio, fim, limite: 1000 })
+        this.api.buscarDados(s.id, { inicio, fim, limite })
           .then(d => [s.id, d, null])
           .catch(e => [s.id, null, e.message])
       );

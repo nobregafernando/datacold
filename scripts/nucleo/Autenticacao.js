@@ -502,6 +502,75 @@ class Autenticacao {
       return new Usuario({ id: userId, nome: "Usuário", email: "", papel: "operador" });
     }
   }
+
+  // ===================================================================
+  //  Página de configurações: troca de senha + histórico
+  // ===================================================================
+
+  /**
+   * Troca a senha do usuário atual. Confirma a senha atual com /auth/v1/token
+   * (re-auth) antes de chamar PUT /auth/v1/user. Não passa pelo proxy porque
+   * é uma chamada padrão do Supabase Auth com a anon + bearer JWT do usuário.
+   */
+  static async alterarSenha(senhaAtual, novaSenha) {
+    if (!senhaAtual) throw new Error("Informe a senha atual.");
+    if (!novaSenha || novaSenha.length < 8) throw new Error("Nova senha precisa ter pelo menos 8 caracteres.");
+
+    let s = await Autenticacao._renovarTokenSeNecessario();
+    if (!s?.access_token) throw new Error("Sessão expirada — faça login novamente.");
+
+    const u = Autenticacao.usuarioAtual();
+    const email = u?.email || s?.perfil?.email;
+    if (!email) throw new Error("Usuário sem e-mail definido.");
+
+    // 1) Re-auth: confirma que a senha atual está certa
+    const r1 = await fetch(`${ApiBEM.URL_SUPABASE}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "apikey": ApiBEM.CHAVE_SUPABASE_ANON },
+      body: JSON.stringify({ email, password: senhaAtual }),
+    });
+    if (!r1.ok) {
+      const d = await r1.json().catch(() => ({}));
+      if (r1.status === 400) throw new Error("Senha atual incorreta.");
+      throw new Error(d?.msg || d?.error_description || d?.error || `Erro ${r1.status} na re-autenticação`);
+    }
+
+    // 2) PUT /auth/v1/user — troca a senha
+    const r2 = await fetch(`${ApiBEM.URL_SUPABASE}/auth/v1/user`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "apikey": ApiBEM.CHAVE_SUPABASE_ANON,
+        "Authorization": `Bearer ${s.access_token}`,
+      },
+      body: JSON.stringify({ password: novaSenha }),
+    });
+    if (!r2.ok) {
+      const d = await r2.json().catch(() => ({}));
+      throw new Error(d?.msg || d?.error_description || d?.error || `Erro ${r2.status} ao trocar senha`);
+    }
+    return true;
+  }
+
+  /** Histórico dos últimos N acessos do usuário atual. */
+  static async listarMeusAcessos(limite = 30) {
+    const s = await Autenticacao._renovarTokenSeNecessario();
+    if (!s?.access_token) return [];
+    try {
+      const r = await Autenticacao._proxy("rpc:listar_meus_acessos", { p_limit: limite });
+      return Array.isArray(r) ? r : [];
+    } catch { return []; }
+  }
+
+  /** Registra um evento de acesso (login, manual, refresh, etc). Best-effort. */
+  static async registrarAcesso(origem = "login") {
+    const s = await Autenticacao._renovarTokenSeNecessario();
+    if (!s?.access_token) return null;
+    try {
+      const ua = (typeof navigator !== "undefined") ? navigator.userAgent : null;
+      return await Autenticacao._proxy("rpc:registrar_acesso", { p_origem: origem, p_user_agent: ua });
+    } catch { return null; }
+  }
 }
 
 if (typeof window !== "undefined") window.Autenticacao = Autenticacao;

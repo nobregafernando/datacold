@@ -268,7 +268,7 @@ body{
   border-top-color: var(--c-fabrica);
 }
 
-/* Variante UP (seta apontando pra cima) — usada do Switch pro Logger */
+/* Variante UP (seta apontando pra cima) — usada do Equipamento pro Sensor */
 .seta-vert-cima{
   width: 2px; height: 28px;
   background: linear-gradient(0deg, var(--c-rede), transparent);
@@ -282,6 +282,66 @@ body{
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-bottom-color: var(--c-rede);
+}
+
+/* Variantes de cor pra setas verticais (combinam com a coluna em uso) */
+.seta-vert.cor-rede{ background: linear-gradient(180deg, var(--c-rede), transparent); }
+.seta-vert.cor-rede::after{ border-top-color: var(--c-rede); }
+
+.seta-vert-cima.cor-fabrica{ background: linear-gradient(0deg, var(--c-fabrica), transparent); }
+.seta-vert-cima.cor-fabrica::after{ border-bottom-color: var(--c-fabrica); }
+
+/* ---- Cluster de Access Points (3 redundantes) ---- */
+.ap-cluster .bloco-head{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bloco-tag-redundancia{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(30,111,214,.10);
+  color: var(--c-rede);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ap-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+.ap-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  background: rgba(30,111,214,.06);
+  border: 1px dashed rgba(30,111,214,.32);
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--c-rede);
+  position: relative;
+}
+.ap-item svg{ color: var(--c-rede); }
+/* Linha verde discreta indicando que estão em mesh/failover entre si */
+.ap-item:not(:last-child)::after{
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -3.5px;
+  width: 7px; height: 2px;
+  background: rgba(22,163,74,.45);
+  border-radius: 1px;
+  z-index: 1;
 }
 
 /* ---- Conexão dupla (Wi-Fi e Ethernet entre logger e switch) ---- */
@@ -790,4 +850,248 @@ body{
   .cenarios{ grid-template-columns: 1fr; }
   .fila-comparativo{ grid-template-columns: 1fr; }
   .nuvem-pair{ grid-template-columns: 1fr; }
+}
+
+/* ============ 3 Modelos de instalação (Seção 0) ============ */
+.modelos-grade{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.modelo{
+  background: #fff;
+  border: 1.5px solid #e5e9f2;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.modelo:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(15,23,42,.08);
+}
+.modelo-1{ border-top: 3px solid #16a34a; }
+.modelo-2{ border-top: 3px solid #1E6FD6; }
+.modelo-3{ border-top: 3px solid #6b3eb8; }
+.modelo.destacado{
+  background: linear-gradient(180deg, rgba(30,111,214,.04), #fff 70%);
+  border-color: rgba(30,111,214,.35);
+  box-shadow: 0 8px 22px rgba(30,111,214,.10);
+}
+.modelo-head{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #e5e9f2;
+}
+.modelo-head h3{
+  font-size: 1rem;
+  margin: 0;
+  color: #0b1d3a;
+  line-height: 1.1;
+}
+.modelo-num{
+  display: inline-grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 17px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.modelo-1 .modelo-num{ background: #16a34a; }
+.modelo-2 .modelo-num{ background: #1E6FD6; }
+.modelo-3 .modelo-num{ background: #6b3eb8; }
+.modelo-sub{
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 3px;
+  letter-spacing: .02em;
+}
+.modelo-pill{
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(30,111,214,.12);
+  color: #1E6FD6;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Mini diagrama ---- */
+.modelo-diag{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  background: linear-gradient(180deg, #f8fafc, #fff);
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  padding: 14px 12px;
+}
+.mn{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid #d8e0ec;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b1d3a;
+  text-align: center;
+}
+.mn small{
+  display: block;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: .02em;
+  margin-top: 1px;
+}
+.mn-ico{
+  font-size: 18px;
+  line-height: 1;
+}
+.mn-sensor    { border-color: #16a34a; }
+.mn-sensores-multi{ border-color: #16a34a; background: linear-gradient(135deg, rgba(22,163,74,.06), #fff); }
+.mn-logger    { border-color: #1a3a8a; }
+.mn-broker    { border-color: #6b3eb8; background: linear-gradient(135deg, rgba(107,62,184,.06), #fff); }
+.mn-nuvem     { border-color: #0e8a96; background: linear-gradient(135deg, rgba(14,138,150,.06), #fff); }
+.mn-app       { border-color: #16a34a; }
+.mn-quadro    { border-color: #6b3eb8; background: linear-gradient(135deg, rgba(107,62,184,.04), #fff); }
+
+.mn-link{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 20px;
+}
+.mn-link::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: #cbd5e1;
+}
+.mn-link-rot{
+  position: relative;
+  background: #fff;
+  border: 1px solid #e5e9f2;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #475569;
+  padding: 2px 8px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* Modelo 3 — coluna de quadros */
+.modelo-diag-multi .mn-coluna-multi{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.modelo-diag-multi .mn-coluna-multi::after{
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  background: #cbd5e1;
+  border-radius: 1px;
+}
+.modelo-diag-multi .mn-coluna-multi .mn{
+  flex-direction: row;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  position: relative;
+}
+.modelo-diag-multi .mn-coluna-multi .mn::after{
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  background: #cbd5e1;
+}
+.modelo-diag-multi .mn-coluna-multi .mn small{
+  margin: 0 0 0 auto;
+  font-size: 9px;
+  text-align: right;
+}
+
+/* Bullets de detalhes */
+.modelo-bullets{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.modelo-bullets li{
+  position: relative;
+  padding: 4px 4px 4px 18px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
+}
+.modelo-bullets li::before{
+  content: "•";
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  color: #94a3b8;
+  font-weight: 800;
+}
+.modelo-bullets li b{ color: #0b1d3a; }
+.modelo-bullets li.ok{
+  background: rgba(22,163,74,.08);
+  border-radius: 6px;
+  color: #166534;
+  font-weight: 600;
+}
+.modelo-bullets li.ok::before{ content: "✓"; color: #16a34a; }
+.modelo-bullets li.aviso{
+  background: rgba(217,119,6,.07);
+  border-radius: 6px;
+  color: #92400e;
+  font-weight: 500;
+}
+.modelo-bullets li.aviso::before{ content: "⚠"; color: #d97706; }
+
+.modelo-uso{
+  margin-top: auto;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e9f2;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: #475569;
+  line-height: 1.4;
+}
+.modelo-uso strong{ color: #0b1d3a; }
+
+@media (max-width: 1100px){
+  .modelos-grade{ grid-template-columns: 1fr; }
 }
