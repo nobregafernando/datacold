@@ -21,6 +21,18 @@ class ApiBEM {
   static PROXY_URL_PADRAO =
     "https://fcverbceppwdbveustvq.supabase.co/functions/v1/proxy";
 
+  /** URL base do Supabase (sem o /functions/v1/proxy) — usada por páginas que
+   *  precisam falar direto com /auth/v1/* (ex.: definir senha via token). */
+  static URL_SUPABASE = "https://fcverbceppwdbveustvq.supabase.co";
+
+  /** Chave anon pública (legível pelo browser por design) — usada em chamadas
+   *  diretas ao /auth/v1/* que exigem apikey. NÃO usar pra dados do app
+   *  (esses passam pelo proxy com JWT do usuário). */
+  static CHAVE_SUPABASE_ANON =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" +
+    ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjdmVyYmNlcHB3ZGJ2ZXVzdHZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NTEzNTgsImV4cCI6MjA5NTEyNzM1OH0" +
+    ".bI6SExnbpMGKI3bvOK2aGGa-NoV5PN_OTRhwPp5hays";
+
   static URL_STORAGE = "datacold_proxy_url";
   static JWT_STORAGE = "datacold_jwt";       // setado pelo Autenticacao
 

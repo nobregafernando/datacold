@@ -93,8 +93,8 @@
   if (broadcast) broadcast.onmessage = (ev) => { if (ev.data?.tipo === "mudanca-incidente") atualizar(); };
   window.__avisarOutrasAbas = () => broadcast?.postMessage({ tipo: "mudanca-incidente", t: Date.now() });
 
-  // === Tempo real do banco (Supabase Realtime via WS nativo) ===
-  conectarRealtime();
+  // (Supabase Realtime desativado: agora vai via Edge Function `proxy`.
+  //  Sync entre abas + polling de 5s já cobrem 90% dos casos.)
 
   ligarEventosTopo();
 
@@ -114,13 +114,10 @@
 
   async function carregarPerfis() {
     try {
-      // SELECT direto na tabela sensores — pega personalidade + parametros JSONB
-      const r = await fetch(`${api.urlBase}/rest/v1/sensores?select=id,personalidade,parametros`, {
-        headers: api.cabecalhos,
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const linhas = await r.json();
-      linhas.forEach(l => { perfisPorSensor[l.id] = l; });
+      // Via proxy RPC — devolve [{id, personalidade, parametros, ...}, ...]
+      const linhas = await api.listarPerfisSensores();
+      perfisPorSensor = {};
+      (linhas || []).forEach(l => { perfisPorSensor[l.id] = l; });
     } catch (e) {
       console.error("carregarPerfis", e);
     }
@@ -565,12 +562,9 @@
     document.querySelector('[data-kpi="sensores"]').textContent =
       sensores.filter(s => s.status === "ativo").length;
 
-    // 1) incidentes ativos
+    // 1) incidentes ativos (via proxy RPC — já filtra por fim > now())
     try {
-      const r = await fetch(`${api.urlBase}/rest/v1/incidentes?removido_em=is.null&select=id,sensor_id,tipo,magnitude,valor,descricao,inicio,fim&order=inicio.desc`, {
-        headers: api.cabecalhos,
-      });
-      incidentesAtivos = r.ok ? await r.json() : [];
+      incidentesAtivos = await api.incidentesAtivos() || [];
     } catch { incidentesAtivos = []; }
     renderizarIncidentes();
     document.querySelector('[data-kpi="incidentes"]').textContent = incidentesAtivos.length;
