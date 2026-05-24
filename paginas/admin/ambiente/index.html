@@ -75,19 +75,19 @@
 </script>
 <!-- GUARDA-AUTH:FIM -->
 <title>DataCold · Ambiente Controlado</title>
-<link rel="icon" href="/favicon.ico?v=1779635887949" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779635887949">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779635887949">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779635887949">
+<link rel="icon" href="/favicon.ico?v=1779652097937" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779652097937">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779652097937">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779652097937">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779635887949">
-<link rel="stylesheet" href="estilo.css?v=1779635887949">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779652097937">
+<link rel="stylesheet" href="estilo.css?v=1779652097937">
 </head>
 <body>
 
@@ -114,6 +114,111 @@
           fielmente a API oficial do hackathon — mesma assinatura, mesmos campos,
           mesmo contrato. A diferença: nós controlamos as falhas, garantimos a
           disponibilidade e a planta inteira é reproduzível.
+        </p>
+
+        <!-- ====== Topologia: equipamento → sensor → servidor → banco ====== -->
+        <div class="amb-topologia" aria-label="Fluxo dos dados: do equipamento até o banco">
+          <!-- ESTAÇÃO 1 · EQUIPAMENTO -->
+          <div class="amb-topo-estacao" data-no="equipamento">
+            <div class="amb-topo-ico">
+              <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="8"  y="22" width="40" height="28" rx="3"/>
+                <rect x="14" y="28" width="14" height="10" rx="1.5"/>
+                <circle cx="40" cy="33" r="3.5"/>
+                <circle cx="40" cy="43" r="2"/>
+                <path d="M48 30h6v14h-6"/>
+                <path d="M14 50v4M28 50v4M42 50v4"/>
+                <path d="M22 22v-6M34 22v-6"/>
+                <path d="M22 16h12"/>
+              </svg>
+              <span class="amb-topo-pulso" aria-hidden="true"></span>
+            </div>
+            <div class="amb-topo-rotulo">Equipamento</div>
+            <div class="amb-topo-sub">Motor, câmara, porta</div>
+          </div>
+
+          <!-- CONECTOR 1 (físico — cabo) -->
+          <div class="amb-topo-conector" aria-hidden="true">
+            <span class="amb-topo-linha amb-topo-linha-fisica">
+              <span class="amb-topo-pacote"></span>
+            </span>
+            <span class="amb-topo-tag">cabo</span>
+          </div>
+
+          <!-- ESTAÇÃO 2 · SENSOR -->
+          <div class="amb-topo-estacao" data-no="sensor">
+            <div class="amb-topo-ico">
+              <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="18" y="24" width="28" height="22" rx="2"/>
+                <rect x="24" y="30" width="16" height="10" rx="1"/>
+                <path d="M22 24v-3M30 24v-3M38 24v-3M46 24v-3M22 46v3M30 46v3M38 46v3M46 46v3"/>
+                <path d="M32 24v-9"/>
+                <path d="M27 13a5 5 0 0 1 10 0"/>
+                <path d="M24 11a8 8 0 0 1 16 0"/>
+              </svg>
+              <span class="amb-topo-pulso" aria-hidden="true"></span>
+            </div>
+            <div class="amb-topo-rotulo">Sensor</div>
+            <div class="amb-topo-sub">Energia · Temp · Porta</div>
+          </div>
+
+          <!-- CONECTOR 2 (rádio — wireless) -->
+          <div class="amb-topo-conector" aria-hidden="true">
+            <span class="amb-topo-linha amb-topo-linha-radio">
+              <span class="amb-topo-pacote"></span>
+              <span class="amb-topo-pacote amb-topo-pacote-tardio"></span>
+            </span>
+            <span class="amb-topo-tag">HTTPS/MQTT</span>
+          </div>
+
+          <!-- ESTAÇÃO 3 · SERVIDOR -->
+          <div class="amb-topo-estacao" data-no="servidor">
+            <div class="amb-topo-ico">
+              <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="12" y="14" width="40" height="12" rx="2"/>
+                <rect x="12" y="30" width="40" height="12" rx="2"/>
+                <rect x="12" y="46" width="40" height="12" rx="2"/>
+                <circle cx="18" cy="20" r="1.5" fill="currentColor"/>
+                <circle cx="18" cy="36" r="1.5" fill="currentColor"/>
+                <circle cx="18" cy="52" r="1.5" fill="currentColor"/>
+                <path d="M26 20h18M26 36h18M26 52h18"/>
+              </svg>
+              <span class="amb-topo-pulso" aria-hidden="true"></span>
+            </div>
+            <div class="amb-topo-rotulo">Servidor</div>
+            <div class="amb-topo-sub">Edge Function · proxy</div>
+          </div>
+
+          <!-- CONECTOR 3 (insert SQL) -->
+          <div class="amb-topo-conector" aria-hidden="true">
+            <span class="amb-topo-linha amb-topo-linha-sql">
+              <span class="amb-topo-pacote"></span>
+              <span class="amb-topo-pacote amb-topo-pacote-tardio"></span>
+            </span>
+            <span class="amb-topo-tag">INSERT</span>
+          </div>
+
+          <!-- ESTAÇÃO 4 · BANCO -->
+          <div class="amb-topo-estacao" data-no="banco">
+            <div class="amb-topo-ico">
+              <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <ellipse cx="32" cy="14" rx="18" ry="6"/>
+                <path d="M14 14v36c0 3.3 8 6 18 6s18-2.7 18-6V14"/>
+                <path d="M14 26c0 3.3 8 6 18 6s18-2.7 18-6"/>
+                <path d="M14 38c0 3.3 8 6 18 6s18-2.7 18-6"/>
+              </svg>
+              <span class="amb-topo-pulso" aria-hidden="true"></span>
+            </div>
+            <div class="amb-topo-rotulo">Banco de dados</div>
+            <div class="amb-topo-sub">Postgres · 14 séries</div>
+          </div>
+        </div>
+
+        <p class="amb-topo-legenda">
+          Em <strong>produção real</strong> o equipamento físico passa pelo sensor IoT,
+          pelo servidor e cai no banco — exatamente esse caminho. No nosso
+          <strong>ambiente controlado</strong>, o <code>sim_tick()</code> faz o papel
+          das primeiras 3 etapas e escreve direto no banco com o mesmo contrato.
         </p>
 
         <!-- ====== Pulso do gerador (cadência destacada) ====== -->
@@ -541,20 +646,20 @@
 </div>
 
 <!-- Dependências (mesma ordem das outras páginas admin) -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Sensor.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorPorta.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779635887949"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Sensor.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/SensorPorta.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779652097937"></script>
 
-<script src="pagina.js?v=1779635887949"></script>
+<script src="pagina.js?v=1779652097937"></script>
 </body>
 </html>

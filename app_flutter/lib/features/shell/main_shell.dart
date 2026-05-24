@@ -3,58 +3,216 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/supabase_config.dart';
 import '../../core/theme.dart';
 import '../auth/auth_repository.dart';
 import 'nav_items.dart';
+import 'sidebar/nav_tile.dart';
+import 'sidebar/sensores_expansor.dart';
+import 'sidebar/sidebar_header.dart';
 
-/// Shell principal — sidebar (NavigationRail >= 900px / Drawer < 900px),
-/// AppBar fina com título da página + sino + avatar, e o conteúdo
-/// rolável da rota atual.
+/// Shell principal — sidebar adaptativo (rail desktop / drawer mobile)
+/// com hambúrguer flutuante que colapsa o rail no desktop (240px ⇄ 72px).
 ///
-/// Anti-overflow: o body usa SafeArea + a página dentro decide sua própria
-/// rolagem (SingleChildScrollView etc.). O Shell nunca empurra altura
-/// fixa nem força layout que estoure.
-class MainShell extends StatelessWidget {
+/// Anti-overflow: a sidebar tem largura fixa, o body é Expanded. Cada
+/// página dentro do shell controla sua própria rolagem.
+class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.child});
   final Widget child;
+  static const double _breakpoint = 900.0;
 
-  static const _breakpoint = 900.0;
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  bool _colapsado = false;
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
-    // Papel vem do metadata; por enquanto trato todo logado como "admin"
-    // pra liberar tudo. Quando o seed de auth puser papel real, troco aqui.
-    final ehAdmin = (user?.userMetadata?['papel'] ?? 'admin') == 'admin';
-    final itens = NavItems.paraPapel(admin: ehAdmin);
-
+    final papel = (user?.userMetadata?['papel'] ?? 'admin') as String;
+    final admin = papel == 'admin';
     final loc = GoRouterState.of(context).matchedLocation;
-    final atual = itens.indexWhere((i) => loc.startsWith(i.path));
-    final indiceAtual = atual >= 0 ? atual : 0;
-    final tituloAtual = atual >= 0 ? itens[atual].label : 'DataCold';
 
     return LayoutBuilder(
       builder: (context, c) {
-        final largo = c.maxWidth >= _breakpoint;
+        final largo = c.maxWidth >= MainShell._breakpoint;
+        final tituloAtual = _tituloPara(loc, admin: admin);
+
         return Scaffold(
           backgroundColor: const Color(0xFFFAFCFF),
-          drawer: largo ? null : _Drawer(itens: itens, indiceAtual: indiceAtual),
-          appBar: _TopBar(titulo: tituloAtual, mostrarMenuBotao: !largo),
+          drawer: largo ? null : _DrawerCompleto(admin: admin, locAtual: loc),
+          appBar: _TopBar(titulo: tituloAtual, mostrarHamburgerMobile: !largo),
           body: SafeArea(
             top: false,
             child: largo
-                ? Row(
+                ? Stack(
                     children: [
-                      _RailNav(itens: itens, indiceAtual: indiceAtual),
-                      const VerticalDivider(width: 1, thickness: 1, color: AppCores.borda),
-                      Expanded(child: child),
+                      Row(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            width: _colapsado ? 72 : 248,
+                            color: Colors.white,
+                            child: _SidebarConteudo(
+                              admin: admin,
+                              locAtual: loc,
+                              compacto: _colapsado,
+                            ),
+                          ),
+                          const VerticalDivider(width: 1, thickness: 1, color: AppCores.borda),
+                          Expanded(child: widget.child),
+                        ],
+                      ),
+                      // Hambúrguer flutuante (canto sup-esq do sidebar)
+                      Positioned(
+                        top: 12, left: 12,
+                        child: _HamburgerFAB(
+                          colapsado: _colapsado,
+                          onPressed: () => setState(() => _colapsado = !_colapsado),
+                        ),
+                      ),
                     ],
                   )
-                : child,
+                : widget.child,
           ),
         );
       },
+    );
+  }
+
+  String _tituloPara(String loc, {required bool admin}) {
+    if (loc.startsWith('/dashboard')) return 'Dashboard';
+    if (loc.startsWith('/sala-controle')) return 'Sala de controle';
+    if (loc.startsWith('/sensores')) return 'Sensores';
+    if (loc.startsWith('/ambientes')) return 'Ambientes';
+    if (loc.startsWith('/notificacoes')) return 'Notificações';
+    if (loc.startsWith('/agentes')) return 'Agentes';
+    if (loc.startsWith('/prototipo')) return 'Protótipo';
+    if (loc.startsWith('/apresentacao')) return 'Apresentação';
+    if (loc.startsWith('/usuarios')) return 'Usuários';
+    if (loc.startsWith('/conta')) return 'Minha conta';
+    return 'DataCold';
+  }
+}
+
+// =================================================================
+// Conteúdo da sidebar (compartilhado entre rail desktop e drawer mobile)
+// =================================================================
+class _SidebarConteudo extends StatelessWidget {
+  const _SidebarConteudo({
+    required this.admin,
+    required this.locAtual,
+    this.compacto = false,
+    this.onItemTap,
+  });
+  final bool admin;
+  final String locAtual;
+  final bool compacto;
+  final VoidCallback? onItemTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final topo = NavItems.filtrar(NavItems.topo, admin: admin);
+    final base = NavItems.filtrar(NavItems.base, admin: admin);
+    final sensoresAtivo = locAtual.startsWith('/sensores');
+
+    return Column(
+      children: [
+        SidebarHeader(compacto: compacto),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: compacto ? 8 : 10,
+            ),
+            children: [
+              for (final it in topo)
+                NavTile(
+                  item: it,
+                  ativo: locAtual.startsWith(it.path),
+                  compacto: compacto,
+                  onTap: onItemTap,
+                ),
+              if (!compacto)
+                SensoresExpansor(ativo: sensoresAtivo, onTap: onItemTap)
+              else
+                NavTile(
+                  item: const NavItem(
+                    path: '/sensores',
+                    label: 'Sensores',
+                    icon: Icons.sensors_rounded,
+                  ),
+                  ativo: sensoresAtivo,
+                  compacto: true,
+                  onTap: onItemTap,
+                ),
+              for (final it in base)
+                NavTile(
+                  item: it,
+                  ativo: locAtual.startsWith(it.path),
+                  compacto: compacto,
+                  onTap: onItemTap,
+                ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AppCores.borda),
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compacto ? 8 : 10,
+            vertical: 10,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: compacto
+                ? IconButton(
+                    tooltip: 'Sair',
+                    icon: const Icon(Icons.logout_rounded, color: AppCores.erro, size: 20),
+                    onPressed: () async {
+                      await AuthRepository().sair();
+                      if (context.mounted) context.go('/login');
+                    },
+                  )
+                : TextButton.icon(
+                    onPressed: () async {
+                      await AuthRepository().sair();
+                      if (context.mounted) context.go('/login');
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppCores.erro,
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    label: const Text('Sair'),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// =================================================================
+// Drawer completo pra mobile
+// =================================================================
+class _DrawerCompleto extends StatelessWidget {
+  const _DrawerCompleto({required this.admin, required this.locAtual});
+  final bool admin;
+  final String locAtual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(),
+      child: _SidebarConteudo(
+        admin: admin,
+        locAtual: locAtual,
+        onItemTap: () => Navigator.pop(context),
+      ),
     );
   }
 }
@@ -63,12 +221,12 @@ class MainShell extends StatelessWidget {
 // AppBar fina
 // =================================================================
 class _TopBar extends StatelessWidget implements PreferredSizeWidget {
-  const _TopBar({required this.titulo, required this.mostrarMenuBotao});
+  const _TopBar({required this.titulo, required this.mostrarHamburgerMobile});
   final String titulo;
-  final bool mostrarMenuBotao;
+  final bool mostrarHamburgerMobile;
 
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(58);
 
   @override
   Widget build(BuildContext context) {
@@ -78,21 +236,21 @@ class _TopBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       scrolledUnderElevation: 1,
       shape: const Border(bottom: BorderSide(color: AppCores.borda, width: 1)),
-      leading: mostrarMenuBotao
+      leading: mostrarHamburgerMobile
           ? Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu_rounded, color: AppCores.azulNoite),
                 onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             )
-          : null,
+          : const SizedBox.shrink(),
+      leadingWidth: mostrarHamburgerMobile ? null : 0,
+      titleSpacing: mostrarHamburgerMobile ? 0 : 80,   // dá espaço pro hambúrguer flutuante
       title: Text(
         titulo,
         style: GoogleFonts.inter(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: AppCores.azulNoite,
-          letterSpacing: -0.2,
+          fontSize: 15, fontWeight: FontWeight.w700,
+          color: AppCores.azulNoite, letterSpacing: -0.2,
         ),
       ),
       actions: [
@@ -117,187 +275,37 @@ class _TopBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 // =================================================================
-// NavigationRail (desktop/tablet largo)
+// Hambúrguer flutuante (canto sup-esq do sidebar)
 // =================================================================
-class _RailNav extends StatelessWidget {
-  const _RailNav({required this.itens, required this.indiceAtual});
-  final List<NavItem> itens;
-  final int indiceAtual;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 240,
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Column(
-        children: [
-          // Logo (compacto)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-            child: Image.network(
-              SupabaseConfig.brandingUrl('01-primary-logo.png'),
-              height: 28,
-              errorBuilder: (_, e, s) => Text(
-                'DataCold',
-                style: GoogleFonts.inter(
-                  fontSize: 17, fontWeight: FontWeight.w800,
-                  color: AppCores.azulNoite,
-                ),
-              ),
-            ),
-          ),
-          const Divider(height: 1, color: AppCores.borda),
-          // Lista de itens
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-              itemCount: itens.length,
-              itemBuilder: (_, i) => _NavTile(
-                item: itens[i],
-                ativo: i == indiceAtual,
-              ),
-            ),
-          ),
-          const Divider(height: 1, color: AppCores.borda),
-          // Sair
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () async {
-                  await AuthRepository().sair();
-                  if (context.mounted) context.go('/login');
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: AppCores.erro,
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.logout_rounded, size: 18),
-                label: const Text('Sair'),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =================================================================
-// Drawer (mobile/narrow)
-// =================================================================
-class _Drawer extends StatelessWidget {
-  const _Drawer({required this.itens, required this.indiceAtual});
-  final List<NavItem> itens;
-  final int indiceAtual;
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(),
-      child: Column(
-        children: [
-          DrawerHeader(
-            margin: EdgeInsets.zero,
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppCores.borda)),
-            ),
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Image.network(
-                SupabaseConfig.brandingUrl('01-primary-logo.png'),
-                height: 30,
-                errorBuilder: (_, e, s) => Text(
-                  'DataCold',
-                  style: GoogleFonts.inter(
-                    fontSize: 18, fontWeight: FontWeight.w800,
-                    color: AppCores.azulNoite,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-              itemCount: itens.length,
-              itemBuilder: (_, i) => _NavTile(
-                item: itens[i],
-                ativo: i == indiceAtual,
-                onTap: () => Navigator.pop(context),
-              ),
-            ),
-          ),
-          const Divider(height: 1, color: AppCores.borda),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: AppCores.erro, size: 20),
-            title: Text('Sair',
-              style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w700, color: AppCores.erro,
-              ),
-            ),
-            onTap: () async {
-              await AuthRepository().sair();
-              if (context.mounted) context.go('/login');
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-// =================================================================
-// Tile individual (usado em ambos os lados)
-// =================================================================
-class _NavTile extends StatelessWidget {
-  const _NavTile({required this.item, required this.ativo, this.onTap});
-  final NavItem item;
-  final bool ativo;
-  final VoidCallback? onTap;
+class _HamburgerFAB extends StatelessWidget {
+  const _HamburgerFAB({required this.colapsado, required this.onPressed});
+  final bool colapsado;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () {
-          context.go(item.path);
-          onTap?.call();
-        },
+        onTap: onPressed,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          width: 36, height: 36,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: ativo ? AppCores.azulMedio.withValues(alpha: 0.10) : null,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppCores.borda),
           ),
-          child: Row(
-            children: [
-              Icon(
-                item.icon,
-                size: 18,
-                color: ativo ? AppCores.azulMedio : AppCores.textoSuave,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  item.label,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: ativo ? FontWeight.w700 : FontWeight.w500,
-                    color: ativo ? AppCores.azulProfundo : AppCores.texto,
-                  ),
-                ),
-              ),
-            ],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Icon(
+              colapsado ? Icons.menu_rounded : Icons.menu_open_rounded,
+              key: ValueKey(colapsado),
+              color: AppCores.azulNoite,
+              size: 18,
+            ),
           ),
         ),
       ),

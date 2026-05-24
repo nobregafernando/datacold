@@ -2,12 +2,21 @@
    Página · Configurações (admin OU operador)
    ============================================================ */
 
+/* Layout admin precisa de padding-left = largura da sidebar fixa.
+   Sem isso, o main fica sob a sidebar e a hitbox dos cliques no
+   menu lateral pode ser intercpetada/incoerente. */
+.layout-admin{ min-height: 100vh; padding-left: 280px; }
+
 .cfg-main{
   min-width: 0;
   padding: 96px 32px 60px;
   overflow-x: hidden;
 }
+@media (max-width: 900px){
+  .layout-admin{ padding-left: 240px; }
+}
 @media (max-width: 720px){
+  .layout-admin{ padding-left: 0; }
   .cfg-main{ padding: 84px 16px 40px; }
 }
 

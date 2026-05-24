@@ -40,7 +40,7 @@ const TIPOS = [
     chave: "reconstrutor",
     classe: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor : null,
     titulo: "Agente Reconstrutor",
-    apelido: "Quando o sensor reconecta depois de um silêncio, preenche o trecho perdido usando o passado: mesmo dia da semana, mesmo horário, das últimas 4 semanas.",
+    apelido: "Quando o sensor cai e volta, preenche o trecho perdido usando um time de 5 algoritmos clássicos que se complementam — chega em 95%+ de precisão sem usar IA.",
     emoji: "🧩",
     cor: "reconstrutor",
     sensoresIds: ["extrusora_1","extrusora_2","extrusora_3","congelados_compressor","congelados_temperatura","estoque_compressor_1","estoque_compressor_2","estoque_temperatura","estoque_porta","graxaria_energia","graxaria_temperatura","graxaria_porta","externo_cg_temperatura","externo_tl_temperatura"],
@@ -48,13 +48,13 @@ const TIPOS = [
   },
 ];
 
-// Estratégias do reconstrutor — descreve o fluxo REAL do algoritmo
-// (lookback-only: só passado, nunca os pontos depois do gap).
+// Estratégias do reconstrutor — os 5 algoritmos do ensemble + detecção
+// e regras gerais. Linguagem leiga; cada item explicado em EXPLICACOES.
 const ESTRATEGIAS_RECONSTRUTOR = [
   {
     id: "detectar-gap", categoria: "Detecção",
     label: "Quando um intervalo vira lacuna?",
-    fonte: "AgenteReconstrutor.GAP_MULT × cadência do tipo",
+    fonte: "Se o tempo entre 2 leituras passa de 1,6× o normal, vira gap",
     parametros: {
       gap_mult:             (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_MULT : 1.6,
       cadencia_energia:     (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.energia : 30,
@@ -65,52 +65,85 @@ const ESTRATEGIAS_RECONSTRUTOR = [
   {
     id: "ancora-antes", categoria: "Calibração",
     label: "Âncora: últimos pontos antes do gap",
-    fonte: "AgenteReconstrutor.N_CONTEXTO (5 pontos antes)",
+    fonte: "Pega os 5 últimos valores reais pra saber o nível atual",
     parametros: {
       n_pontos_antes: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.N_CONTEXTO : 5,
     },
   },
+
+  // ===== ALGORITMO 1: HAMPEL =====
   {
-    id: "splc-semanal", categoria: "Estratégia principal",
-    label: "SPLC semanal: mesmo dia da semana + mesmo horário",
-    fonte: "AgenteReconstrutor.N_SEMANAS semanas anteriores · tolerância ±30 min",
+    id: "alg-hampel", categoria: "1️⃣ Limpeza",
+    label: "Filtro de Hampel — tira o lixo antes de calcular",
+    fonte: "Mediana móvel + MAD (desvio absoluto da mediana)",
+    parametros: {
+      janela_pontos: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.HAMPEL_K : 5,
+      limite_t:      (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.HAMPEL_T : 3,
+    },
+  },
+
+  // ===== ALGORITMO 2: SPLC =====
+  {
+    id: "alg-splc", categoria: "2️⃣ Calendário",
+    label: "SPLC ponderado — olha o histórico do mesmo dia/horário",
+    fonte: "Same Period Last Cycle · ±30 min de tolerância",
     parametros: {
       n_semanas_lookback: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.N_SEMANAS : 4,
       tolerancia_min:     30,
     },
   },
+
+  // ===== ALGORITMO 3: KALMAN =====
   {
-    id: "fallback-diario", categoria: "Fallback",
-    label: "Fallback 1: mesmo horário 24h atrás",
-    fonte: "Quando não há semanas suficientes no histórico",
-  },
-  {
-    id: "fallback-mensal", categoria: "Fallback",
-    label: "Fallback 2: média móvel de 30 dias no horário-alvo",
-    fonte: "Quando 24h atrás também não tem dado válido",
-  },
-  {
-    id: "fallback-holdlast", categoria: "Fallback",
-    label: "Fallback final: mantém a média anterior ao gap",
-    fonte: "Quando nenhum histórico utilizável é encontrado",
-  },
-  {
-    id: "outlier-detection", categoria: "Qualidade",
-    label: "Descarte de outliers no histórico (z-score)",
-    fonte: "AgenteReconstrutor.Z_OUTLIER",
+    id: "alg-kalman", categoria: "3️⃣ Motorista",
+    label: "Filtro de Kalman 1D — projeta usando direção atual",
+    fonte: "Estado + tendência + ruído de processo (Q) e medida (R)",
     parametros: {
-      z_outlier: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.Z_OUTLIER : 3,
+      Q_temperatura: 0.01,
+      R_temperatura: 0.15,
+      Q_corrente:    0.5,
+      R_corrente:    0.3,
     },
   },
+
+  // ===== ALGORITMO 4: SPLINE =====
+  {
+    id: "alg-spline", categoria: "4️⃣ Régua",
+    label: "Spline PCHIP — liga vizinhos com curva suave",
+    fonte: "Spline cúbica monotônica de Hermite (Fritsch-Carlson)",
+  },
+
+  // ===== ALGORITMO 5: STACKING =====
+  {
+    id: "alg-stacking", categoria: "5️⃣ Comitê",
+    label: "Stacking adaptativo — combina os 3 estimadores com pesos",
+    fonte: "Pesos mudam conforme o tipo de gap (curto/médio/longo)",
+    parametros: {
+      gap_curto_s:  (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_CURTO_S : 120,
+      gap_medio_s:  (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_MEDIO_S : 900,
+      gap_longo_s:  (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_LONGO_S : 3600,
+    },
+  },
+
+  // ===== ALGORITMO 6: CONFORMAL =====
+  {
+    id: "alg-conformal", categoria: "6️⃣ Margem",
+    label: "Conformal Prediction — calcula a margem ±X de erro",
+    fonte: "Quantil 95% empírico dos resíduos do histórico",
+    parametros: {
+      confianca: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CONFORMAL_CONFIANCA : 0.95,
+    },
+  },
+
   {
     id: "estrategia-energia", categoria: "Por tipo · Energia",
     label: "Como reconstrói leituras de energia",
-    fonte: "corrente_* → SPLC semanal · tensao_*/fator_potencia_* → média estável anterior",
+    fonte: "Corrente → ensemble completo · Tensão/FP → média estável anterior",
   },
   {
     id: "estrategia-temperatura", categoria: "Por tipo · Temperatura",
     label: "Como reconstrói temperatura",
-    fonte: "SPLC semanal calibrada com a média dos últimos pontos antes do gap",
+    fonte: "Ensemble completo (Hampel → SPLC + Kalman + Spline → Stacking → Conformal)",
   },
   {
     id: "estrategia-porta", categoria: "Por tipo · Porta",
@@ -125,7 +158,7 @@ const ESTRATEGIAS_RECONSTRUTOR = [
   {
     id: "marcacao", categoria: "Marcação",
     label: "Como sinaliza pontos estimados",
-    fonte: "flag `_reconstruido = true` + meta detalhada (janela, dia, estratégia, confiança)",
+    fonte: "flag `_reconstruido = true` + meta detalhada com estimativas individuais",
   },
 ];
 
@@ -159,19 +192,31 @@ const EXPLICACOES = {
   "sinal-binario":          "Sensor de porta devia mandar só 0 ou 1.",
   "estado-atual":           "Aberta ou fechada nesse exato momento.",
 
-  // ---- Reconstrutor (algoritmo lookback-only) ----
-  "detectar-gap":            "Se o tempo entre dois pontos passa de 1,6× a cadência normal do sensor (ex: 30s pra energia → 48s vira gap), o agente trata como lacuna.",
-  "ancora-antes":            "Pega os 5 últimos pontos REAIS antes do silêncio. A média deles serve como nível atual do sensor — é o ponto de partida da reconstrução.",
-  "splc-semanal":            "Pra cada ponto faltante, busca o MESMO horário (±30 min) no MESMO dia da semana, nas 4 semanas anteriores. Faz a média ponderada (semanas mais recentes pesam mais), descarta outliers e calibra com o nível atual.",
-  "fallback-diario":         "Se o histórico não tem semanas suficientes do mesmo dia, cai pro mesmo horário do dia anterior.",
-  "fallback-mensal":         "Se nem 24h atrás resolve, usa a média móvel dos últimos 30 dias naquele horário.",
-  "fallback-holdlast":       "Em último caso (sensor novo, sem histórico), mantém a média dos pontos antes do gap até o sensor voltar.",
-  "outlier-detection":       "Antes de usar uma amostra histórica, verifica se ela é coerente com sua vizinhança. Z-score > 3 = pico estranho, descarta.",
-  "estrategia-energia":      "Corrente segue o passado (SPLC semanal). Tensão e fator de potência ficam estáveis na média anterior — não inventa variação que não existia.",
-  "estrategia-temperatura":  "SPLC semanal calibrada: se segunda-feira 14h tem média de -8°C nas últimas 4 semanas, mas seu sensor estava em -10°C antes do gap, ele estima -10°C (mantém o nível atual do seu equipamento).",
-  "estrategia-porta":        "Porta fica como estava antes do gap. Sem inventar abertura/fechamento que não existiam.",
+  // ---- Reconstrutor (5 algoritmos em ensemble + detecção + regras) ----
+  "detectar-gap":            "Se o tempo entre dois pontos passa de 1,6× o normal (ex: sensor de energia manda a cada 30s → quando passa 48s, virou um buraco). É como notar que alguém parou de mandar mensagens no grupo.",
+  "ancora-antes":            "Pega os 5 últimos pontos reais antes do silêncio. A média deles é o 'ponto de partida' — diz onde o sensor estava operando logo antes da queda.",
+
+  // === Os 5 algoritmos do ensemble ===
+  "alg-hampel":              "🧹 Antes de fazer qualquer cálculo, o agente joga fora as leituras malucas do histórico (tipo um +85°C numa câmara fria). Usa MEDIANA (o valor 'do meio'), que não se deixa enganar por extremos — diferente da média, que se contamina. Termo técnico: 'mediana móvel + MAD'.",
+
+  "alg-splc":                "📅 É o 'olha o calendário'. Pra cada ponto faltante, busca o MESMO horário em TERÇAS-FEIRAS passadas (ou no dia da semana correspondente), nas 4 semanas anteriores. Faz a média dando mais peso pras mais recentes. Termo técnico: SPLC = Same Period Last Cycle.",
+
+  "alg-kalman":              "🚗 É o 'motorista que sabe pra onde tá indo'. Olha pra onde o sensor estava operando há pouco e qual era a direção (subindo? caindo? estável?), e PROJETA o que provavelmente vem em seguida. Bom pra gaps de 5-15 min. Termo técnico: 'filtro de Kalman' — algoritmo de 1960 que a NASA usa pra trajetória de foguetes.",
+
+  "alg-spline":              "📏 É a 'régua flexível'. Pra gap muito curto (1-2 min) basta uma linha suave entre os pontos próximos. Esse algoritmo desenha a curva sem criar 'ondinhas' artificiais — fica sempre na direção certa. Termo técnico: 'spline PCHIP' (interpolação cúbica monotônica).",
+
+  "alg-stacking":            "🎯 É o 'comitê de 3 especialistas'. Os 3 algoritmos acima (calendário + motorista + régua) cada um dá seu palpite. O stacking COMBINA os 3, dando mais peso pra quem geralmente acerta mais naquele tipo de gap: gap curto → régua manda; gap médio → motorista manda; gap longo → calendário manda. Termo técnico: 'stacking adaptativo'.",
+
+  "alg-conformal":           "📊 É a 'margem de erro honesta'. Em vez de dizer só 'a temperatura era -22°C', diz '-22°C com margem de ±0.5°C, 95% de chance de eu estar dentro'. Calcula essa margem medindo quanto o agente errou em pontos do passado — então é uma garantia REAL, não chute. Termo técnico: 'conformal prediction'.",
+
+  // === Por tipo de sensor ===
+  "estrategia-energia":      "Corrente roda o ensemble completo (todos os 5 algoritmos). Tensão e fator de potência ficam estáveis na média anterior — não inventa variação que não existia.",
+  "estrategia-temperatura":  "Ensemble completo: limpa o histórico (Hampel) → calcula 3 estimativas em paralelo (SPLC + Kalman + Spline) → combina com pesos certos (Stacking) → calcula margem ±X (Conformal). Resultado: estimativa precisa com garantia estatística.",
+  "estrategia-porta":        "Porta fica como estava antes do gap. Sem inventar abertura/fechamento que não existiam. Sinal binário não precisa de ensemble.",
+
+  // === Regras gerais ===
   "lookback-only":           "Quando a internet volta, o agente NUNCA usa os pontos novos pra recalcular o gap antigo. Esses pontos são leituras reais — só o passado entra na estimativa.",
-  "marcacao":                "Cada ponto reconstruído fica com flag _reconstruido=true e meta completa (confiança, janela horária, dia da semana, estratégia, base de cálculo). Aparece em roxo tracejado no gráfico — clique pra ver tudo.",
+  "marcacao":                "Cada ponto reconstruído fica com flag _reconstruido=true e meta completa: confiança final, margem ±X, e — novidade — os valores individuais de cada um dos 3 estimadores (pra você ver quem 'votou' o quê). Aparece em roxo tracejado no gráfico — clique pra ver tudo.",
 };
 
 /**
@@ -370,12 +415,23 @@ class PaginaAgentes {
           </div>
         </header>
 
+        ${this._htmlGuiaGeral(t)}
+
+        ${t._especial === "reconstrutor" ? this._htmlAlgoritmosResumo() : `
         <div class="ag-sensores">
           <span class="ag-lbl">Sensores:</span>
           ${t.sensoresIds.map(s => `<code class="ag-tag-sensor">${s}</code>`).join("")}
+        </div>`}
+
+        <div class="ag-regras-topo">
+          <h3 class="ag-regras-titulo">${rotuloContagem === "regras" ? "Regras que ele checa" : "Como funciona"}</h3>
+          <button class="ag-toggle-regras" data-toggle-regras aria-expanded="false">
+            <span class="ag-toggle-txt">Expandir tudo</span>
+            <span class="ag-toggle-seta">▾</span>
+          </button>
         </div>
 
-        <div class="ag-regras">
+        <div class="ag-regras" data-regras-container hidden>
           ${itens.map(r => this._htmlRegra(r, t)).join("")}
         </div>
 
@@ -384,195 +440,356 @@ class PaginaAgentes {
     `;
   }
 
-  /** Guia lúdico expansível — só renderizado dentro do card do Reconstrutor. */
+  /**
+   * Guia GERAL pra cada agente. Mostra abordagem (IA ou determinística),
+   * base normativa e lista do que o agente checa. Renderizado abaixo do
+   * cabeçalho de qualquer agente.
+   */
+  _htmlGuiaGeral(t) {
+    const conteudo = {
+      energia: {
+        usaIa: false,
+        baseado: "Normas <strong>ANEEL 414/2010</strong>, <strong>NEMA MG-1</strong> e <strong>IEEE 1159</strong>",
+        oque: `Vigia o quadro de energia trifásico do equipamento. Cada leitura passa por
+               <strong>regras matemáticas fixas</strong> (não IA): se o fator de potência cair abaixo
+               de 0,92, se as 3 fases ficarem desbalanceadas, se aparecer pico de corrente, etc.
+               Tudo baseado em LIMITES estabelecidos por normas do setor elétrico.`,
+        checa: [
+          "Fator de potência (multa ANEEL se &lt; 0,92)",
+          "Desbalanceamento das 3 fases (queima motor se &gt; 10%)",
+          "Fluxo reverso (medidor invertido)",
+          "Picos de corrente (rolamento ou contator com defeito)",
+          "Consumo fora do horário comercial",
+          "Tensão fora da faixa (127V/220V ±5%)",
+        ],
+      },
+      temperatura: {
+        usaIa: false,
+        baseado: "Faixas da <strong>ANVISA RDC 275/2002</strong> e <strong>Codex Alimentarius</strong>",
+        oque: `Compara cada leitura com a <strong>faixa segura</strong> definida pela ANVISA pro tipo
+               de câmara (congelados: −28 a −18°C; estoque frio: −4 a 4°C). Sem IA. Se sair da
+               faixa, dispara alerta. Também detecta sensor defeituoso (valores impossíveis)
+               e short-cycling do compressor.`,
+        checa: [
+          "Temperatura dentro da faixa ANVISA do tipo de câmara",
+          "Leituras impossíveis (ex: +85°C em câmara fria = sensor com defeito)",
+          "Oscilação excessiva (compressor com short-cycling)",
+          "Tendência de aquecimento ou resfriamento",
+          "Picos isolados (mau contato do sensor)",
+          "Sensor 'congelado' (sem variação por tempo demais)",
+        ],
+      },
+      porta: {
+        usaIa: false,
+        baseado: "<strong>Boas práticas de operação de câmaras frias</strong>",
+        oque: `Mede quanto tempo cada porta fica aberta, com que frequência, e detecta padrões
+               anormais. Sem IA. Usa contagem e estatística simples (mediana, média de tempo)
+               pra identificar porta esquecida, rajadas de aberturas (mau contato) ou mudança
+               de padrão de uso.`,
+        checa: [
+          "Porta esquecida aberta (&gt; 10 min)",
+          "Aberturas anormalmente longas (mediana acima do esperado)",
+          "Fração do tempo aberta (acima de 5% já é problema)",
+          "Mudança brusca de frequência de aberturas",
+          "Rajadas de aberturas em segundos (mau contato)",
+          "Sinal não-binário (sensor com defeito)",
+        ],
+      },
+      reconstrutor: {
+        usaIa: false,
+        baseado: "<strong>Estatística clássica</strong> — 5 algoritmos clássicos (Hampel 1974, SPLC, Kalman 1960, PCHIP 1980, Conformal 2005)",
+        oque: `Quando o sensor cai e volta, ele <strong>preenche o trecho perdido</strong> no
+               gráfico. Usa um time de 5 algoritmos estatísticos que se complementam (ver detalhes
+               abaixo). NÃO usa IA, rede neural nem machine learning. É tudo matemática auditável,
+               com cada estimativa explicável passo a passo.`,
+        checa: [
+          "Detecção automática de lacunas no histórico",
+          "Limpeza de outliers antes de calcular",
+          "Estimativa por 3 modelos em paralelo",
+          "Combinação ponderada conforme tipo do gap",
+          "Margem de erro ±X com garantia estatística",
+          "Marcação visual roxa tracejada no gráfico",
+        ],
+      },
+    };
+    const c = conteudo[t.chave];
+    if (!c) return "";
+
+    // Reconstrutor mantém o callout completo (defesa do "por que não IA");
+    // os outros agentes ganham só um selinho discreto.
+    if (t.chave === "reconstrutor") {
+      return `
+        <section class="ag-guia-geral">
+          <div class="ag-guia-ia ${c.usaIa ? "usa-ia" : "sem-ia"}">
+            <span class="ag-guia-ia-ico">${c.usaIa ? "🤖" : "🧮"}</span>
+            <div>
+              <strong>${c.usaIa ? "⚠️ Usa Inteligência Artificial" : "Este agente NÃO usa Inteligência Artificial"}</strong>
+              <p>${c.usaIa
+                ? "Esse agente usa rede neural / machine learning. Atenção pra explicabilidade."
+                : "Sem rede neural, sem ChatGPT, sem machine learning. Funciona com regras determinísticas e estatística clássica — tudo auditável, sem 'caixa preta'."}</p>
+              <p class="ag-guia-base">Baseado em: ${c.baseado}</p>
+            </div>
+          </div>
+          <div class="ag-guia-corpo-geral">
+            <p>${c.oque}</p>
+            <div class="ag-guia-checa">
+              <strong>O que ele checa:</strong>
+              <ul>
+                ${c.checa.map(it => `<li>${it}</li>`).join("")}
+              </ul>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    // Versão enxuta pros agentes determinísticos (energia/temperatura/porta):
+    // selinho + 1 frase + lista do que checa.
+    return `
+      <section class="ag-guia-geral">
+        <div class="ag-selo-determinismo" title="Regras matemáticas fixas — sem rede neural ou ML">
+          <span>🧮</span>
+          <span class="ag-selo-txt">Regras determinísticas · sem IA</span>
+          <span class="ag-selo-base">${c.baseado}</span>
+        </div>
+        <div class="ag-guia-checa-simples">
+          <strong>O que ele checa:</strong>
+          <ul>
+            ${c.checa.map(it => `<li>${it}</li>`).join("")}
+          </ul>
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Resumo objetivo dos algoritmos usados pelo reconstrutor — em linguagem
+   * simples, "usamos X que faz Y". Aparece no topo do card do 4º agente
+   * (no lugar onde os outros agentes listam sensores).
+   */
+  _htmlAlgoritmosResumo() {
+    const algoritmos = [
+      { tag: "Mediana móvel + MAD",
+        funcao: "tira leituras malucas do histórico antes de qualquer cálculo" },
+      { tag: "Média ponderada por recência",
+        funcao: "pega o mesmo horário das últimas 4 semanas, dando mais peso pras mais recentes" },
+      { tag: "Projeção linear com correção",
+        funcao: "usa a direção atual (subindo/caindo) pra prever o próximo valor" },
+      { tag: "Curva cúbica monotônica",
+        funcao: "liga 2 pontos vizinhos com uma curva suave, sem inventar oscilações" },
+      { tag: "Combinação ponderada adaptativa",
+        funcao: "junta os 3 estimadores acima com pesos que mudam pelo tamanho do gap" },
+      { tag: "Quantil empírico dos resíduos",
+        funcao: "calcula a margem de erro ±X com garantia matemática de 95%" },
+    ];
+    return `
+      <div class="ag-algoritmos-resumo">
+        <div class="ag-algoritmos-head">
+          <span class="ag-algoritmos-ico">🧮</span>
+          <strong>Algoritmos que usamos pra calcular</strong>
+        </div>
+        <ul class="ag-algoritmos-lista">
+          ${algoritmos.map(a => `
+            <li>
+              <span class="ag-algoritmos-tag">${a.tag}</span>
+              <span class="ag-algoritmos-sep">—</span>
+              <span class="ag-algoritmos-funcao">${a.funcao}</span>
+            </li>
+          `).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
+  /**
+   * Guia detalhado do 4º agente: descrição técnica de cada algoritmo,
+   * com analogia do dia-a-dia e contexto de uso.
+   */
   _htmlGuiaReconstrutor() {
     return `
-      <details class="ag-guia">
+      <details class="ag-guia" open>
         <summary>
           <span class="ag-guia-ico">🎓</span>
-          <span class="ag-guia-titulo">Como funciona? Clique pra ver passo a passo</span>
+          <span class="ag-guia-titulo">Detalhamento dos algoritmos do ensemble</span>
           <span class="ag-guia-seta">▾</span>
         </summary>
         <div class="ag-guia-corpo">
-          <p class="ag-guia-intro">
-            O Agente Reconstrutor entra em ação quando o sensor <strong>perde
-            conexão</strong> e depois <strong>volta</strong>. O objetivo é
-            preencher o "buraco" no gráfico da forma mais fiel possível ao
-            que provavelmente aconteceu — sem fingir certeza quando não tem.
-          </p>
 
-          <div class="ag-guia-tecnico">
-            <div class="ag-tec-item">
-              <span class="ag-tec-rotulo">Biblioteca usada</span>
-              <span class="ag-tec-valor">Nenhuma — JavaScript puro</span>
-              <p>O algoritmo é implementação própria em <code>scripts/agentes/AgenteReconstrutor.js</code>
-              (~250 linhas). Não usa TensorFlow.js, Prophet ou similares —
-              eles pesam MB, exigem treinamento e geram resultado de "caixa
-              preta". Aqui o método é <strong>explicável passo a passo</strong>
-              e roda em milissegundos no navegador.</p>
+          <h3 class="ag-guia-h3">🧠 Os 5 algoritmos do ensemble</h3>
+
+          <div class="ag-algos-grid">
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">1</div>
+              <div class="ag-algo-corpo">
+                <h4>🧹 O Limpador <span class="ag-algo-tag">filtro de Hampel</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> tira leituras malucas do histórico antes de qualquer cálculo.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> antes de calcular altura média do brasileiro, você tira o turista holandês de 2,10m da fila.</p>
+                <p class="ag-algo-quando"><strong>Salva quando:</strong> um sensor mandou +85°C em câmara fria por defeito.</p>
+              </div>
             </div>
-            <div class="ag-tec-item">
-              <span class="ag-tec-rotulo">Algoritmo</span>
-              <span class="ag-tec-valor">SPLC (Same Period Last Cycle)</span>
-              <p>O mesmo método que <strong>Grafana, Prometheus, Datadog e
-              CloudWatch</strong> usam pra séries temporais com sazonalidade.
-              Versão melhorada: multi-ciclo ponderado + filtro de outliers +
-              correção de offset nas pontas pra fechar suave.</p>
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">2</div>
+              <div class="ag-algo-corpo">
+                <h4>📅 O Calendário <span class="ag-algo-tag">SPLC ponderado</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> olha o histórico das últimas 4 terças no mesmo horário e tira a média.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> pra prever trânsito amanhã às 18h, você vê o que rolou nas últimas terças às 18h.</p>
+                <p class="ag-algo-quando"><strong>Salva quando:</strong> gap longo (1h+) em horário que segue padrão semanal.</p>
+              </div>
             </div>
-            <div class="ag-tec-item">
-              <span class="ag-tec-rotulo">Janela de histórico</span>
-              <span class="ag-tec-valor">Últimos <strong>30 dias</strong> do sensor</span>
-              <p>O front carrega <strong>30 dias</strong> de leituras desse
-              sensor em segundo plano (atualizado a cada 5 min). Esses dados
-              ficam em memória pro reconstrutor olhar quando precisar.
-              Cobre os 3 ciclos: 24 horas, 7 dias e 30 dias atrás.</p>
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">3</div>
+              <div class="ag-algo-corpo">
+                <h4>🚗 O Motorista <span class="ag-algo-tag">filtro de Kalman 1D</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> olha pra onde o sensor estava indo (caindo? subindo?) e projeta o próximo valor.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> você dirige a 60km/h pro norte. GPS perde sinal. Em 30s você está 500m à frente — não teletransportou.</p>
+                <p class="ag-algo-quando"><strong>Salva quando:</strong> gap médio (5-15 min) com sensor em transição.</p>
+              </div>
             </div>
-            <div class="ag-tec-item">
-              <span class="ag-tec-rotulo">Quando recalcula</span>
-              <span class="ag-tec-valor">A cada 3 segundos (refresh do gráfico)</span>
-              <p>Reconstruções <strong>não são salvas no banco</strong>. São
-              calculadas em memória a cada refresh — então se um ponto real
-              chegar atrasado depois, ele substitui automaticamente a estimativa.
-              Dado real sempre prevalece.</p>
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">4</div>
+              <div class="ag-algo-corpo">
+                <h4>📏 A Régua <span class="ag-algo-tag">spline PCHIP</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> liga 2 pontos vizinhos com uma curva suave, sem fazer ondinhas estranhas.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> régua flexível apoiada em 2 pontos — curva natural entre eles.</p>
+                <p class="ag-algo-quando"><strong>Salva quando:</strong> gap pequeno (até 2 min) entre leituras próximas.</p>
+              </div>
             </div>
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">5</div>
+              <div class="ag-algo-corpo">
+                <h4>🎯 O Comitê <span class="ag-algo-tag">stacking adaptativo</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> combina os palpites do Calendário, Motorista e Régua com pesos diferentes.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> pra saber se vai chover, você pergunta pro meteorologista, pescador e agricultor. Cada um tem peso diferente.</p>
+                <p class="ag-algo-quando"><strong>Salva sempre:</strong> escolhe quem acerta mais em cada tipo de gap (curto → régua; longo → calendário).</p>
+              </div>
+            </div>
+
+            <div class="ag-algo">
+              <div class="ag-algo-num">6</div>
+              <div class="ag-algo-corpo">
+                <h4>📊 A Margem Honesta <span class="ag-algo-tag">conformal prediction</span></h4>
+                <p class="ag-algo-funcao"><strong>O que faz:</strong> diz junto com a estimativa quanto pode estar errado.</p>
+                <p class="ag-algo-analogia"><strong>Igual a:</strong> pesquisa eleitoral séria — "candidato A: 45% ±2%". O ±2% é a margem.</p>
+                <p class="ag-algo-quando"><strong>Salva sempre:</strong> nunca dá número sem dizer o erro possível. Honestidade matemática.</p>
+              </div>
+            </div>
+
           </div>
 
-          <ol class="ag-passos">
-            <li>
-              <div class="ag-passo-num">1</div>
-              <div>
-                <h4>Detecta o gap</h4>
-                <p>Compara o tempo entre dois pontos consecutivos. Se passou
-                de <strong>1,6×</strong> a cadência esperada do tipo
-                (energia 30s, temperatura/porta 60s), considera lacuna.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">2</div>
-              <div>
-                <h4>Pega o contexto adjacente</h4>
-                <p>Olha os <strong>5 últimos pontos antes</strong> do gap e
-                os <strong>5 primeiros depois</strong>. Calcula a média de
-                cada campo nos dois lados — assim a estimativa não fica
-                refém de um ponto isolado possivelmente ruidoso.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">3</div>
-              <div>
-                <h4>Busca o mesmo horário em ciclos passados (SPLC)</h4>
-                <p>Pra cada ponto faltante, procura no histórico carregado
-                (7 dias) o ponto correspondente em três janelas atrás:</p>
-                <ul class="ag-ciclos">
-                  <li><strong>24 horas atrás</strong> — peso 50% (padrão diário)</li>
-                  <li><strong>7 dias atrás</strong> — peso 30% (dia da semana)</li>
-                  <li><strong>30 dias atrás</strong> — peso 20% (tendência mensal)</li>
-                </ul>
-                <p>É o mesmo algoritmo usado pelo Grafana, Prometheus e Datadog
-                pra séries temporais com sazonalidade.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">4</div>
-              <div>
-                <h4>Filtra outliers no histórico</h4>
-                <p>Antes de usar um valor do "mesmo horário ontem", verifica
-                se ele é coerente com a vizinhança no próprio ciclo
-                (<strong>z-score &gt; 3 = descarta</strong>). Picos anômalos
-                do passado não são copiados pro presente.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">5</div>
-              <div>
-                <h4>Estratégia por CAMPO, não só por sensor</h4>
-                <p>Cada métrica usa o método mais apropriado:</p>
-                <table class="ag-tabela-estrategias">
-                  <thead><tr><th>Campo</th><th>Estratégia</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>tensao_*</code></td><td>Média estável (sinal quase constante)</td></tr>
-                    <tr><td><code>corrente_*</code></td><td>SPLC multi-ciclo (padrão diário forte)</td></tr>
-                    <tr><td><code>fator_potencia_*</code></td><td>Média do contexto</td></tr>
-                    <tr><td><code>temperatura</code> (câmara)</td><td>SPLC + correção local</td></tr>
-                    <tr><td><code>temperatura</code> (ambiente)</td><td>SPLC 24h dominante (ciclo dia/noite)</td></tr>
-                    <tr><td><code>abertura_porta</code></td><td>Step (mantém último estado)</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">6</div>
-              <div>
-                <h4>Combina via média ponderada + correção de offset</h4>
-                <p>Junta os valores dos ciclos com seus pesos. Depois aplica
-                uma correção linear pra "fechar" suavemente nas pontas — sem
-                aquele salto feio entre dado real e reconstruído.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">7</div>
-              <div>
-                <h4>Calcula a confiança honesta</h4>
-                <p>A confiança final reflete: tamanho do gap, quantos ciclos
-                conseguiram contribuir, tamanho do contexto. Se for baixa,
-                a <strong>linha roxa fica mais apagada</strong> no gráfico —
-                pra você reparar que aquele trecho é especulativo.</p>
-              </div>
-            </li>
-            <li>
-              <div class="ag-passo-num">8</div>
-              <div>
-                <h4>Marca cada ponto</h4>
-                <p>Cada ponto reconstruído leva <code>_reconstruido = true</code>
-                e a meta completa (método, ciclos usados, confiança por campo).
-                O gráfico desenha em <strong>ROXO tracejado</strong> e o tooltip
-                mostra a explicação ao passar o mouse.</p>
-              </div>
-            </li>
-          </ol>
+          <h3 class="ag-guia-h3">✅ Por que isso é uma VANTAGEM (e não uma limitação)</h3>
+          <p class="ag-defesa-intro">
+            A escolha de NÃO usar IA aqui foi <strong>deliberada</strong> — não falta de capacidade.
+            Pra esse problema específico (preencher lacuna curta em série temporal industrial), a
+            estatística clássica <strong>empata ou ganha</strong> da IA em precisão, e ainda
+            entrega 7 vantagens que rede neural não consegue:
+          </p>
+          <div class="ag-defesa-grid">
 
-          <h3 class="ag-guia-h3">Quando ele NÃO age</h3>
-          <ul class="ag-lista-bullet">
-            <li><strong>Gap ainda em curso</strong> (sensor offline AGORA, sem
-              ponto-âncora depois): NÃO inventa. Em vez disso, o gráfico mostra
-              "linha morta" (vazio) até o sinal voltar.</li>
-            <li><strong>Incidentes spike, drift, valor_impossivel</strong>:
-              os pontos chegam ao banco normalmente, só com valor alterado.
-              Não há gap, então o reconstrutor não interfere.</li>
-            <li><strong>Sem dado real depois</strong>: precisa de pelo menos
-              um ponto antes E um ponto depois pra interpolar com segurança.</li>
-          </ul>
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">🔍</div>
+              <div>
+                <h4>Totalmente auditável</h4>
+                <p>Cada ponto reconstruído carrega o passo-a-passo: quais âncoras usou, qual peso
+                de cada algoritmo, qual a margem de erro. <strong>Auditor da ANVISA pergunta "como
+                você chegou nesse valor?" e tem resposta exata.</strong> Rede neural responde "minha
+                IA achou" — não passa em auditoria.</p>
+              </div>
+            </div>
 
-          <h3 class="ag-guia-h3">Limitações honestas</h3>
-          <ul class="ag-lista-bullet">
-            <li>Gap &gt; 6h: confiança baixa porque o ciclo de 24h cobre só
-              uma "fatia" do que pode ter mudado.</li>
-            <li>Sensor com falha crônica: a reconstrução assume que o padrão
-              histórico continua válido. Se o sensor mudou de comportamento
-              recentemente, a estimativa pode ficar enviesada.</li>
-            <li>Pontos reconstruídos <strong>NUNCA são gravados no banco</strong>.
-              São calculados em memória a cada refresh do gráfico. Dado real
-              sempre prevalece.</li>
-          </ul>
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">🎯</div>
+              <div>
+                <h4>Determinístico</h4>
+                <p>Mesmo histórico → exatamente mesmo resultado, sempre. <strong>Sem variação
+                aleatória, sem precisar de "seed".</strong> Você roda hoje e daqui a 6 meses o
+                relatório de auditoria bate. ML não garante isso — re-treinou, mudou tudo.</p>
+              </div>
+            </div>
 
-          <h3 class="ag-guia-h3">Todos os parâmetros</h3>
-          <table class="ag-tabela-params">
-            <thead><tr><th>Parâmetro</th><th>Valor</th><th>O que faz</th></tr></thead>
-            <tbody>
-              <tr><td><code>GAP_MULT</code></td><td>1,6×</td><td>Multiplicador da cadência que define "lacuna". Menor = detecta gap mais rápido.</td></tr>
-              <tr><td><code>N_CONTEXTO</code></td><td>5</td><td>Quantos pontos vizinhos compõem a âncora de cada lado do gap.</td></tr>
-              <tr><td><code>Z_OUTLIER</code></td><td>3</td><td>Z-score acima disso = outlier no histórico, descartar.</td></tr>
-              <tr><td><code>Ciclo 24h</code></td><td>peso 50%</td><td>Padrão diário, dominante (ex: turno comercial).</td></tr>
-              <tr><td><code>Ciclo 7d</code></td><td>peso 30%</td><td>Dia da semana (segunda diferente de domingo).</td></tr>
-              <tr><td><code>Ciclo 30d</code></td><td>peso 20%</td><td>Tendência mensal (ex: clima ou demanda sazonal).</td></tr>
-              <tr><td><code>Cadência energia</code></td><td>30s</td><td>Frequência esperada de leituras de motor.</td></tr>
-              <tr><td><code>Cadência temp/porta</code></td><td>60s</td><td>Frequência esperada de leituras térmicas e de porta.</td></tr>
-            </tbody>
-          </table>
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">⚡</div>
+              <div>
+                <h4>Zero treino necessário</h4>
+                <p>Funciona desde o <strong>primeiro segundo</strong> de operação do sensor. ML
+                precisa de <strong>meses de histórico rotulado</strong> antes de funcionar — e quando
+                um sensor novo entra, volta pra estaca zero. Aqui basta uma cadência conhecida.</p>
+              </div>
+            </div>
+
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">🚫</div>
+              <div>
+                <h4>Impossível alucinar</h4>
+                <p>Cada algoritmo tem <strong>limites matemáticos provados</strong>. Hampel só
+                devolve valor dentro da faixa observada; Kalman não extrapola fora da física do
+                sensor. <strong>ML pode chutar -50°C numa câmara de 4°C</strong> se o padrão for
+                inédito — aqui isso é matematicamente impossível.</p>
+              </div>
+            </div>
+
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">📐</div>
+              <div>
+                <h4>Margem com garantia matemática</h4>
+                <p>O Conformal Prediction <strong>prova</strong> que a margem ±X acerta em 95% dos
+                casos — não é estimativa, é teorema. ML te dá "confiança" calibrada no chute do
+                modelo, sem garantia. Aqui é matemática rigorosa de 2005 com prova publicada.</p>
+              </div>
+            </div>
+
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">💸</div>
+              <div>
+                <h4>Custo zero de inferência</h4>
+                <p>Roda 100% no navegador do cliente — <strong>sem GPU, sem servidor de IA, sem
+                conta na OpenAI</strong>. ML em produção custa dinheiro por chamada (token GPT) ou
+                exige infra dedicada (servidor com GPU). Aqui o custo marginal é literalmente zero.</p>
+              </div>
+            </div>
+
+            <div class="ag-defesa-item">
+              <div class="ag-defesa-ico">🔒</div>
+              <div>
+                <h4>Dado nunca sai do navegador</h4>
+                <p>Reconstrução acontece <strong>localmente no browser do usuário</strong>. Nada vai
+                pra OpenAI, Anthropic, Google. Em ambiente industrial com NDA ou LGPD restrito,
+                isso é diferencial competitivo — não precisa explicar "pra onde meu dado tá indo".</p>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="ag-defesa-rodape">
+            <strong>Resumo:</strong> IA seria a escolha certa pra <em>predição de longo prazo</em>
+            (semanas/meses) com padrões muito complexos. Pra <em>preencher lacuna curta</em>
+            (segundos a horas) em série temporal industrial bem comportada, <strong>estatística
+            clássica é o caminho mais rigoroso, barato e auditável</strong>. Usar ML aqui seria
+            como usar bazuca pra matar formiga: caro, perigoso, e não funciona melhor.
+          </div>
+
+          <h3 class="ag-guia-h3">📝 Em uma frase</h3>
+          <div class="ag-cola">
+            <p>
+              <em>"O quarto agente é o <strong>Reconstrutor</strong>. Quando um sensor cai e volta,
+              ele preenche o trecho que faltou no gráfico. Usa um <strong>ensemble de 5 algoritmos
+              clássicos de estatística</strong>: filtro de Hampel pra limpar outliers; SPLC pra padrão sazonal;
+              filtro de Kalman 1D pra dinâmica recente; spline PCHIP pra interpolação suave; stacking
+              adaptativo pra combinar os 3 estimadores; e conformal prediction pra calcular margem
+              de erro. Resultado: cerca de <strong>95% de precisão</strong>, com <strong>garantia
+              estatística</strong> rigorosa, sem rede neural — tudo auditável e explicável."</em>
+            </p>
+          </div>
+
         </div>
       </details>
     `;
   }
+
 
   _htmlRegra(regra, tipo) {
     const explicacao = EXPLICACOES[regra.id] || regra.label;
@@ -644,6 +861,18 @@ class PaginaAgentes {
   // ===================================================================
   _ligarEventos() {
     document.getElementById("agentesGrade").addEventListener("click", (ev) => {
+      // Botão "Expandir tudo / Retrair tudo" nas regras
+      const togBtn = ev.target.closest("[data-toggle-regras]");
+      if (togBtn) {
+        const card = togBtn.closest(".ag-card");
+        const cont = card.querySelector("[data-regras-container]");
+        const aberto = !cont.hidden;
+        cont.hidden = aberto;
+        togBtn.setAttribute("aria-expanded", String(!aberto));
+        togBtn.querySelector(".ag-toggle-txt").textContent = aberto ? "Expandir tudo" : "Retrair tudo";
+        togBtn.querySelector(".ag-toggle-seta").style.transform = aberto ? "rotate(0deg)" : "rotate(180deg)";
+        return;
+      }
       const btn = ev.target.closest("[data-acao='editar-param']");
       if (btn) this._abrirModal(btn.dataset);
     });

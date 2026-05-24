@@ -29,13 +29,13 @@ class PaginaRecuperar {
     this._carregando(true);
     try {
       await Autenticacao.pedirRecuperacao(email);
-      // Sempre o mesmo texto (independente da existência da conta).
-      this._msg(null, "Se este e-mail tiver conta, enviaremos um link de redefinição em alguns segundos. Verifique também a pasta de spam.");
+      this._msg(null, `Enviamos um link de redefinição pra ${email}. Confira sua caixa de entrada (e a pasta de spam) — chega em alguns segundos.`);
       this.form.reset();
     } catch (err) {
-      // pedirRecuperacao engole erros do servidor, então esse catch é
-      // só pra problemas de rede/validação.
-      this._msg("Não foi possível enviar agora. Tente de novo em instantes.", null);
+      // pedirRecuperacao agora lança erros específicos por código.
+      // Mostramos a mensagem direta — incluindo "conta não encontrada".
+      const msg = err?.message || "Não foi possível enviar agora. Tente de novo em instantes.";
+      this._msg(msg, null);
     } finally {
       this._carregando(false);
     }

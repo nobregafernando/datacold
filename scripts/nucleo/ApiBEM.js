@@ -80,12 +80,25 @@ class ApiBEM {
     const jwt = this._jwt();
     if (jwt) corpo.jwt = jwt;
 
-    const resp = await fetch(this.proxyUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(corpo),
-      cache: "no-store",
-    });
+    // Timeout de 20s — sem isso, em rede lenta a página fica "Carregando..."
+    // pra sempre. Com AbortController, falha em 20s e exibe erro claro.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    let resp;
+    try {
+      resp = await fetch(this.proxyUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(corpo),
+        cache: "no-store",
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === "AbortError") throw new Error("Timeout: API demorou >20s pra responder");
+      throw e;
+    }
+    clearTimeout(timer);
     const texto = await resp.text().catch(() => "");
     let dados;
     try { dados = texto ? JSON.parse(texto) : null; }

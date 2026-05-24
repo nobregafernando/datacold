@@ -323,9 +323,11 @@ begin
 exception when others then null;
 end$$;
 
--- Cron: roda sim_tick() a cada 1 min
+-- Cron: roda sim_tick() a cada 3 segundos (sintaxe sub-minuto do pg_cron 1.4+).
+-- Antes era '* * * * *' (1 ponto/min); agora cada sensor recebe ~20 pontos/min,
+-- fazendo o velocímetro/gráfico ficarem "ao vivo" pra valer.
 select cron.schedule(
   'datacold_simulador_tick',
-  '* * * * *',
+  '3 seconds',
   $$ select sim_tick(); $$
 );

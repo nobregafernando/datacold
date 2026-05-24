@@ -144,6 +144,22 @@
   50%      { transform: rotate(0); }
 }
 
+/* Pisca rápido + halo quando chega notificação nova.
+   Disparado por JS adicionando .piscando ao sino por ~1.6s.
+   Sobrescreve a animação "balanco" enquanto ativa. */
+.mt-sino.piscando{
+  animation: mtSinoPiscar 0.45s ease-in-out 0s 3 alternate !important;
+  box-shadow: 0 0 0 4px rgba(30,111,214,.20), 0 0 22px rgba(30,111,214,.50);
+}
+@keyframes mtSinoPiscar{
+  0%   { transform: rotate(-14deg) scale(1.06); background: rgba(30,111,214,.18); }
+  50%  { transform: rotate(0) scale(1.12);      background: rgba(30,111,214,.32); }
+  100% { transform: rotate(14deg) scale(1.06);  background: rgba(30,111,214,.18); }
+}
+@media (prefers-reduced-motion: reduce){
+  .mt-sino.piscando, .mt-sino.tem-critica{ animation: none !important; }
+}
+
 .mt-badge{
   position: absolute;
   top: -5px;

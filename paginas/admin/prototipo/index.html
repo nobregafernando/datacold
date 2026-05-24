@@ -75,19 +75,19 @@
 </script>
 <!-- GUARDA-AUTH:FIM -->
 <title>DataCold · Protótipo</title>
-<link rel="icon" href="/favicon.ico?v=1779635887949" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779635887949">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779635887949">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779635887949">
+<link rel="icon" href="/favicon.ico?v=1779652097937" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779652097937">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779652097937">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779652097937">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779635887949">
-<link rel="stylesheet" href="estilo.css?v=1779635887949">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779652097937">
+<link rel="stylesheet" href="estilo.css?v=1779652097937">
 </head>
 <body>
 
@@ -105,366 +105,435 @@
       <p>Como os dados saem do chão de fábrica e chegam até o app, com resiliência contra queda de internet.</p>
     </header>
 
-    <!-- ============ Seção 0: 3 Modelos de Instalação ============ -->
+    <!-- ============ Seção 1: Três modelos de instalação ============ -->
     <section class="proto-secao">
       <header class="proto-secao-head">
         <h2>Três modelos de instalação</h2>
-        <p>A topologia muda com a escala — de uma prova de conceito (1 sensor) até a planta inteira com vários quadros distribuídos. Em todos, o protocolo entre sensor e logger é <strong>RS-485 / Modbus RTU</strong>; do logger pra cima é <strong>MQTT</strong>.</p>
+        <p>A topologia muda com a escala — de prova de conceito (1 sensor) até a planta inteira (vários quadros distribuídos). Em todos, o protocolo entre sensor e logger é <strong>RS-485 Modbus RTU</strong>; do logger pra cima é <strong>MQTT</strong>.</p>
       </header>
 
-      <div class="modelos-coluna">
+      <div class="mods-grid">
 
-        <!-- ===================== Modelo 1 ===================== -->
-        <article class="modelo modelo-1">
-          <header class="modelo-head">
-            <span class="modelo-num">1</span>
-            <div>
+        <!-- ============================ Modelo 1 ============================ -->
+        <article class="mod mod-1">
+          <header class="mod-head">
+            <span class="mod-num">1</span>
+            <div class="mod-tit">
               <h3>Único sensor</h3>
-              <span class="modelo-sub">Prova de conceito · monitoramento pontual</span>
+              <span class="mod-sub">Prova de conceito · 1 ponto</span>
             </div>
-            <span class="modelo-tag tag-verde">Mais simples</span>
           </header>
 
-          <!-- Fluxo visual com setas -->
-          <div class="mflow">
-            <div class="mnode mnode-equip">
-              <div class="mn-emoji">🏭</div>
-              <div class="mn-titulo">Equipamento</div>
-              <div class="mn-sub">máquina/câmara medida</div>
+          <div class="mod-fluxo">
+            <div class="mn">
+              <span class="mn-ico">🏭</span>
+              <div class="mn-txt"><b>Equipamento</b><small>máquina ou câmara medida</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">leitura física</span></div>
+            <div class="mn-seta"><span class="mn-rot">leitura física</span></div>
 
-            <div class="mnode mnode-sensor">
-              <div class="mn-emoji">🌡️</div>
-              <div class="mn-titulo">1 Sensor</div>
-              <div class="mn-sub">temperatura, energia ou porta</div>
+            <div class="mn">
+              <span class="mn-ico">🌡️</span>
+              <div class="mn-txt"><b>1 Sensor</b><small>temperatura, energia ou porta</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl tag-azul">RS-485 · Modbus RTU</span></div>
+            <div class="mn-seta"><span class="mn-rot proto-azul">RS-485 · Modbus RTU</span></div>
 
-            <div class="mnode mnode-logger">
-              <div class="mn-emoji">📟</div>
-              <div class="mn-titulo">Logger</div>
-              <div class="mn-sub">DCLogger / ESP32 / RPi</div>
+            <div class="mn">
+              <span class="mn-ico">📟</span>
+              <div class="mn-txt"><b>Logger</b><small>ESP32 / RPi / DCLogger</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl tag-roxa">MQTT direto · Wi-Fi/4G</span></div>
+            <div class="mn-seta"><span class="mn-rot proto-roxa">Wi-Fi / 4G · MQTT</span></div>
 
-            <div class="mnode mnode-net">
-              <div class="mn-emoji">📡</div>
-              <div class="mn-titulo">Internet</div>
-              <div class="mn-sub">Wi-Fi da fábrica ou 4G</div>
+            <div class="mn">
+              <span class="mn-ico">☁️</span>
+              <div class="mn-txt"><b>Nuvem</b><small>broker + ingestão</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">HTTPS</span></div>
+            <div class="mn-seta"><span class="mn-rot">SQL</span></div>
 
-            <div class="mnode mnode-nuvem">
-              <div class="mn-emoji">☁️</div>
-              <div class="mn-titulo">Nuvem</div>
-              <div class="mn-sub">broker MQTT na nuvem</div>
+            <div class="mn">
+              <span class="mn-ico">🗄️</span>
+              <div class="mn-txt"><b>Banco</b><small>histórico time-series</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">grava</span></div>
+            <div class="mn-seta"><span class="mn-rot">API REST</span></div>
 
-            <div class="mnode mnode-banco">
-              <div class="mn-emoji">🗄️</div>
-              <div class="mn-titulo">Banco</div>
-              <div class="mn-sub">histórico time-series</div>
-            </div>
-            <div class="marrow"><span class="marrow-lbl">API REST</span></div>
-
-            <div class="mnode mnode-app">
-              <div class="mn-emoji">📱</div>
-              <div class="mn-titulo">Web / App</div>
-              <div class="mn-sub">painel ao vivo</div>
+            <div class="mn">
+              <span class="mn-ico">📱</span>
+              <div class="mn-txt"><b>Web / App</b><small>painel ao vivo</small></div>
             </div>
           </div>
 
-          <!-- Dicas visuais (entenda cada peça) -->
-          <div class="dicas-grade">
-            <div class="dica dica-fabrica">
-              <span class="dica-ico">🏭</span>
-              <h4>Equipamento</h4>
-              <p>É o que você quer medir: um motor, uma câmara fria, uma porta. O sensor "lê" alguma grandeza dele (calor, corrente, abertura).</p>
-            </div>
-            <div class="dica dica-sensor">
-              <span class="dica-ico">🌡️</span>
-              <h4>Sensor</h4>
-              <p>Transdutor físico. Converte a grandeza (°C, A, V, contato) em sinal elétrico digital.</p>
-              <span class="dica-pin">Modbus RTU sobre RS-485 · até 32 dispositivos por barramento</span>
-            </div>
-            <div class="dica dica-logger">
-              <span class="dica-ico">📟</span>
-              <h4>Logger</h4>
-              <p>"Tradutor". Lê o sensor pelo cabo RS-485 e fala MQTT na rede. Tem RAM/Flash pra segurar dados se a internet cair (16-64 MB).</p>
-            </div>
-            <div class="dica dica-nuvem">
-              <span class="dica-ico">☁️</span>
-              <h4>Nuvem</h4>
-              <p>Recebe via MQTT, valida, grava no banco. Aqui já estamos fora da fábrica.</p>
-            </div>
-            <div class="dica dica-app">
-              <span class="dica-ico">📱</span>
-              <h4>Web / App</h4>
-              <p>Consulta a API pra mostrar gráficos, alertas e o painel ao vivo.</p>
-            </div>
+          <div class="mod-foot">
+            <p><b>Quando usar:</b> teste inicial, equipamento isolado, validação do canal sensor → nuvem.</p>
+            <p class="aviso"><b>⚠ Atenção:</b> sem broker local. Se a internet cair, o logger só guarda em RAM/Flash (16-64 MB).</p>
           </div>
 
-          <ul class="modelo-bullets">
-            <li><b>1 sensor</b> → <b>1 logger</b> via <b>RS-485 Modbus RTU</b></li>
-            <li>Logger sobe direto pra nuvem (<b>sem broker / sem switch local</b>)</li>
-            <li class="aviso">Se a internet cair, o logger guarda em memória interna (16-64 MB) e re-envia. Sem fila externa = capacidade limitada.</li>
-          </ul>
-          <div class="modelo-uso">
-            <strong>Quando usar:</strong> teste inicial, validação do canal sensor→nuvem, 1 equipamento isolado.
+          <div class="orca">
+            <div class="orca-head">
+              <span class="orca-tit">💰 Orçamento estimado</span>
+              <span class="orca-total tag-verde">R$ 400 – R$ 700</span>
+            </div>
+            <div class="orca-grid">
+              <div class="orca-item"><span class="o-l">Sensor (temp/energia/porta)</span><span class="o-v">R$ 80 – 200</span></div>
+              <div class="orca-item"><span class="o-l">Logger (ESP32 / RPi Zero)</span><span class="o-v">R$ 80 – 150</span></div>
+              <div class="orca-item"><span class="o-l">Fonte 12V + cabos</span><span class="o-v">R$ 60</span></div>
+              <div class="orca-item"><span class="o-l">Case IP65 + conectores</span><span class="o-v">R$ 80</span></div>
+              <div class="orca-item"><span class="o-l">Plano 4G / SIM (opcional)</span><span class="o-v">R$ 30/mês</span></div>
+            </div>
+            <span class="orca-nota">Setup em 1 dia · não inclui mão-de-obra de instalação.</span>
           </div>
         </article>
 
-        <!-- ===================== Modelo 2 ===================== -->
-        <article class="modelo modelo-2 destacado">
-          <header class="modelo-head">
-            <span class="modelo-num">2</span>
-            <div>
+        <!-- ============================ Modelo 2 ============================ -->
+        <article class="mod mod-2 destacado">
+          <header class="mod-head">
+            <span class="mod-num">2</span>
+            <div class="mod-tit">
               <h3>Múltiplos sensores concentrados</h3>
-              <span class="modelo-sub">Vários sensores no mesmo ponto · detalhado abaixo ↓</span>
+              <span class="mod-sub">Vários sensores no mesmo ponto</span>
             </div>
-            <span class="modelo-tag tag-azul">Este protótipo</span>
+            <span class="mod-tag">este protótipo</span>
           </header>
 
-          <div class="mflow">
-            <div class="mnode mnode-equip">
-              <div class="mn-emoji">🏭</div>
-              <div class="mn-titulo">Equipamento</div>
-              <div class="mn-sub">1 ambiente / 1 máquina</div>
+          <div class="mod-fluxo">
+            <div class="mn">
+              <span class="mn-ico">🏭</span>
+              <div class="mn-txt"><b>Equipamento</b><small>1 ambiente / 1 máquina</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">leituras</span></div>
+            <div class="mn-seta"><span class="mn-rot">leituras</span></div>
 
-            <div class="mnode mnode-sensor mnode-cluster">
-              <div class="mn-emoji">🌡️ ⚡ 🚪</div>
-              <div class="mn-titulo">N sensores</div>
-              <div class="mn-sub">temp · energia · porta…</div>
+            <div class="mn mn-multi">
+              <span class="mn-ico">🌡️⚡🚪</span>
+              <div class="mn-txt"><b>N sensores</b><small>temp · energia · porta…</small></div>
             </div>
-            <div class="marrow">
-              <span class="marrow-lbl tag-azul">RS-485 · Modbus RTU</span>
-              <small class="marrow-tip">1 barramento, N endereços</small>
-            </div>
+            <div class="mn-seta"><span class="mn-rot proto-azul">RS-485 · Modbus RTU</span></div>
 
-            <div class="mnode mnode-logger">
-              <div class="mn-emoji">📟</div>
-              <div class="mn-titulo">1 Logger</div>
-              <div class="mn-sub">multiplexa os N sensores</div>
+            <div class="mn">
+              <span class="mn-ico">📟</span>
+              <div class="mn-txt"><b>1 Logger</b><small>multiplexa os N sensores</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">cabo Ethernet</span></div>
+            <div class="mn-seta"><span class="mn-rot">cabo Ethernet</span></div>
 
-            <div class="mnode mnode-rede">
-              <div class="mn-emoji">🔀</div>
-              <div class="mn-titulo">Switch</div>
-              <div class="mn-sub">rede local da fábrica</div>
+            <div class="mn">
+              <span class="mn-ico">🔀</span>
+              <div class="mn-txt"><b>Switch + APs</b><small>rede local · failover</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">Wi-Fi industrial</span></div>
+            <div class="mn-seta"><span class="mn-rot proto-roxa">MQTT</span></div>
 
-            <div class="mnode mnode-rede">
-              <div class="mn-emoji">📡</div>
-              <div class="mn-titulo">APs Wi-Fi</div>
-              <div class="mn-sub">redundância (3× failover)</div>
+            <div class="mn mn-broker">
+              <span class="mn-ico">🖥️</span>
+              <div class="mn-txt"><b>Servidor local</b><small>broker MQTT + fila/HD</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl tag-roxa">MQTT</span></div>
+            <div class="mn-seta"><span class="mn-rot proto-ciano">HTTPS · sync</span></div>
 
-            <div class="mnode mnode-broker">
-              <div class="mn-emoji">🖥️</div>
-              <div class="mn-titulo">Servidor local</div>
-              <div class="mn-sub">broker MQTT + fila/HD</div>
+            <div class="mn">
+              <span class="mn-ico">☁️</span>
+              <div class="mn-txt"><b>Nuvem</b><small>recebe quando há internet</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl tag-ciano">HTTPS / sync</span></div>
+            <div class="mn-seta"><span class="mn-rot">SQL</span></div>
 
-            <div class="mnode mnode-nuvem">
-              <div class="mn-emoji">☁️</div>
-              <div class="mn-titulo">Nuvem</div>
-              <div class="mn-sub">recebe quando há internet</div>
+            <div class="mn">
+              <span class="mn-ico">🗄️</span>
+              <div class="mn-txt"><b>Banco</b><small>histórico consolidado</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">grava</span></div>
+            <div class="mn-seta"><span class="mn-rot">API</span></div>
 
-            <div class="mnode mnode-banco">
-              <div class="mn-emoji">🗄️</div>
-              <div class="mn-titulo">Banco</div>
-              <div class="mn-sub">histórico consolidado</div>
-            </div>
-            <div class="marrow"><span class="marrow-lbl">API</span></div>
-
-            <div class="mnode mnode-app">
-              <div class="mn-emoji">📱</div>
-              <div class="mn-titulo">Web / App</div>
-              <div class="mn-sub">monitoramento</div>
+            <div class="mn">
+              <span class="mn-ico">📱</span>
+              <div class="mn-txt"><b>Web / App</b><small>monitoramento ao vivo</small></div>
             </div>
           </div>
 
-          <div class="dicas-grade">
-            <div class="dica dica-sensor">
-              <span class="dica-ico">🌡️⚡🚪</span>
-              <h4>Vários sensores</h4>
-              <p>Temperatura, energia, porta — tudo no <strong>mesmo barramento RS-485</strong>. Cada sensor tem um <strong>endereço Modbus único</strong> (1, 2, 3…).</p>
-            </div>
-            <div class="dica dica-logger">
-              <span class="dica-ico">📟</span>
-              <h4>Logger central</h4>
-              <p>Faz <strong>polling</strong> sequencial: pergunta pro sensor 1, depois 2, depois 3… Empacota tudo e publica como MQTT.</p>
-            </div>
-            <div class="dica dica-rede">
-              <span class="dica-ico">🔀</span>
-              <h4>Switch + APs Wi-Fi</h4>
-              <p>Switch interconecta logger ↔ servidor. APs adicionam redundância — se um cair, o outro mantém a comunicação.</p>
-            </div>
-            <div class="dica dica-broker">
-              <span class="dica-ico">🖥️</span>
-              <h4>Servidor / Broker local</h4>
-              <p>Roda Mosquitto/EMQX. Tem <strong>fila persistente em disco</strong>: se a internet cair, segura tudo e re-envia depois.</p>
-              <span class="dica-pin">É o ponto-chave da resiliência</span>
-            </div>
-            <div class="dica dica-nuvem">
-              <span class="dica-ico">☁️</span>
-              <h4>Nuvem + Banco</h4>
-              <p>Consolida dados de longo prazo, expõe API REST. Painel web e app consomem daqui.</p>
-            </div>
+          <div class="mod-foot">
+            <p><b>Quando usar:</b> 1 equipamento crítico, 1 câmara, 1 sala. Sensores fisicamente próximos.</p>
+            <p class="ok"><b>✓ Resiliência total:</b> a fila no disco do servidor local segura tudo se a internet cair. <b>Zero perda.</b></p>
           </div>
 
-          <ul class="modelo-bullets">
-            <li><b>Vários sensores</b> num <b>mesmo ponto físico</b> (temp + energia + porta)</li>
-            <li>Conectados ao <b>mesmo barramento RS-485</b> · cada um com endereço Modbus diferente</li>
-            <li>1 logger → switch → APs Wi-Fi → <b>servidor local com broker MQTT + fila</b></li>
-            <li class="ok">Resiliência total: se a internet cair, <b>zero perda de dados</b> (fila no disco do servidor)</li>
-          </ul>
-          <div class="modelo-uso">
-            <strong>Quando usar:</strong> 1 equipamento crítico ou 1 câmara fria com vários sensores próximos. <em>É o que está rodando neste protótipo.</em>
+          <div class="orca">
+            <div class="orca-head">
+              <span class="orca-tit">💰 Orçamento estimado</span>
+              <span class="orca-total tag-azul">R$ 4.000 – R$ 7.500</span>
+            </div>
+            <div class="orca-grid">
+              <div class="orca-item"><span class="o-l">3-5 sensores diversos</span><span class="o-v">R$ 600 – 1.500</span></div>
+              <div class="orca-item"><span class="o-l">1 Logger industrial / DCLogger</span><span class="o-v">R$ 800 – 1.500</span></div>
+              <div class="orca-item"><span class="o-l">Servidor local (mini-PC / RPi 4)</span><span class="o-v">R$ 800 – 1.500</span></div>
+              <div class="orca-item"><span class="o-l">Switch industrial 8 portas</span><span class="o-v">R$ 300 – 500</span></div>
+              <div class="orca-item"><span class="o-l">AP Wi-Fi industrial (3× failover)</span><span class="o-v">R$ 600 – 1.800</span></div>
+              <div class="orca-item"><span class="o-l">Nobreak 12V (Intelbras EFB 1201)</span><span class="o-v">R$ 200</span></div>
+              <div class="orca-item"><span class="o-l">Cabeamento + case + conectores</span><span class="o-v">R$ 500</span></div>
+              <div class="orca-item destaque"><span class="o-l">Instalação + setup (mão-de-obra)</span><span class="o-v">R$ 500 – 1.000</span></div>
+            </div>
+            <span class="orca-nota">Setup em 1-2 dias · valor único (sem mensalidade local).</span>
           </div>
         </article>
 
-        <!-- ===================== Modelo 3 ===================== -->
-        <article class="modelo modelo-3">
-          <header class="modelo-head">
-            <span class="modelo-num">3</span>
-            <div>
+        <!-- ============================ Modelo 3 ============================ -->
+        <article class="mod mod-3">
+          <header class="mod-head">
+            <span class="mod-num">3</span>
+            <div class="mod-tit">
               <h3>Múltiplos sensores distribuídos</h3>
-              <span class="modelo-sub">Vários pontos da planta · quadros separados</span>
+              <span class="mod-sub">Vários pontos · quadros separados</span>
             </div>
-            <span class="modelo-tag tag-roxa">Escala industrial</span>
+            <span class="mod-tag tag-roxa">escala industrial</span>
           </header>
 
-          <div class="mflow mflow-multi">
+          <!-- Fluxo único horizontal: quadros à esquerda → ponto central → resto -->
+          <div class="mod-fluxo">
 
-            <!-- 3 quadros + SVG de convergência (3 linhas → 1 ponto) -->
-            <div class="mn-quadros-grupo">
-              <div class="mn-coluna-quadros">
-                <div class="mq-card">
-                  <span class="mq-titulo">Quadro A · <em>Extrusão</em></span>
-                  <div class="mq-chain">
-                    <span title="Equipamento">🏭</span>
-                    <span class="mq-set">→</span>
-                    <span title="Sensores">🌡️⚡</span>
-                    <span class="mq-set">→</span>
-                    <span title="Logger">📟</span>
-                    <span class="mq-set">→</span>
-                    <span title="Switch local">🔀</span>
-                  </div>
-                  <span class="mq-leg">Modbus → Ethernet local</span>
+            <!-- Coluna com 3 quadros independentes -->
+            <div class="quadros-grupo">
+              <div class="quadro">
+                <div class="q-titulo">Quadro A · <em>Extrusão</em></div>
+                <div class="q-chain">
+                  <span>🏭</span><span class="q-set">→</span>
+                  <span>🌡️⚡</span><span class="q-set">→</span>
+                  <span>📟</span><span class="q-set">→</span>
+                  <span>🔀</span>
                 </div>
-                <div class="mq-card">
-                  <span class="mq-titulo">Quadro B · <em>Câmara fria</em></span>
-                  <div class="mq-chain">
-                    <span>🏭</span><span class="mq-set">→</span><span>🌡️🚪</span><span class="mq-set">→</span><span>📟</span><span class="mq-set">→</span><span>🔀</span>
-                  </div>
-                  <span class="mq-leg">Modbus → Ethernet local</span>
-                </div>
-                <div class="mq-card">
-                  <span class="mq-titulo">Quadro N · <em>Externo / distante</em></span>
-                  <div class="mq-chain">
-                    <span>🏭</span><span class="mq-set">→</span><span>🌡️</span><span class="mq-set">→</span><span>📟</span><span class="mq-set">→</span><span title="Rádio LoRa">📻</span>
-                  </div>
-                  <span class="mq-leg lora">LoRa (sem fio · longa distância)</span>
-                </div>
+                <div class="q-leg">Modbus → Ethernet local</div>
               </div>
+              <div class="quadro">
+                <div class="q-titulo">Quadro B · <em>Câmara fria</em></div>
+                <div class="q-chain">
+                  <span>🏭</span><span class="q-set">→</span>
+                  <span>🌡️🚪</span><span class="q-set">→</span>
+                  <span>📟</span><span class="q-set">→</span>
+                  <span>🔀</span>
+                </div>
+                <div class="q-leg">Modbus → Ethernet local</div>
+              </div>
+              <div class="quadro quadro-lora">
+                <div class="q-titulo">Quadro N · <em>Externo / distante</em></div>
+                <div class="q-chain">
+                  <span>🏭</span><span class="q-set">→</span>
+                  <span>🌡️</span><span class="q-set">→</span>
+                  <span>📟</span><span class="q-set">→</span>
+                  <span>📻</span>
+                </div>
+                <div class="q-leg q-leg-lora">LoRa (sem fio · 2-10 km)</div>
+              </div>
+            </div>
 
-              <!-- SVG de convergência: 3 linhas fundem em 1 ponto -->
-              <svg class="mfork-svg" viewBox="0 0 90 220" preserveAspectRatio="none" aria-hidden="true">
+            <!-- Convergência horizontal: 3 da esquerda → 1 ponto à direita -->
+            <div class="convergencia">
+              <svg viewBox="0 0 80 200" preserveAspectRatio="none" aria-hidden="true">
                 <defs>
-                  <marker id="seta-fork" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <marker id="seta-cv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
                     <path d="M0,0 L10,5 L0,10 z" fill="#6b3eb8"/>
                   </marker>
                 </defs>
-                <!-- Quadro A → ponto único (curva descendente) -->
-                <path d="M 0 35 C 45 35, 45 110, 82 110" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
-                <!-- Quadro B → ponto único (linha reta) -->
-                <path d="M 0 110 L 82 110" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
-                <!-- Quadro N → ponto único (curva ascendente, tracejada = LoRa) -->
-                <path d="M 0 185 C 45 185, 45 110, 82 110" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6,4"/>
-                <!-- Junção visual e seta única apontando pro próximo nó -->
-                <circle cx="82" cy="110" r="5" fill="#6b3eb8"/>
-                <line x1="82" y1="110" x2="88" y2="110" stroke="#6b3eb8" stroke-width="2.5" marker-end="url(#seta-fork)"/>
+                <!-- Quadro A (topo) → centro -->
+                <path d="M 0 30  C 35 30, 35 100, 70 100" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
+                <!-- Quadro B (meio) → centro -->
+                <path d="M 0 100 L 70 100" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
+                <!-- Quadro N (base) com LoRa, tracejado laranja -->
+                <path d="M 0 170 C 35 170, 35 100, 70 100" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="5,4"/>
+                <circle cx="70" cy="100" r="5" fill="#6b3eb8"/>
+                <line x1="70" y1="100" x2="78" y2="100" stroke="#6b3eb8" stroke-width="2.5" marker-end="url(#seta-cv)"/>
               </svg>
+              <span class="conv-lbl">convergem num ponto</span>
             </div>
 
-            <!-- Ponto único da fábrica -->
-            <div class="mnode mnode-centro">
-              <div class="mn-emoji">🏢</div>
-              <div class="mn-titulo">Centro da fábrica</div>
-              <div class="mn-sub">servidor + broker MQTT + fila + gateway LoRaWAN</div>
-              <span class="mnode-badge">ponto único de saída</span>
+            <div class="mn mn-centro">
+              <span class="mn-ico">🏢</span>
+              <div class="mn-txt"><b>Centro da fábrica</b><small>servidor + broker MQTT + fila + gateway LoRaWAN</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl tag-ciano">HTTPS · sync</span></div>
+            <div class="mn-seta"><span class="mn-rot proto-ciano">HTTPS · sync</span></div>
 
-            <div class="mnode mnode-nuvem">
-              <div class="mn-emoji">☁️</div>
-              <div class="mn-titulo">Nuvem</div>
-              <div class="mn-sub">consolida tudo</div>
+            <div class="mn">
+              <span class="mn-ico">☁️</span>
+              <div class="mn-txt"><b>Nuvem</b><small>consolida tudo</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">grava</span></div>
+            <div class="mn-seta"><span class="mn-rot">SQL</span></div>
 
-            <div class="mnode mnode-banco">
-              <div class="mn-emoji">🗄️</div>
-              <div class="mn-titulo">Banco</div>
-              <div class="mn-sub">14+ sensores · 30d retenção</div>
+            <div class="mn">
+              <span class="mn-ico">🗄️</span>
+              <div class="mn-txt"><b>Banco</b><small>14+ sensores · 30d</small></div>
             </div>
-            <div class="marrow"><span class="marrow-lbl">API REST</span></div>
+            <div class="mn-seta"><span class="mn-rot">API REST</span></div>
 
-            <div class="mnode mnode-app">
-              <div class="mn-emoji">📱</div>
-              <div class="mn-titulo">Web / App</div>
-              <div class="mn-sub">visão global da planta</div>
+            <div class="mn">
+              <span class="mn-ico">📱</span>
+              <div class="mn-txt"><b>Web / App</b><small>visão global da planta</small></div>
             </div>
           </div>
 
-          <div class="dicas-grade">
-            <div class="dica dica-quadro">
-              <span class="dica-ico">🔧</span>
-              <h4>Quadros locais</h4>
-              <p>Cada ambiente vira uma "ilha" auto-suficiente: sensores + logger + switch. Falha em 1 quadro <strong>não afeta</strong> os outros.</p>
-            </div>
-            <div class="dica dica-lora">
-              <span class="dica-ico">📻</span>
-              <h4>LoRa (opcional)</h4>
-              <p>Sensor <strong>sem fio de longa distância</strong>: 2 a 10 km, baterias que duram <strong>anos</strong>. Ideal pra sensores externos (silos, pátios, depósitos longe da fábrica) onde cabear Ethernet seria caro/inviável.</p>
-              <span class="dica-pin">Encaixa no Modelo 3 quando há sensor remoto isolado</span>
-            </div>
-            <div class="dica dica-broker">
-              <span class="dica-ico">🏢</span>
-              <h4>Centro da fábrica</h4>
-              <p>Ponto único onde tudo converge: <strong>broker MQTT + fila em disco + gateway LoRaWAN</strong>. Os 3 quadros (e qualquer sensor LoRa remoto) entram aqui.</p>
-              <span class="dica-pin">Mesma resiliência do Modelo 2: se a internet cair, segura a fila e re-envia.</span>
-            </div>
-            <div class="dica dica-app">
-              <span class="dica-ico">📱</span>
-              <h4>Visão global</h4>
-              <p>O painel vê todos os ambientes simultaneamente, alertas cruzados (porta da câmara aberta + temperatura subindo) e correlações.</p>
-            </div>
+          <div class="mod-foot">
+            <p><b>Quando usar:</b> planta inteira, vários ambientes — caso Dale Sorvetes (14 sensores em 6 ambientes, dois externos).</p>
+            <p class="ok"><b>✓ Falha isolada:</b> se 1 quadro cai, os outros seguem. Escala sem cabear chão longo.</p>
           </div>
 
-          <ul class="modelo-bullets">
-            <li><b>Cada ambiente</b> (extrusão, câmaras frias, graxaria, área externa…) tem <b>seu próprio quadro</b></li>
-            <li>Quadros próximos: <b>Ethernet/Wi-Fi industrial</b>. Quadros remotos: <b>LoRa</b> via gateway LoRaWAN</li>
-            <li>Tudo converge no <b>mesmo broker MQTT central</b> da fábrica</li>
-            <li>Falha em 1 quadro <b>não afeta</b> os outros (isolamento físico e elétrico)</li>
-            <li class="ok">Escala pra dezenas de pontos sem cabeamento de chão longo</li>
-          </ul>
-          <div class="modelo-uso">
-            <strong>Quando usar:</strong> planta inteira, vários ambientes — <em>caso real Dale Sorvetes: 14 sensores em 6 ambientes, incluindo dois externos (Campo Grande e Três Lagoas)</em>.
+          <div class="orca">
+            <div class="orca-head">
+              <span class="orca-tit">💰 Orçamento estimado</span>
+              <span class="orca-total tag-roxa">R$ 25.000 – R$ 50.000</span>
+            </div>
+            <div class="orca-grid">
+              <div class="orca-item"><span class="o-l">14 sensores distribuídos</span><span class="o-v">R$ 2.500 – 5.000</span></div>
+              <div class="orca-item"><span class="o-l">4-6 loggers (1 por quadro)</span><span class="o-v">R$ 3.000 – 6.000</span></div>
+              <div class="orca-item"><span class="o-l">4-6 switches industriais</span><span class="o-v">R$ 1.500 – 3.000</span></div>
+              <div class="orca-item"><span class="o-l">Backbone Wi-Fi (3-4 APs)</span><span class="o-v">R$ 2.000 – 3.000</span></div>
+              <div class="orca-item"><span class="o-l">Servidor central</span><span class="o-v">R$ 2.500 – 5.000</span></div>
+              <div class="orca-item lora"><span class="o-l">Gateway LoRaWAN + sensores remotos</span><span class="o-v">R$ 3.000 – 6.000</span></div>
+              <div class="orca-item"><span class="o-l">Nobreaks (1 por quadro + 1 central)</span><span class="o-v">R$ 1.200</span></div>
+              <div class="orca-item"><span class="o-l">Cabeamento estruturado + conduítes</span><span class="o-v">R$ 3.000 – 6.000</span></div>
+              <div class="orca-item destaque"><span class="o-l">Instalação + integração (mão-de-obra)</span><span class="o-v">R$ 5.000 – 15.000</span></div>
+            </div>
+            <span class="orca-nota">Setup em 2-4 semanas · ROI típico em 8-14 meses pelo controle de perdas.</span>
           </div>
         </article>
 
+      </div>
+
+      <!-- Comparativo dos 3 orçamentos -->
+      <div class="orca-resumo">
+        <div class="ores-card ores-1">
+          <span class="ores-num">1</span>
+          <div>
+            <span class="ores-tit">Único sensor</span>
+            <span class="ores-valor">R$ 400 – 700</span>
+            <span class="ores-sub">prova de conceito</span>
+          </div>
+        </div>
+        <span class="ores-seta">→</span>
+        <div class="ores-card ores-2">
+          <span class="ores-num">2</span>
+          <div>
+            <span class="ores-tit">Múltiplos concentrados</span>
+            <span class="ores-valor">R$ 4.000 – 7.500</span>
+            <span class="ores-sub">1 ambiente crítico</span>
+          </div>
+        </div>
+        <span class="ores-seta">→</span>
+        <div class="ores-card ores-3">
+          <span class="ores-num">3</span>
+          <div>
+            <span class="ores-tit">Múltiplos distribuídos</span>
+            <span class="ores-valor">R$ 25.000 – 50.000</span>
+            <span class="ores-sub">planta inteira (caso Dale Sorvetes)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legenda compartilhada -->
+      <div class="mods-legenda">
+        <span class="lg-it"><span class="lg-pill proto-azul">RS-485 · Modbus</span> sensor ↔ logger</span>
+        <span class="lg-it"><span class="lg-pill proto-roxa">MQTT</span> logger / quadro → broker</span>
+        <span class="lg-it"><span class="lg-pill proto-ciano">HTTPS</span> broker → nuvem</span>
+        <span class="lg-it"><span class="lg-pill" style="background:rgba(217,119,6,.12);color:#d97706">LoRa</span> sensor remoto sem fio</span>
+      </div>
+    </section>
+
+    <!-- ============ Seção 1.5: Equipamento complementar — Nobreak ============ -->
+    <section class="proto-secao">
+      <header class="proto-secao-head">
+        <h2>Equipamento complementar · Nobreak para o sensor</h2>
+        <p>Vale pra qualquer um dos 3 modelos acima. Pequeno, barato e muda completamente o jogo se faltar energia no chão de fábrica.</p>
+      </header>
+
+      <div class="nobreak-grade">
+
+        <!-- Card principal do produto -->
+        <article class="nobreak-card destaque">
+          <div class="nb-header">
+            <span class="nb-ico">🔋</span>
+            <div>
+              <h3>Fonte Nobreak 12V 1A · Intelbras EFB 1201</h3>
+              <span class="nb-sub">com bateria interna · ~R$ 150-200 · plug-and-play 12V</span>
+            </div>
+            <span class="nb-tag">opcional · alto impacto</span>
+          </div>
+          <p class="nb-desc">
+            É uma <b>fonte de alimentação 12V com bateria embutida</b>. Você liga ela na tomada e o sensor (ou logger) na saída 12V. Se a energia da fábrica cai, a bateria assume <b>na hora</b>, sem reset. O sensor <b>continua medindo e gravando</b>.
+          </p>
+        </article>
+
+        <!-- Por que isso muda o jogo -->
+        <article class="nobreak-card">
+          <h4>🧠 Por que isso importa?</h4>
+          <p>Sem nobreak: faltou luz → sensor desliga → câmara abre buraco no histórico. Quando a energia volta, ninguém sabe <b>quanto a temperatura subiu</b> nem <b>por quantas horas</b>. <em>Decisão sobre o produto vira chute.</em></p>
+          <p>Com nobreak no sensor: a câmara pode ficar sem geladeira <i>por horas</i>, mas o sensor continua gravando. Aí dá pra responder com dados:</p>
+          <ul class="nb-bullets">
+            <li>"A câmara subiu de −22°C pra −12°C em 4h17min de queda"</li>
+            <li>"Taxa de aquecimento: ~2,3°C/h"</li>
+            <li>"Pelo histórico, leva ~6h pra cruzar o limite crítico de produto"</li>
+          </ul>
+        </article>
+
+        <!-- Cenário prático -->
+        <article class="nobreak-card">
+          <h4>📊 Caso real: cálculo de perda</h4>
+          <p>Com a curva real registrada durante a queda, o sistema consegue:</p>
+          <ul class="nb-bullets">
+            <li><b>Prever janela segura</b> antes do produto ser descartado</li>
+            <li><b>Acionar manutenção</b> sabendo exatamente quanto tempo tem</li>
+            <li><b>Justificar para auditoria/ANVISA</b> com dados, não estimativas</li>
+            <li><b>Decidir resgate</b>: transferir produto, religar com gerador, ou aceitar perda parcial</li>
+          </ul>
+          <p class="nb-nota">Sem o sensor "vivo" durante a queda, todas essas decisões viram chute. Com ele, viram conta.</p>
+        </article>
+
+        <!-- Como encaixa -->
+        <article class="nobreak-card nb-flex">
+          <h4>🔌 Como encaixa nos 3 modelos</h4>
+          <p>O nobreak fica <b>entre a tomada e o sensor</b>. Pode também alimentar o logger/gateway. Recomendação:</p>
+          <div class="nb-encaixe">
+            <div class="nb-en-it">
+              <span class="nb-en-num">1</span>
+              <div>
+                <b>Modelo 1</b>
+                <small>Alimenta o sensor + logger. Se faltar energia, o conjunto continua medindo e armazenando em flash até a internet voltar.</small>
+              </div>
+            </div>
+            <div class="nb-en-it destaque">
+              <span class="nb-en-num">2</span>
+              <div>
+                <b>Modelo 2</b>
+                <small>Alimenta cada sensor crítico (câmara fria principalmente). Mesmo sem energia, o sensor envia leituras pro logger via RS-485 — desde que o logger também esteja no nobreak.</small>
+              </div>
+            </div>
+            <div class="nb-en-it">
+              <span class="nb-en-num">3</span>
+              <div>
+                <b>Modelo 3</b>
+                <small>1 nobreak por quadro local + 1 maior pro centro da fábrica. Isolamento elétrico por ambiente — falha de luz em 1 setor não afeta os outros.</small>
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Dicas finais -->
+      <div class="nb-dicas">
+        <div class="nb-dica ok">
+          <span class="nb-dica-ico">✓</span>
+          <div>
+            <b>Quanto tempo segura?</b>
+            <p>Sensor de temperatura industrial consome ~50-100 mA em 12V. Com bateria de 7Ah da Intelbras dá pra rodar <b>20-30h direto</b>. Mais que suficiente pra qualquer apagão típico de fábrica.</p>
+          </div>
+        </div>
+        <div class="nb-dica ok">
+          <span class="nb-dica-ico">✓</span>
+          <div>
+            <b>E o logger / Wi-Fi?</b>
+            <p>Logger consome mais (~300-500 mA), mas mesmo assim a bateria segura <b>4-6h</b>. Pra cobrir mais tempo, usa um nobreak maior (12V/4A com bateria 17Ah, ~R$ 400).</p>
+          </div>
+        </div>
+        <div class="nb-dica info">
+          <span class="nb-dica-ico">💡</span>
+          <div>
+            <b>Bônus: detecção de queda de energia</b>
+            <p>A maioria dos nobreaks tem saída de status (relé seco). Conecta numa entrada digital do logger e o sistema sabe <b>na hora</b> que a fábrica perdeu energia — vira um alerta automático, sem esperar o sensor de energia perceber.</p>
+          </div>
+        </div>
+        <div class="nb-dica warn">
+          <span class="nb-dica-ico">⚠</span>
+          <div>
+            <b>Cuidado: bateria envelhece</b>
+            <p>Bateria selada perde capacidade em ~2-3 anos. Coloca lembrete pra trocar. Sem isso, o nobreak vira só "uma fonte cara" — você só descobre que falhou quando precisa.</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -588,21 +657,16 @@
 
 </div>
 
-<!-- Scripts -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Sensor.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorEnergia.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorTemperatura.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/SensorPorta.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/FabricaSensor.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779635887949"></script>
-<script src="pagina.js?v=1779635887949"></script>
+<!-- Scripts (a página não usa sensores, só auth + menus + notificações) -->
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779652097937"></script>
+<script src="pagina.js?v=1779652097937"></script>
 
 </body>
 </html>

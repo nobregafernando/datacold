@@ -295,22 +295,65 @@ body{
   gap: 8px;
 }
 .cred-card{
+  position: relative;
   text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   border-radius: var(--raio-sm);
   background: var(--branco);
   border: 1px solid var(--borda);
   cursor: pointer;
   font-family: var(--fonte);
-  transition: transform var(--t-rapida), box-shadow var(--t-rapida), border-color var(--t-rapida);
+  transition: transform var(--t-rapida), box-shadow var(--t-rapida), border-color var(--t-rapida), opacity var(--t-rapida);
 }
-.cred-card:hover{
+.cred-conteudo{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.cred-card:hover:not(:disabled){
   transform: translateY(-1px);
   border-color: var(--azul-medio);
   box-shadow: 0 6px 14px rgba(11,29,58,.08);
+}
+.cred-card:disabled{
+  cursor: progress;
+}
+/* Spinner inline (escondido por padrão) */
+.cred-spinner{
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(11,29,58,.18);
+  border-top-color: var(--azul-medio);
+  flex-shrink: 0;
+  display: none;
+  animation: cred-rodar .6s linear infinite;
+}
+@keyframes cred-rodar{ to { transform: rotate(360deg); } }
+/* Estado: o card clicado está fazendo login */
+.cred-card.carregando{
+  border-color: var(--azul-medio);
+  box-shadow: 0 6px 14px rgba(11,29,58,.10);
+  cursor: progress;
+}
+.cred-card.carregando .cred-spinner{ display: block; }
+.cred-card.carregando .cred-papel::after{
+  content: " · entrando…";
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--texto-suave);
+}
+/* Os outros cards ficam dimmed enquanto um está carregando */
+.credenciais-grade.bloqueada .cred-card:not(.carregando){
+  opacity: .35;
+  pointer-events: none;
+  filter: grayscale(.4);
 }
 .cred-papel{
   font-size: 10px;

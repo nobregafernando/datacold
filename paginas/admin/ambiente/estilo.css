@@ -900,3 +900,228 @@
   .amb-tick-relogio{ grid-column: 1 / -1; min-width: 0; }
   .amb-tick-cadencia{ font-size: 18px; }
 }
+
+/* ===================================================================
+   TOPOLOGIA · 4 estações (equipamento → sensor → servidor → banco)
+   Logo abaixo do lede no hero. Demonstra visualmente o caminho do
+   dado. Pacotes animados percorrem cada conector pra mostrar fluxo.
+   =================================================================== */
+.amb-topologia{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  max-width: 980px;
+  margin: 44px auto 18px;
+  padding: 26px 18px;
+  background: linear-gradient(135deg, rgba(30,111,214,.04), rgba(0,184,240,.06));
+  border: 1px solid rgba(30,111,214,.14);
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+}
+/* Grade decorativa atrás */
+.amb-topologia::before{
+  content:"";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(30,111,214,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,111,214,.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+  pointer-events: none;
+}
+
+.amb-topo-estacao{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.amb-topo-ico{
+  position: relative;
+  width: 86px;
+  height: 86px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(30,111,214,.18);
+  box-shadow: 0 10px 24px rgba(11,29,58,.08);
+  display: grid;
+  place-items: center;
+  color: var(--azul-profundo);
+  transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+}
+.amb-topo-ico svg{ display: block; }
+.amb-topo-estacao:hover .amb-topo-ico{
+  transform: translateY(-3px);
+  border-color: var(--azul-medio);
+  box-shadow: 0 18px 32px rgba(30,111,214,.18);
+}
+/* Cor distintiva por estação */
+.amb-topo-estacao[data-no="equipamento"] .amb-topo-ico{ color:#6b4f1d; background: linear-gradient(135deg,#fff,#fef6e4); }
+.amb-topo-estacao[data-no="sensor"]      .amb-topo-ico{ color:#0a93c4; background: linear-gradient(135deg,#fff,#eaf7fc); }
+.amb-topo-estacao[data-no="servidor"]    .amb-topo-ico{ color:#1e3a8a; background: linear-gradient(135deg,#fff,#eef2ff); }
+.amb-topo-estacao[data-no="banco"]       .amb-topo-ico{ color:#047857; background: linear-gradient(135deg,#fff,#eafaf2); }
+
+/* Pulso da estação (anel piscando) */
+.amb-topo-pulso{
+  position: absolute;
+  inset: -6px;
+  border-radius: 28px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: amb-topo-piscar 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.amb-topo-estacao[data-no="sensor"]    .amb-topo-pulso{ animation-delay: .4s; }
+.amb-topo-estacao[data-no="servidor"]  .amb-topo-pulso{ animation-delay: .8s; }
+.amb-topo-estacao[data-no="banco"]     .amb-topo-pulso{ animation-delay: 1.2s; }
+@keyframes amb-topo-piscar{
+  0%   { transform: scale(1);    opacity: .5; }
+  70%  { transform: scale(1.18); opacity: 0;  }
+  100% { transform: scale(1.18); opacity: 0;  }
+}
+
+.amb-topo-rotulo{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  letter-spacing: -.01em;
+}
+.amb-topo-sub{
+  font-size: 11px;
+  color: var(--texto-suave);
+  text-align: center;
+  letter-spacing: .02em;
+  line-height: 1.25;
+}
+
+/* ============ Conectores entre estações ============ */
+.amb-topo-conector{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+  z-index: 1;
+}
+.amb-topo-linha{
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(30,111,214,.18), rgba(0,184,240,.5), rgba(30,111,214,.18));
+  overflow: visible;
+}
+.amb-topo-linha-fisica{ /* cabo elétrico — sólido */
+  background: linear-gradient(90deg, #b08d4a, #d4a85c, #b08d4a);
+}
+.amb-topo-linha-radio{ /* wireless — tracejado azul */
+  background: linear-gradient(90deg, rgba(0,184,240,.7) 50%, transparent 50%);
+  background-size: 8px 100%;
+}
+.amb-topo-linha-sql{ /* SQL — verde-azulado */
+  background: linear-gradient(90deg, #0a93c4, #059669, #0a93c4);
+}
+
+/* Pacote de dados que viaja pela linha */
+.amb-topo-pacote{
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid currentColor;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px currentColor;
+  animation: amb-topo-fluir 2.6s linear infinite;
+}
+.amb-topo-pacote-tardio{ animation-delay: 1.3s; }
+.amb-topo-linha-fisica .amb-topo-pacote{ color: #c89a4a; }
+.amb-topo-linha-radio  .amb-topo-pacote{ color: #00b8f0; }
+.amb-topo-linha-sql    .amb-topo-pacote{ color: #059669; }
+@keyframes amb-topo-fluir{
+  0%   { left: 0%;   opacity: 0; }
+  10%  {             opacity: 1; }
+  90%  {             opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.amb-topo-tag{
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  background: rgba(255,255,255,.7);
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(30,111,214,.10);
+  font-weight: 700;
+}
+
+/* Legenda explicativa abaixo da topologia */
+.amb-topo-legenda{
+  max-width: 760px;
+  margin: 14px auto 22px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--texto-suave);
+  text-align: center;
+}
+.amb-topo-legenda strong{ color: var(--azul-noite); }
+.amb-topo-legenda code{
+  background: rgba(30,111,214,.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--azul-profundo);
+}
+
+/* ============ Responsivo ============ */
+@media (max-width: 820px){
+  .amb-topologia{
+    grid-template-columns: 1fr;
+    grid-auto-flow: row;
+    gap: 6px;
+    padding: 20px 14px;
+  }
+  .amb-topo-conector{
+    width: 100%;
+    height: 40px;
+    flex-direction: row;
+    min-width: 0;
+  }
+  /* Em mobile, vira linha VERTICAL: rotaciona 90° */
+  .amb-topo-linha{
+    width: 3px;
+    height: 36px;
+    background: linear-gradient(180deg, rgba(30,111,214,.18), rgba(0,184,240,.5), rgba(30,111,214,.18));
+  }
+  .amb-topo-linha-fisica{ background: linear-gradient(180deg, #b08d4a, #d4a85c, #b08d4a); }
+  .amb-topo-linha-radio{
+    background: linear-gradient(180deg, rgba(0,184,240,.7) 50%, transparent 50%);
+    background-size: 100% 8px;
+  }
+  .amb-topo-linha-sql{ background: linear-gradient(180deg, #0a93c4, #059669, #0a93c4); }
+  .amb-topo-pacote{
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-name: amb-topo-fluir-vertical;
+  }
+  @keyframes amb-topo-fluir-vertical{
+    0%   { top: 0%;   opacity: 0; }
+    10%  {            opacity: 1; }
+    90%  {            opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  .amb-topo-tag{ margin-left: 10px; }
+}

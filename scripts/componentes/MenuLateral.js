@@ -87,20 +87,13 @@ class MenuLateral {
       </div>
 
       <nav class="ml-nav-primaria">
+        <!-- 1) Dashboard -->
         <a href="${this.raiz}paginas/admin/" class="ml-nav-item ${this.paginaAtiva === "admin" ? "ativo" : ""}" data-nav="admin">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
           <span>Dashboard</span>
         </a>
-        ${this.usuario?.ehAdmin ? `
-        <a href="${this.raiz}paginas/admin/sala-controle/" class="ml-nav-item ${this.paginaAtiva === "sala-controle" ? "ativo" : ""}" data-nav="sala-controle">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-          <span>Sala de controle</span>
-        </a>` : ""}
-        <a href="${this.raiz}paginas/admin/notificacoes/" class="ml-nav-item ${this.paginaAtiva === "notificacoes" ? "ativo" : ""}" data-nav="notificacoes">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-          <span>Notificações</span>
-        </a>
 
+        <!-- 2) Sensores (expansível) -->
         <button class="ml-nav-item ml-expansor ${(this.paginaAtiva === "sensor" || this.paginaAtiva === "grupo") ? "ativo" : ""} ${this.sensoresExpandido ? "expandido" : ""}" data-acao="toggle-sensores" aria-expanded="${this.sensoresExpandido}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l2-3 4 6 2-3h6"></path></svg>
           <span>Sensores</span>
@@ -120,30 +113,54 @@ class MenuLateral {
         </div>
 
         ${this.usuario?.ehAdmin ? `
+        <!-- 3) Sala de controle -->
+        <a href="${this.raiz}paginas/admin/sala-controle/" class="ml-nav-item ${this.paginaAtiva === "sala-controle" ? "ativo" : ""}" data-nav="sala-controle">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Sala de controle</span>
+        </a>
+
+        <!-- 4) Agentes -->
         <a href="${this.raiz}paginas/admin/agentes/" class="ml-nav-item ${this.paginaAtiva === "agentes" ? "ativo" : ""}" data-nav="agentes">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Agentes</span>
         </a>
 
+        <!-- 5) Ambiente controlado -->
         <a href="${this.raiz}paginas/admin/ambiente/" class="ml-nav-item ${this.paginaAtiva === "ambiente" ? "ativo" : ""}" data-nav="ambiente">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 0 0-20 0z"></path><path d="M2 12h20"></path><path d="M12 2a15 15 0 0 1 0 20"></path><path d="M12 2a15 15 0 0 0 0 20"></path></svg>
           <span>Ambiente controlado</span>
         </a>
 
+        <!-- 6) Protótipo -->
         <a href="${this.raiz}paginas/admin/prototipo/" class="ml-nav-item ${this.paginaAtiva === "prototipo" ? "ativo" : ""}" data-nav="prototipo">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v4h-7z"/><path d="M14 11h7v10h-7z"/><path d="M3 14h7v7H3z"/></svg>
           <span>Protótipo</span>
         </a>
 
+        <!-- 7) Usuários -->
+        <a href="${this.raiz}paginas/conta/criar/" class="ml-nav-item ${(this.paginaAtiva === "usuarios" || this.paginaAtiva === "criar-conta") ? "ativo" : ""}" data-nav="usuarios">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Usuários</span>
+        </a>
+
+        <!-- 8) Apresentação -->
         <a href="${this.raiz}paginas/admin/apresentacao/" class="ml-nav-item ${this.paginaAtiva === "apresentacao" ? "ativo" : ""}" data-nav="apresentacao">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
           <span>Apresentação</span>
         </a>
 
-        <a href="${this.raiz}paginas/conta/criar/" class="ml-nav-item ${(this.paginaAtiva === "usuarios" || this.paginaAtiva === "criar-conta") ? "ativo" : ""}" data-nav="usuarios">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>Usuários</span>
-        </a>` : ""}
+        <!-- Notificações (atalho ao final, sem ordem específica) -->
+        <a href="${this.raiz}paginas/admin/notificacoes/" class="ml-nav-item ${this.paginaAtiva === "notificacoes" ? "ativo" : ""}" data-nav="notificacoes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Notificações</span>
+        </a>
+        ` : `
+        <!-- Operador: só vê notificações -->
+        <a href="${this.raiz}paginas/admin/notificacoes/" class="ml-nav-item ${this.paginaAtiva === "notificacoes" ? "ativo" : ""}" data-nav="notificacoes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Notificações</span>
+        </a>
+        `}
       </nav>
 
       <div class="ml-rodape">
@@ -160,14 +177,25 @@ class MenuLateral {
       const acao = ev.target.closest("[data-acao]")?.dataset.acao;
       if (acao === "sair") {
         ev.preventDefault();
-        // 1) Limpa sessão local IMEDIATO (síncrono) — garante que o guard
-        //    do login não veja sessão válida e te jogue de volta pro admin.
+        // Desabilita botão imediatamente pra evitar clique duplo.
+        const btn = ev.target.closest("[data-acao=sair]");
+        if (btn) btn.disabled = true;
+        // 1) Limpa sessão local IMEDIATO — garante que o guard do login
+        //    não veja sessão válida e jogue de volta pro admin.
         Autenticacao._limparSessao();
-        // 2) Dispara signout no servidor em background (best-effort) e
-        //    redireciona com replace() pra que o "voltar" do navegador
-        //    não retorne pra página autenticada.
-        Autenticacao.logout().catch(() => {});
-        window.location.replace(`${this.raiz}paginas/login/`);
+        // 2) Aguarda signout no servidor (com teto de 1.5s) ANTES de
+        //    navegar. Sem isso, se o usuário re-loga rápido, o refresh
+        //    token antigo ainda pode emitir um access novo do usuário
+        //    anterior em race com o novo signin.
+        Promise.race([
+          Autenticacao.logout().catch(() => {}),
+          new Promise(res => setTimeout(res, 1500)),
+        ]).finally(() => {
+          // Safety: limpa de novo (caso logout tenha re-gravado algo).
+          Autenticacao._limparSessao();
+          window.location.replace(`${this.raiz}paginas/login/`);
+        });
+        return;
       }
       if (acao === "toggle-sensores") {
         ev.preventDefault();

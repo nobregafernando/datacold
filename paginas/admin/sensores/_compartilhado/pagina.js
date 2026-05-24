@@ -78,14 +78,26 @@ class PaginaSensor {
     this.grupo = null;
     this.dados = null;
     this.incidentesAtivos = [];
-    this.janela = "-1h";
+    this.janela = "-5m";
     this.graficos = {};          // chave -> Chart (re-usados entre refreshes)
+    this.graficosMeta = {};      // chave -> { titulo, labels, datasets } (snapshot pro exportador)
     this._tipoGraficoAtual = null;
     this.autoTimer = null;
-    this.autoIntervalo = 2000;   // tick "leve" (incidentes + último valor) a cada 2s
-    this.intervaloPesado = 6000; // tick "pesado" (gráficos/tabela) a cada 6s
+    this.renderTimer = null;
+    // Fetch a cada 3s — busca janela inteira + render completo + redesenha gráfico.
+    // Render a cada 1s — DESACOPLADO: usa clock local pra atualizar o contador
+    //   "Última leitura há Xs", conectividade (online→instavel→offline),
+    //   velocímetros (sem sinal), e estender a linha morta no gráfico.
+    //   Sem isso, quando o dado para de chegar, NADA mais re-renderiza
+    //   (UI fica congelada no último estado conhecido).
+    // O Realtime (WebSocket) ainda entrega push entre os ticks de fetch.
+    this.autoIntervalo = 3000;
+    this.renderIntervalo = 1000;
+    this.intervaloPesado = 3000;
     this._ultimoCarregamentoPesado = 0;
     this.carregando = false;
+    this._canalRealtime = null;        // canal WebSocket pro Supabase Realtime
+    this._ultimoEstadoOffline = null;  // pra detectar transições online↔offline
   }
 
   static _extrairIdDaUrl() {
@@ -143,7 +155,15 @@ class PaginaSensor {
     // Marca janela inicial no seletor
     this._marcarJanelaAtiva();
 
+    // Dispara o histórico estendido (30d) em BACKGROUND — não bloqueia o
+    // primeiro render. O AgenteReconstrutor cai em fallback degradado nos
+    // primeiros ticks; quando o cache hidrata (uns segundos depois), volta
+    // a fazer SPLC multi-ciclo completo.
+    this._dispararHistoricoEstendido();
     await this._carregarDados();
+    // Realtime via WebSocket — push de pontos novos em ~200ms. Polling
+    // (autoRefresh) vira só fallback se o canal cair.
+    this._abrirRealtime();
     this._armarAutoRefresh();
   }
 
@@ -223,18 +243,69 @@ class PaginaSensor {
 
   _armarAutoRefresh() {
     this._pararAutoRefresh();
-    // Refresh imediato (se o último foi >2s atrás) pra não esperar 3s a toa
+    // Refresh imediato (se o último foi >1s atrás) pra não esperar o tick
     // quando a aba volta a ficar visível.
     const desdeUltimo = Date.now() - (this._ultimoCarregamentoEm || 0);
-    if (desdeUltimo > 2000) this._carregarDados();
-    this.autoTimer = setInterval(() => this._carregarDados(), this.autoIntervalo);
+    if (desdeUltimo > 1000) this._carregarDados();
+    this.autoTimer   = setInterval(() => this._carregarDados(), this.autoIntervalo);
+    this.renderTimer = setInterval(() => this._tickRender(),     this.renderIntervalo);
     document.querySelector("[data-aovivo]")?.classList.remove("pausado");
   }
 
   _pararAutoRefresh() {
-    if (this.autoTimer) clearInterval(this.autoTimer);
+    if (this.autoTimer)   clearInterval(this.autoTimer);
+    if (this.renderTimer) clearInterval(this.renderTimer);
     this.autoTimer = null;
+    this.renderTimer = null;
     document.querySelector("[data-aovivo]")?.classList.add("pausado");
+  }
+
+  /**
+   * Tick de RENDER puro — clock-based, NUNCA busca dado. Roda a cada 1s
+   * pra atualizar o que muda com o tempo independente de novas leituras:
+   *   - contador "Última leitura há Xs"
+   *   - badge conectividade (online→instavel→offline)
+   *   - linha morta no gráfico (estende a cada segundo enquanto offline)
+   *   - velocímetros viram "sem sinal" no instante do offline
+   *
+   * Sem isso, quando o sensor para de mandar dado a UI ficava congelada
+   * no último estado conhecido — usuário tinha que F5 pra ver o offline.
+   */
+  _tickRender() {
+    if (!this.dados?.points?.length) return;
+    try {
+      const estavaOffline = !!this._estaOffline;
+      this._detectarOffline(this.dados);
+
+      // Conectividade: respeita incidente forçado da Sala de Controle
+      const incOff = this.incidentesAtivos?.find(i => i.tipo === "gap" || i.tipo === "offline");
+      if (incOff) {
+        const r = incOff.segundos_restantes;
+        this._renderizarConectividade(this.dados, "offline",
+          `Simulação "${incOff.tipo}" disparada pela Sala de Controle · ${r != null ? r + "s restantes" : "ativo"}`);
+      } else {
+        this._renderizarConectividade(this.dados);
+      }
+
+      // Lúdico (velocímetros) — se estado mudou ou sempre quando offline
+      // pra estender o "tempo offline" no overlay
+      if (this._estaOffline) {
+        this._renderizarLudico(this.dados);
+        this._renderizarKpis(this.dados);
+      } else if (estavaOffline) {
+        // Voltou online → atualiza pra remover overlays "sem sinal"
+        this._renderizarLudico(this.dados);
+        this._renderizarKpis(this.dados);
+      }
+
+      // Re-renderiza gráfico (com linha morta crescendo) quando offline.
+      // Quando online não precisa — o tick de fetch a cada 3s faz isso.
+      if (this._estaOffline) {
+        this._renderizarGraficos(this.dados);
+      }
+    } catch (e) {
+      console.warn("[tickRender]", e);
+    }
   }
 
   // =================================================================
@@ -254,59 +325,158 @@ class PaginaSensor {
               : m[2] === "m" ? n * 60
               : m[2] === "h" ? n * 3600
               : n * 86400;
-    // Cadência mais densa = energia (30s). Margem 10%.
-    const estimado = Math.ceil(seg / 30 * 1.1);
+    // Cadência real hoje = 3s (pg_cron sub-minuto). Margem 20%.
+    // Era 30s antes — subestimava 10× e cortava dados, fazendo o front
+    // achar que o sensor tinha parado.
+    const estimado = Math.ceil(seg / 3 * 1.2);
     // Mínimo 500, máximo 25 000 (Chart.js fica lento acima disso)
     return Math.min(25000, Math.max(500, estimado));
   }
 
   /**
-   * Busca histórico estendido (30 dias) em background, cacheado por 5 min.
-   * Esse histórico alimenta o AgenteReconstrutor pra fazer SPLC com
-   * ciclos de 24h, 7d e 30d. Sem 30d carregado, o ciclo 30d sempre falha.
+   * Busca histórico estendido (30 dias) em background — alimenta o
+   * AgenteReconstrutor pra SPLC multi-ciclo. Cache de 5 min.
    *
-   * Tamanho típico: ~40k pontos por sensor (cadência 60s × 30 dias).
-   * Cache de 5 min é suficiente — histórico não muda na escala de segundos.
+   * IMPORTANTE: NÃO awaitar essa função no caminho crítico de render.
+   * Dispara e segue. O reconstrutor cai em fallback degradado durante
+   * a primeira carga, mas o gráfico/velocímetro abrem instantâneos.
+   *
+   * Limite 15k pontos: com cadência de 3s, isso cobre ~12h. Pro SPLC
+   * de 24h/7d/30d o front amostra subconjuntos via JS — sem precisar
+   * baixar 800k+ pontos crus.
    */
-  async _garantirHistoricoEstendido() {
+  _dispararHistoricoEstendido() {
     const agora = Date.now();
     const idadeCache = agora - (this._historicoEstendidoEm || 0);
     if (idadeCache < 5 * 60_000 && this._historicoEstendido) return;
-    if (this._historicoEstendidoCarregando) return;
-    this._historicoEstendidoCarregando = true;
+    if (this._historicoEstendidoPromise) return;
+    this._historicoEstendidoPromise = (async () => {
+      try {
+        const r = await this.api.buscarDados(this.sensorId, {
+          inicio: "-720h",          // 30 dias (server-side LIMIT corta)
+          fim: "now",
+          limite: 15000,            // teto pra não travar download/parse
+        });
+        this._historicoEstendido = r?.points || [];
+        this._historicoEstendidoEm = Date.now();
+      } catch (e) {
+        // silencioso — reconstrutor cai pra fallback de interpolação
+      } finally {
+        this._historicoEstendidoPromise = null;
+      }
+    })();
+  }
+
+  // =================================================================
+  //  Realtime (push via WebSocket)
+  // =================================================================
+
+  /** Carrega @supabase/supabase-js sob demanda (CDN). Resolve uma única
+   *  vez — chamadas subsequentes reusam o módulo já carregado. */
+  static _carregarSupabaseLib() {
+    if (window.supabase?.createClient) return Promise.resolve(window.supabase);
+    if (PaginaSensor._libPromise) return PaginaSensor._libPromise;
+    PaginaSensor._libPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      s.onload  = () => resolve(window.supabase);
+      s.onerror = () => reject(new Error("falha ao carregar @supabase/supabase-js"));
+      document.head.appendChild(s);
+    });
+    return PaginaSensor._libPromise;
+  }
+
+  /**
+   * Abre canal WebSocket pra receber INSERTs em tempo real da tabela de
+   * leituras desse sensor. Cada novo ponto chega em ~200ms (vs. 3-30s do
+   * polling) e atualiza gauge / KPIs / conectividade sem esperar tick.
+   *
+   * Falha silenciosamente se a lib não carregar — polling assume.
+   */
+  async _abrirRealtime() {
+    if (!this.sensor || !this.sensorId) return;
+    if (this._canalRealtime) return;
     try {
-      const r = await this.api.buscarDados(this.sensorId, {
-        inicio: "-720h",          // 30 dias
-        fim: "now",
-        limite: 100000,
+      const lib = await PaginaSensor._carregarSupabaseLib();
+      const cli = lib.createClient(ApiBEM.URL_SUPABASE, ApiBEM.CHAVE_SUPABASE_ANON, {
+        realtime: { params: { eventsPerSecond: 20 } },
       });
-      this._historicoEstendido = r?.points || [];
-      this._historicoEstendidoEm = agora;
+      // JWT do usuário (RLS das tabelas exige) — passamos pro canal.
+      const jwt = localStorage.getItem(ApiBEM.JWT_STORAGE);
+      if (jwt) cli.realtime.setAuth(jwt);
+
+      const tabela = `leituras_${this.sensor.tipo}`;  // energia/temperatura/porta
+      const canal = cli
+        .channel(`live-${this.sensorId}`)
+        .on("postgres_changes", {
+          event:  "INSERT",
+          schema: "public",
+          table:  tabela,
+          filter: `sensor_id=eq.${this.sensorId}`,
+        }, (msg) => this._receberPontoRealtime(msg.new))
+        .subscribe((status) => {
+          this._statusRealtime = status;
+          // status: "SUBSCRIBED" | "CLOSED" | "CHANNEL_ERROR" | "TIMED_OUT"
+        });
+      this._canalRealtime = canal;
+      this._clienteRealtime = cli;
     } catch (e) {
-      // silencioso — reconstrutor cai pra fallback de interpolação
-    } finally {
-      this._historicoEstendidoCarregando = false;
+      // segue só com polling — sem barulho na UI
+      console.warn("[realtime] indisponível, usando polling:", e.message);
     }
+  }
+
+  /** Converte a row crua da tabela pro formato que o front usa em points
+   *  ({ time, ...campos }) e injeta no this.dados.points + re-renderiza. */
+  _receberPontoRealtime(row) {
+    if (!row || !this.dados?.points) return;
+    const pt = { time: row.momento };
+    Object.keys(row).forEach(k => {
+      if (!["id", "sensor_id", "momento", "criado_em"].includes(k)) pt[k] = row[k];
+    });
+    // Dedupe: se já temos exatamente esse timestamp, ignora.
+    const ult = this.dados.points[this.dados.points.length - 1];
+    if (ult && new Date(ult.time).getTime() >= new Date(pt.time).getTime()) return;
+    this.dados.points.push(pt);
+    // Cap defensivo: cadência de 3s × 30d = 864k pts no pior caso.
+    // Tira os mais antigos pra não estourar memória.
+    if (this.dados.points.length > 50000) this.dados.points.splice(0, 5000);
+    // Re-renderiza componentes "live" — gráfico fica pro próximo tick pesado
+    // pra não custar Chart.js a cada 3s (mas o gauge/KPI/conectividade sim).
+    try {
+      this._detectarOffline(this.dados);
+      this._renderizarLudico(this.dados);
+      this._renderizarKpis(this.dados);
+      this._renderizarConectividade(this.dados);
+      this._renderizarLatencia(this.dados);
+    } catch (e) {
+      console.warn("[realtime] render falhou:", e);
+    }
+  }
+
+  _fecharRealtime() {
+    try { this._canalRealtime?.unsubscribe(); } catch {}
+    try { this._clienteRealtime?.removeAllChannels(); } catch {}
+    this._canalRealtime = null;
+    this._clienteRealtime = null;
   }
 
   /**
    * Refresh em duas pistas:
    *  - LEVE (default): só incidentes + último ponto. Roda a cada `autoIntervalo`
-   *    (2s). Pinta banner/badge/KPIs/incidentes — tudo que precisa ser instantâneo.
+   *    (10s — fallback do realtime). Pinta banner/badge/KPIs/incidentes.
    *  - PESADO: leve + janela completa de pontos + gráficos/tabela/análise.
-   *    Roda a cada `intervaloPesado` (6s) ou quando forçado (ex.: trocou
-   *    janela, broadcast de incidente, clique em "atualizar").
+   *    Roda a cada `intervaloPesado` (30s) ou quando forçado.
    *
    * O `forcado=true` força um PESADO mesmo dentro da janela leve.
    */
   async _carregarDados(forcado = false) {
+    if (!this.sensor) return;
+
+    // Lock único — uma chamada por vez. Polling agora roda a cada 3s e
+    // sempre faz o fluxo completo (era leve/pesado split, mas o merge do
+    // leve causava bugs de "última leitura há 48s" mesmo com Realtime).
     if (this.carregando) return;
-    if (!this.sensor) return;    // (banner de chave removido — chave padrão hardcoded em ApiBEM)
-
-    const agora = Date.now();
-    const desdePesado = agora - (this._ultimoCarregamentoPesado || 0);
-    const fazerPesado = forcado || desdePesado >= this.intervaloPesado || !this.dados;
-
     this.carregando = true;
     try {
       let inicio = this.janela;
@@ -316,45 +486,13 @@ class PaginaSensor {
         fim    = "-30d";
       }
 
-      // ----- TICK LEVE: só último ponto + incidentes -----
-      if (!fazerPesado) {
-        const [leve, incidentes] = await Promise.all([
-          this.api.buscarDados(this.sensorId, { inicio: "-5m", fim: "now", limite: 30 }),
-          this.api.incidentesAtivos(this.sensorId),
-        ]);
-        this.incidentesAtivos = incidentes || [];
-        this._renderizarIncidentesAtivos();
-        // Mescla o último ponto novo no this.dados (pra banner/badge enxergar
-        // o mais recente). Não substitui this.dados inteiro — gráficos seguem
-        // com a série completa do último tick pesado.
-        const leveUlt = leve?.points?.[leve.points.length - 1];
-        if (leveUlt && this.dados?.points?.length) {
-          const ultExistente = this.dados.points[this.dados.points.length - 1];
-          if (new Date(leveUlt.time) > new Date(ultExistente.time)) {
-            this.dados.points.push(leveUlt);
-          }
-        }
-        // Re-renderiza só os componentes "live"
-        this._detectarOffline(this.dados);
-        if (this.dados?.points?.length) {
-          this._renderizarLudico(this.dados);
-          this._renderizarKpis(this.dados);
-        }
-        // Atualiza connectivity baseado em incidente ativo
-        const incOff = this.incidentesAtivos.find(i => i.tipo === "gap" || i.tipo === "offline");
-        if (incOff) {
-          const r = incOff.segundos_restantes;
-          this._renderizarConectividade(this.dados, "offline",
-            `Simulação "${incOff.tipo}" disparada pela Sala de Controle · ${r != null ? r + "s restantes" : "ativo"}`);
-        } else if (this.dados) {
-          this._renderizarConectividade(this.dados);
-        }
-        return;
-      }
-
-      // ----- TICK PESADO: tudo -----
       // Limite dinâmico baseado na janela escolhida.
       const limiteDinamico = this._limitePorJanela(inicio);
+      // Histórico estendido (30d, pro AgenteReconstrutor) roda em BACKGROUND
+      // — não bloqueia o render. Durante a primeira carga o reconstrutor cai
+      // em fallback degradado; nos próximos ticks (< 5 min) o cache hidrata
+      // ele com SPLC multi-ciclo completo.
+      this._dispararHistoricoEstendido();
       const [dados, incidentes] = await Promise.all([
         this.api.buscarDados(this.sensorId, { inicio, fim, limite: limiteDinamico }),
         this.api.incidentesAtivos(this.sensorId),
@@ -427,6 +565,7 @@ class PaginaSensor {
       console.error("carregar dados falhou:", e);
     } finally {
       this.carregando = false;
+      this._ultimoCarregamentoPesado = Date.now();
       this._ultimoCarregamentoEm = Date.now();
     }
   }
@@ -590,8 +729,13 @@ class PaginaSensor {
       }
       const intMedio = intervalos.length ? intervalos.reduce((s,x)=>s+x,0) / intervalos.length : 0;
 
-      if (intMedio > 0 && diff > intMedio * 10)      { status = "offline";  titulo = "Offline";  }
-      else if (intMedio > 0 && diff > intMedio * 3)  { status = "instavel"; titulo = "Instável"; }
+      // Thresholds alinhados com _detectarOffline. Pra cadência de 3s:
+      //   instavel após 6s sem leitura
+      //   offline após 12s sem leitura (3 ticks perdidos)
+      const limOffline  = Math.max(12, intMedio * 4);
+      const limInstavel = Math.max(6,  intMedio * 2);
+      if (intMedio > 0 && diff > limOffline)        { status = "offline";  titulo = "Offline";  }
+      else if (intMedio > 0 && diff > limInstavel)  { status = "instavel"; titulo = "Instável"; }
 
       info = `Última leitura ${this._formatarTempoAbs(diff)} · ~${this._formatarIntervalo(intMedio)} entre leituras`;
       const ds = this._downsampleInfo;
@@ -737,7 +881,10 @@ class PaginaSensor {
         this._cadenciaObservada = diffs.reduce((s, x) => s + x, 0) / diffs.length;
       }
     }
-    const threshold = Math.max(90, this._cadenciaObservada * 2.5);
+    // Piso de 12s evita falso positivo no primeiro tick (com 1-2 pontos a
+    // cadência observada pode estar estranha). Com cadência real de 3s,
+    // sensor é marcado offline após 3 ticks perdidos (~9s).
+    const threshold = Math.max(12, this._cadenciaObservada * 3);
     this._estaOffline = this._segDesde > threshold;
   }
 
@@ -908,6 +1055,7 @@ class PaginaSensor {
           ${this._svgGauge()}
           <div class="gauge-valor" data-valor>—</div>
           <div class="gauge-unidade">amperes (A)</div>
+          <div class="gauge-carga" data-carga>—</div>
         </div>`).join("");
     }
     // OFFLINE: zera tudo e mostra "—"
@@ -920,29 +1068,46 @@ class PaginaSensor {
         arco.setAttribute("class", "gauge-arco");
         agulha.style.transform = "rotate(-90deg)";
         card.querySelector("[data-valor]").textContent = "—";
+        const elCarga = card.querySelector("[data-carga]");
+        if (elCarga) elCarga.textContent = "";
       });
       return;
     }
-    // Escala honesta: usa a corrente nominal do equipamento (do parametros)
-    // quando disponível; senão cai num default genérico de 250A. Como cada
-    // motor tem sua nominal, a cor passa a refletir carga relativa real.
-    const nominal = Number(this.sensor?.parametros?.corrente_nominal_a) || 250;
-    // Acima de 100% do nominal é zona vermelha; >60% é amarelo.
-    const limWarn = 0.60;
-    const limCrit = 0.85;
+    // Escala: usa a corrente nominal do equipamento (parâmetros do sensor)
+    // quando disponível. O ARCO vai até 1.3× o nominal — dá margem visual
+    // pra sobrecarga aparecer (sem capar) e mantém operação normal na
+    // metade verde do gauge.
+    //
+    // Limites RELATIVOS ao nominal (não à escala bruta):
+    //   < 100% nominal → ok (verde)     operação normal/saudável
+    //   100-115%       → warn (amarelo) sobrecarga leve, monitorar
+    //   > 115%         → crit (vermelho) sobrecarga severa
+    //
+    // (Antes: warn=60%, crit=85% — calibrado errado, motor operando dentro
+    //  do nominal aparecia em vermelho.)
+    const nominal   = Number(this.sensor?.parametros?.corrente_nominal_a) || 250;
+    const maxEscala = nominal * 1.3;
+    const limWarn   = 1.00 / 1.3;   // = 0.769 do arco
+    const limCrit   = 1.15 / 1.3;   // = 0.885 do arco
     ["a","b","c"].forEach(f => {
       const card = visual.querySelector(`[data-gauge="${f}"]`);
-      const v = ultimo[`corrente_fase_${f}`] || 0;
-      const pct = Math.max(0, Math.min(1, Math.abs(v) / nominal));
+      const v = Math.abs(ultimo[`corrente_fase_${f}`] || 0);
+      const pct = Math.max(0, Math.min(1, v / maxEscala));
       const sev = pct < limWarn ? "ok" : pct < limCrit ? "warn" : "crit";
       const arco  = card.querySelector(".gauge-arco");
       const agulha = card.querySelector(".gauge-agulha");
-      const dash = 251.3;   // perímetro do arco SVG (calculado abaixo)
+      const dash = 251.3;   // perímetro do arco SVG (π·80)
       arco.setAttribute("stroke-dashoffset", String(dash - dash * pct));
       arco.setAttribute("class", `gauge-arco ${sev}`);
       const angulo = -90 + pct * 180;
       agulha.style.transform = `rotate(${angulo}deg)`;
       card.querySelector("[data-valor]").textContent = `${v.toFixed(1)} A`;
+      const elCarga = card.querySelector("[data-carga]");
+      if (elCarga) {
+        const cargaPct = Math.round((v / nominal) * 100);
+        elCarga.textContent = `${cargaPct}% do nominal (${nominal} A)`;
+        elCarga.className = `gauge-carga ${sev}`;
+      }
     });
   }
 
@@ -1121,14 +1286,30 @@ class PaginaSensor {
 
     // Passa pelo AgenteReconstrutor: detecta gaps e gera pontos sintéticos
     // pra preencher (marcados com _reconstruido=true).
-    // Dispara busca do histórico estendido em background (cacheado por 60s).
-    // O reconstrutor usa esse histórico pra fazer SPLC em ciclos de 24h e 7d.
-    this._garantirHistoricoEstendido();
+    // O histórico estendido (30d) JÁ foi carregado no _carregarDados em
+    // paralelo com a janela atual — então this._historicoEstendido sempre
+    // está populado nesse ponto.
     const recon = (typeof AgenteReconstrutor !== "undefined")
       ? new AgenteReconstrutor(this.sensor).reconstruir(dados.points, this._historicoEstendido)
       : { pontos: dados.points, gaps: [] };
     let pontos = recon.pontos;
     this._ultimoRecon = recon;
+
+    // Diagnóstico: se houver gaps reconstruídos, loga quantos domingos
+    // (ou outro DOW) o SPLC realmente encontrou. Ajuda a debugar
+    // "deveria pegar 4 semanas e só pegou 1".
+    if (recon.gaps?.length && console?.debug) {
+      const histDias = this._historicoEstendido?.length
+        ? (Date.now() - new Date(this._historicoEstendido[0].time).getTime()) / (86400 * 1000)
+        : 0;
+      const primeiroGap = recon.gaps[0];
+      console.debug(
+        `[reconstrutor ${this.sensorId}] gaps=${recon.gaps.length}, ` +
+        `hist=${this._historicoEstendido?.length || 0} pts (~${histDias.toFixed(1)}d), ` +
+        `1º gap: estrategias=${primeiroGap.estrategias?.join("/")}, ` +
+        `conf=${primeiroGap.confianca}`
+      );
+    }
 
     // Downsample LTTB: reduz oscilações visuais em janelas longas
     // preservando picos/vales/tendência. Janelas curtas passam intactas.
@@ -1236,37 +1417,93 @@ class PaginaSensor {
       return ds;
     };
 
+    // Helper: média dos campos do ponto (ignora null/NaN). Usado pra
+    // colapsar 3 fases (A/B/C) em 1 linha. Funciona pra pontos reais E
+    // reconstruídos — o AgenteReconstrutor preenche cada campo individual.
+    const mediaCampos = (p, campos) => {
+      const v = campos.map(c => p?.[c]).filter(x => typeof x === "number" && Number.isFinite(x));
+      if (!v.length) return null;
+      return v.reduce((s, x) => s + x, 0) / v.length;
+    };
+    const sensorIdRender = this.sensor?.id || "x";
+    const fasesExpandidas = (chave) => sessionStorage.getItem(`__chart_fases_${sensorIdRender}_${chave}`) === "1";
+
     if (this.sensor.tipo === "energia") {
-      this._upsertChart("corrente", box, "Corrente por fase (A)", labels, [
-        ...par("Fase A", p => p.corrente_fase_a, "#123B7A"),
-        ...par("Fase B", p => p.corrente_fase_b, "#1E6FD6"),
-        ...par("Fase C", p => p.corrente_fase_c, "#00B8F0"),
-      ]);
-      this._upsertChart("tensao", box, "Tensão por fase (V)", labels, [
-        ...par("Fase A", p => p.tensao_fase_a, "#123B7A"),
-        ...par("Fase B", p => p.tensao_fase_b, "#1E6FD6"),
-        ...par("Fase C", p => p.tensao_fase_c, "#00B8F0"),
-      ]);
-      this._upsertChart("fp", box, "Fator de potência", labels, [
-        ...par("Fase A", p => p.fator_potencia_a, "#123B7A"),
-        ...par("Fase B", p => p.fator_potencia_b, "#1E6FD6"),
-        ...par("Fase C", p => p.fator_potencia_c, "#00B8F0"),
-        { label: "Limite ANEEL (0,92)", data: pontos.map(() => 0.92), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 },
-      ]);
+      const campCorr = ["corrente_fase_a","corrente_fase_b","corrente_fase_c"];
+      const campTens = ["tensao_fase_a","tensao_fase_b","tensao_fase_c"];
+      const campFp   = ["fator_potencia_a","fator_potencia_b","fator_potencia_c"];
+
+      // ===== CORRENTE — 1 linha (média das 3 fases) =====
+      const dsCorrente = [...par("Corrente (média 3 fases)", p => mediaCampos(p, campCorr), "#1E6FD6")];
+      if (fasesExpandidas("corrente")) {
+        // Fases individuais como linhas finas e desbotadas (sem reconstrução pra não poluir)
+        dsCorrente.push(
+          { label: "Fase A", data: pontos.map(p => p.corrente_fase_a ?? null), borderColor: "rgba(18,59,122,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase B", data: pontos.map(p => p.corrente_fase_b ?? null), borderColor: "rgba(30,111,214,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase C", data: pontos.map(p => p.corrente_fase_c ?? null), borderColor: "rgba(0,184,240,.45)",  borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+        );
+      }
+      this._upsertChart("corrente", box, "Corrente (A)", labels, dsCorrente, { mostrarToggleFases: true });
+
+      // ===== TENSÃO — 1 linha (média das 3 fases) =====
+      const dsTensao = [...par("Tensão (média 3 fases)", p => mediaCampos(p, campTens), "#123B7A")];
+      if (fasesExpandidas("tensao")) {
+        dsTensao.push(
+          { label: "Fase A", data: pontos.map(p => p.tensao_fase_a ?? null), borderColor: "rgba(18,59,122,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase B", data: pontos.map(p => p.tensao_fase_b ?? null), borderColor: "rgba(30,111,214,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase C", data: pontos.map(p => p.tensao_fase_c ?? null), borderColor: "rgba(0,184,240,.45)",  borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+        );
+      }
+      this._upsertChart("tensao", box, "Tensão (V)", labels, dsTensao, { mostrarToggleFases: true });
+
+      // ===== FP — 1 linha (média das 3 fases) + faixa ANEEL como linha de referência =====
+      const dsFp = [...par("Fator de potência (média 3 fases)", p => mediaCampos(p, campFp), "#00B8F0")];
+      dsFp.push({
+        label: "Limite ANEEL (0,92)",
+        data: pontos.map(() => 0.92),
+        borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0, borderWidth: 1.2,
+        _refLine: true,
+      });
+      if (fasesExpandidas("fp")) {
+        dsFp.push(
+          { label: "Fase A", data: pontos.map(p => p.fator_potencia_a ?? null), borderColor: "rgba(18,59,122,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase B", data: pontos.map(p => p.fator_potencia_b ?? null), borderColor: "rgba(30,111,214,.45)", borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+          { label: "Fase C", data: pontos.map(p => p.fator_potencia_c ?? null), borderColor: "rgba(0,184,240,.45)",  borderWidth: 1.2, pointRadius: 0, tension: .25, _faseExtra: true },
+        );
+      }
+      this._upsertChart("fp", box, "Fator de potência", labels, dsFp, { mostrarToggleFases: true });
+
+      // ===== POTÊNCIA ATIVA TOTAL — já é 1 linha, sem toggle =====
       const pot = (p) =>
         ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
          (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
          (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000;
       this._upsertChart("potencia", box, "Potência ativa total (kW)", labels, [
-        ...par("P", pot, "#1E6FD6"),
+        ...par("Potência total", pot, "#1E6FD6"),
       ]);
     }
     else if (this.sensor.tipo === "temperatura") {
       const faixa = PaginaSensor.FAIXAS_TERMICAS[this.sensor.grupo];
       const ds = [...par("Temperatura", p => p.temperatura, "#00B8F0")];
       if (faixa) {
-        ds.push({ label: `Mínima ideal (${faixa.min}°C)`, data: pontos.map(() => faixa.min), borderColor: "#16a34a", borderDash: [6,4], pointRadius: 0 });
-        ds.push({ label: `Máxima ideal (${faixa.max}°C)`, data: pontos.map(() => faixa.max), borderColor: "#dc2626", borderDash: [6,4], pointRadius: 0 });
+        // Faixa ideal como ÁREA verde semitransparente (entre min e max).
+        // Truque: 2 datasets superpostos — base no min com fill abaixo (transparente)
+        // e topo no max com fill ATÉ a base anterior (verde claro).
+        ds.push({
+          label: `Mín ideal (${faixa.min}°C)`,
+          data: pontos.map(() => faixa.min),
+          borderColor: "rgba(22,163,74,.35)", borderWidth: 1,
+          pointRadius: 0, fill: false, _refLine: true,
+        });
+        ds.push({
+          label: `Máx ideal (${faixa.max}°C)`,
+          data: pontos.map(() => faixa.max),
+          borderColor: "rgba(22,163,74,.35)", borderWidth: 1,
+          pointRadius: 0,
+          fill: "-1",                     // preenche ATÉ o dataset anterior (min)
+          backgroundColor: "rgba(22,163,74,.10)",
+          _refLine: true,
+        });
       }
       this._upsertChart("temperatura", box, "Temperatura (°C)", labels, ds);
     }
@@ -1282,7 +1519,12 @@ class PaginaSensor {
    * `chart.update('none')` evita o flash de animação a cada refresh —
    * as linhas crescem suavemente como uma serpente em vez de piscar.
    */
-  _upsertChart(chave, parent, titulo, labels, datasets) {
+  _upsertChart(chave, parent, titulo, labels, datasets, opts = {}) {
+    // Snapshot pro Exportador (PDF/XML/CSV). Salvamos a cada chamada — tanto
+    // na criação quanto no update — pra que o botão sempre exporte o estado
+    // EXATO renderizado no gráfico (incluindo toggle de fases, tipo, etc.).
+    this.graficosMeta[chave] = { chave, titulo, labels, datasets, opts };
+
     const existente = this.graficos[chave];
     if (existente) {
       existente.data.labels = labels;
@@ -1301,6 +1543,8 @@ class PaginaSensor {
           if (novo.borderWidth !== undefined) ds.borderWidth = novo.borderWidth;
           if (novo.recInfo !== undefined)     ds.recInfo = novo.recInfo;
           if (novo.tension !== undefined)     ds.tension = novo.tension;
+          if (novo._faseExtra !== undefined)  ds._faseExtra = novo._faseExtra;
+          if (novo._refLine !== undefined)    ds._refLine = novo._refLine;
           if (novo.fill && novo.backgroundColor) {
             ds.backgroundColor = this._gradiente(existente.canvas, novo.borderColor || novo.backgroundColor);
           }
@@ -1326,19 +1570,122 @@ class PaginaSensor {
 
     const wrap = document.createElement("div");
     wrap.className = "chart-bloco";
-    wrap.innerHTML = `<h4>${titulo}</h4><div class="chart-wrap"><canvas></canvas></div>`;
+    // Prefixa as keys com o ID do sensor pra cada página ter suas próprias
+    // prefs — sem isso, "corrente em barras" no extrusora_1 vazaria pro
+    // extrusora_2/3 e todos os outros sensores de energia.
+    const sensorId = this.sensor?.id || "x";
+    const keyFases = `__chart_fases_${sensorId}_${chave}`;
+    const keyTipo  = `__chart_tipo_${sensorId}_${chave}`;
+    const expandido = sessionStorage.getItem(keyFases) === "1";
+    const tipoSalvo = sessionStorage.getItem(keyTipo) === "bar" ? "bar" : "line";
+    const toggleFasesHtml = opts.mostrarToggleFases
+      ? `<button type="button" class="chart-toggle-fases" data-chart-toggle="${chave}" aria-pressed="${expandido}">
+           ${expandido ? "↑ Ocultar fases" : "↓ Ver fases A/B/C"}
+         </button>`
+      : "";
+    const svgBarras = `<svg class="chart-toggle-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2"  y="9" width="2.4" height="5"  rx=".4" fill="currentColor"/><rect x="6.8" y="6" width="2.4" height="8"  rx=".4" fill="currentColor"/><rect x="11.6" y="3" width="2.4" height="11" rx=".4" fill="currentColor"/></svg>`;
+    const svgLinha  = `<svg class="chart-toggle-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><polyline points="1.5,12 5,8 8.5,10 12,5 14.5,7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const toggleTipoHtml = `
+      <button type="button" class="chart-toggle-tipo" data-chart-tipo="${chave}"
+              title="Alternar entre linha e barras" aria-pressed="${tipoSalvo === "bar"}">
+        ${tipoSalvo === "bar" ? svgLinha + "<span>Linha</span>" : svgBarras + "<span>Barras</span>"}
+      </button>`;
+    // 3 botões de exportar (PDF/XML/CSV) — gerados por _btnExport() pra
+    // manter ícone+label consistentes e DRY entre formatos.
+    const exportHtml = `
+      <div class="chart-export" role="group" aria-label="Exportar relatório">
+        <span class="chart-export-rotulo">Exportar:</span>
+        ${this._btnExport(chave, "pdf")}
+        ${this._btnExport(chave, "xml")}
+        ${this._btnExport(chave, "csv")}
+      </div>`;
+    wrap.innerHTML = `
+      <header class="chart-bloco-head">
+        <h4>${titulo}</h4>
+        <div class="chart-bloco-acoes">
+          ${toggleFasesHtml}
+          ${toggleTipoHtml}
+          ${exportHtml}
+        </div>
+      </header>
+      <div class="chart-wrap"><canvas></canvas></div>`;
     parent.appendChild(wrap);
 
+    // Liga os 3 botões de export. Single handler delega pelo data-export.
+    wrap.querySelectorAll("[data-export]").forEach(btn => {
+      btn.addEventListener("click", () => this._exportarGrafico(chave, btn.dataset.export));
+    });
+
+    // Liga o toggle de fases.
+    if (opts.mostrarToggleFases) {
+      const btn = wrap.querySelector(`[data-chart-toggle="${chave}"]`);
+      btn?.addEventListener("click", () => {
+        const atual = sessionStorage.getItem(keyFases) === "1";
+        sessionStorage.setItem(keyFases, atual ? "0" : "1");
+        btn.textContent = !atual ? "↑ Ocultar fases" : "↓ Ver fases A/B/C";
+        btn.setAttribute("aria-pressed", String(!atual));
+        this._renderizarGraficos(this.dados);
+      });
+    }
+
+    // Liga o toggle de tipo (linha ↔ barras). Trocar tipo no Chart.js
+    // 4.x requer destruir e recriar — fazemos isso forçando re-render
+    // do conjunto inteiro de gráficos.
+    const btnTipo = wrap.querySelector(`[data-chart-tipo="${chave}"]`);
+    btnTipo?.addEventListener("click", () => {
+      const novo = sessionStorage.getItem(keyTipo) === "bar" ? "line" : "bar";
+      sessionStorage.setItem(keyTipo, novo);
+      // Limpa TUDO antes de re-renderizar. Sem isso o chart trocado ia
+      // pro fim do parent e os outros subiam de posição — usuário via
+      // "outros viraram bar" ou "o que cliquei continua linha".
+      Object.values(this.graficos).forEach(c => { try { c?.destroy(); } catch {} });
+      this.graficos = {};
+      const box = document.querySelector("[data-charts]");
+      if (box) box.innerHTML = "";
+      // Suprime animação de 700ms na re-renderização — alternância instantânea.
+      this._alternandoTipo = true;
+      this._renderizarGraficos(this.dados);
+      this._alternandoTipo = false;
+    });
+
     const canvas = wrap.querySelector("canvas");
-    const ds = datasets.map(d => this._estilizarDataset(d, canvas));
+
+    // Em modo barra:
+    //  - datasets normais (real/reconstruído/vazio) ganham backgroundColor
+    //    sólido e perdem o tracejado (não funciona em bar);
+    //  - datasets _refLine e _faseExtra ficam SEMPRE como linha
+    //    sobreposta (mesma escala, visual de referência).
+    const tipoChart = tipoSalvo;
+    const datasetsFinal = datasets.map(d => {
+      const novo = { ...d };
+      if (tipoChart === "bar") {
+        if (d._refLine || d._faseExtra) {
+          novo.type = "line";    // sobrescreve no nível do dataset
+        } else {
+          // Fundo sólido com a cor da borda em tom semi-transparente
+          // pra parecer "prediinho" sem ficar saturado demais.
+          const cor = d.borderColor || "#1E6FD6";
+          novo.backgroundColor = this._corBarra(cor, !!d.borderDash);
+          // Tracejado não faz sentido em barra
+          delete novo.borderDash;
+          novo.borderWidth = d.borderDash ? 2 : 0;
+          // Crítico: sem isso o `_estilizarDataset` vê fill:"start" e sobrescreve
+          // o backgroundColor com gradient — aí as barras "somem" (gradiente
+          // vertical com topo claro fica invisível no fundo branco).
+          novo.fill = false;
+        }
+      }
+      return novo;
+    });
+    const ds = datasetsFinal.map(d => this._estilizarDataset(d, canvas));
 
     const ch = new Chart(canvas, {
-      type: "line",
+      type: tipoChart,
       data: { labels, datasets: ds },
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
-        animation: { duration: 700, easing: "easeOutCubic" },
+        animation: this._alternandoTipo ? false : { duration: 700, easing: "easeOutCubic" },
         animations: { y: { duration: 0 } },
         plugins: {
           legend: {
@@ -1365,57 +1712,73 @@ class PaginaSensor {
             boxPadding: 6,
             usePointStyle: true,
             callbacks: {
-              // Tooltip MINIMALISTA: só confiabilidade + dica de clique.
-              // Detalhes completos vão no modal flutuante (ModalReconstrucao).
+              // Tooltip MINIMALISTA: hint pequeno indicando que dá pra clicar.
               afterBody: (items) => {
                 if (!items?.length) return "";
                 for (const it of items) {
                   const meta = it.dataset?.recInfo?.[it.dataIndex];
-                  if (!meta || !meta.reconstruido) continue;
-                  const conf = Math.round((meta.confianca || 0) * 100);
-                  return [
-                    "",
-                    `🧩 Ponto estimado · ${conf}% conf.`,
-                    `🖱  Clique para ver detalhes (janela, base, etc.)`,
-                  ];
+                  if (meta?.reconstruido) {
+                    const conf = Math.round((meta.confianca || 0) * 100);
+                    return ["", `🧩 ponto estimado · ${conf}% conf.`];
+                  }
                 }
-                return "";
+                return ["", "📊 clique para ver detalhes"];
               },
             },
           },
         },
-        // Click em um ponto reconstruído abre o modal flutuante com detalhes.
+        // Click abre modal pra QUALQUER ponto.
+        //  - Ponto reconstruído (roxo) → modo "estimado"
+        //  - Ponto real (azul) → modo "real" com todos os campos do payload
+        // Linhas-extras (faseExtra) e linhas de referência (refLine) são ignoradas.
         onClick: (ev, els, chart) => {
-          if (!els?.length) return;
+          if (!els?.length || typeof ModalReconstrucao === "undefined") return;
           for (const el of els) {
             const ds = chart.data.datasets[el.datasetIndex];
-            const meta = ds?.recInfo?.[el.index];
-            if (meta && meta.reconstruido && typeof ModalReconstrucao !== "undefined") {
-              const valor = ds.data?.[el.index];
-              const label = chart.data.labels?.[el.index];
-              // Tenta extrair data ISO do label do gráfico OU do meta
+            if (!ds || ds._faseExtra || ds._refLine) continue;
+            const valor = ds.data?.[el.index];
+            if (valor == null) continue;
+            const meta = ds.recInfo?.[el.index];
+            const labelTempo = chart.data.labels?.[el.index];
+
+            if (meta?.reconstruido) {
+              // Modo estimado (modal existente)
               const dataPonto = meta.gap_inicio_ts && meta.gap_fim_ts
                 ? new Date((new Date(meta.gap_inicio_ts).getTime() + new Date(meta.gap_fim_ts).getTime()) / 2).toISOString()
-                : label;
+                : labelTempo;
               ModalReconstrucao.abrir({
+                modo: "estimado",
                 meta,
-                rotuloDataset: ds.label?.replace(/\s+·\s+estimado.*$/i, "") || "Reconstrução",
+                rotuloDataset: ds.label?.replace(/\s+·\s+estimado.*$/i, "").replace(/\s+\(.*$/, "") || "Reconstrução",
                 valorPonto: valor,
                 dataPonto,
               });
-              break;
+              return;
             }
+
+            // Modo real: passa o payload bruto do ponto (todos os 9 campos pra energia)
+            const pontoBruto = this.dados?.points?.[el.index] || {};
+            ModalReconstrucao.abrir({
+              modo: "real",
+              pontoDados: pontoBruto,
+              sensorTipo: this.sensor.tipo,
+              rotuloDataset: ds.label?.replace(/\s+\(.*$/, "") || "Leitura",
+              valorPonto: valor,
+              dataPonto: pontoBruto.time || labelTempo,
+              historico: this._historicoEstendido || this.dados?.points || [],
+            });
+            return;
           }
         },
-        // Cursor pointer ao passar sobre ponto reconstruído
+        // Cursor pointer ao passar sobre QUALQUER ponto clicável (real ou estimado).
         onHover: (ev, els, chart) => {
           const target = ev.native?.target;
           if (!target) return;
-          const hoverRec = els?.some(el => {
+          const clicavel = els?.some(el => {
             const ds = chart.data.datasets[el.datasetIndex];
-            return ds?.recInfo?.[el.index]?.reconstruido;
+            return ds && !ds._faseExtra && !ds._refLine && ds.data?.[el.index] != null;
           });
-          target.style.cursor = hoverRec ? "pointer" : "default";
+          target.style.cursor = clicavel ? "pointer" : "default";
         },
         scales: {
           x: {
@@ -1441,6 +1804,92 @@ class PaginaSensor {
       },
     });
     this.graficos[chave] = ch;
+  }
+
+  // ===================================================================
+  //  EXPORTAR RELATÓRIO (PDF · XML · CSV) — botões em cada gráfico
+  // ===================================================================
+
+  /** Gera o HTML de UM botão de export (PDF/XML/CSV) com o ícone certo. */
+  _btnExport(chave, formato) {
+    const ico = {
+      pdf: `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg>`,
+      xml: `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l-2 2 2 2M16 13l2 2-2 2M13 12l-2 6"/></svg>`,
+      csv: `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="8" y2="17"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="16" y1="13" x2="16" y2="17"/></svg>`,
+    }[formato];
+    const titulo = { pdf: "Baixar PDF (impressão)", xml: "Baixar XML", csv: "Baixar CSV" }[formato];
+    return `
+      <button type="button" class="chart-export-btn export-${formato}"
+              data-export="${formato}" data-chart-export="${chave}"
+              title="${titulo}" aria-label="${titulo}">
+        ${ico}<span>${formato.toUpperCase()}</span>
+      </button>`;
+  }
+
+  /**
+   * Monta o `ctx` do gráfico (snapshot + análise dos agentes) e dispara
+   * o exportador no formato pedido. Tudo em memória, sem nova chamada
+   * de API — usa exatamente o que está renderizado no canvas.
+   */
+  _exportarGrafico(chave, formato) {
+    const meta = this.graficosMeta[chave];
+    if (!meta) return;
+    if (typeof ExportadorRelatorio === "undefined") {
+      alert("Módulo ExportadorRelatorio não carregou.");
+      return;
+    }
+    // Roda o analisador na janela atual pra anexar vereditos.
+    let vereditos = [];
+    try {
+      if (typeof AnalisadorSensor !== "undefined" && this.sensor && this.dados?.points?.length) {
+        const ver = new AnalisadorSensor(this.sensor, this.dados.points).avaliar();
+        vereditos = Array.isArray(ver) ? ver : [];
+      }
+    } catch (e) {
+      console.warn("Análise falhou; export segue sem vereditos:", e);
+    }
+    const ctx = {
+      sensor:    this.sensor,
+      janela:    this.janela,
+      titulo:    meta.titulo,
+      chave:     meta.chave,
+      labels:    meta.labels,
+      datasets:  meta.datasets,
+      pontos:    this.dados?.points || [],
+      fields:    this.dados?.fields || [],
+      vereditos,
+      // Pacote de reconstrução pro exportador marcar pontos estimados,
+      // gerar resumo + tabela de gaps no PDF/XML/CSV.
+      recon:     this._ultimoRecon || { pontos: [], gaps: [] },
+    };
+    if (formato === "pdf") return ExportadorRelatorio.paraPDF(ctx);
+    if (formato === "xml") return ExportadorRelatorio.paraXML(ctx);
+    if (formato === "csv") return ExportadorRelatorio.paraCSV(ctx);
+  }
+
+  /**
+   * Cor de preenchimento das "barras-prédio" quando o chart está em modo bar.
+   * Aceita hex (#123B7A) ou rgba(...) e devolve rgba(...) com alpha ajustado.
+   * Datasets tracejados (linha reconstruída roxa) ficam mais transparentes
+   * pra continuar visualmente distintos.
+   */
+  _corBarra(cor, eTracejado) {
+    const alpha = eTracejado ? 0.45 : 0.85;
+    if (typeof cor !== "string") return `rgba(30,111,214,${alpha})`;
+    // hex (#1E6FD6 ou #1E6FD6FF)
+    const hex = cor.match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/i);
+    if (hex) {
+      const n = parseInt(hex[1], 16);
+      const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    // rgba(...) ou rgb(...) — substitui o alpha
+    const rgba = cor.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgba) {
+      const partes = rgba[1].split(",").map(s => s.trim());
+      return `rgba(${partes[0]},${partes[1]},${partes[2]},${alpha})`;
+    }
+    return cor;
   }
 
   _estilizarDataset(d, canvas) {
@@ -1523,6 +1972,41 @@ class PaginaSensor {
   _renderizarLatencia(dados) {
     const box = document.querySelector("[data-latencia]");
     if (!box) return;
+
+    // OFFLINE AGORA: prioridade máxima — não importa se os pontos passados
+    // estavam saudáveis. Se o sensor não está mandando nada nesse momento,
+    // a "saúde da latência" é problema.
+    if (this._estaOffline) {
+      const inc = this._incidenteOffline;
+      const tempo = this._segDesde < 60
+        ? `${Math.round(this._segDesde)}s`
+        : this._segDesde < 3600
+          ? `${Math.floor(this._segDesde / 60)} min`
+          : `${(this._segDesde / 3600).toFixed(1)}h`;
+      const motivo = inc
+        ? (inc.tipo === "gap" ? "Simulação de queda de conectividade ativa." : "Equipamento desligado pela Sala de Controle.")
+        : `Última leitura há ${tempo}. Sensor parou de enviar dados.`;
+      box.innerHTML = `
+        <div class="latencia-saude saude-crit">
+          <span class="latencia-saude-ponto"></span>
+          <div>
+            <div class="latencia-saude-titulo">Offline</div>
+            <div class="latencia-saude-msg">${motivo}</div>
+          </div>
+        </div>
+        <div class="latencia-grid">
+          <div class="latencia-item"><div class="l">Sem leitura há</div><div class="v" style="color:#dc2626">${tempo}</div></div>
+          <div class="latencia-item"><div class="l">Cadência esperada</div><div class="v">${this._formatarIntervalo(this._cadenciaObservada || this.sensor?.cadenciaSegundos || 60)}</div></div>
+          <div class="latencia-item tem"><div class="l">Status</div><div class="v" style="color:#dc2626">offline</div></div>
+          <div class="latencia-item tem"><div class="l">Tipo</div><div class="v">${inc ? inc.tipo : "—"}</div></div>
+        </div>
+        <div class="latencia-extra" style="color:#dc2626">
+          Sensor parou de enviar dados. Espere voltar pra ver métricas novamente.
+        </div>
+      `;
+      return;
+    }
+
     if (dados.points.length < 2) {
       box.innerHTML = `<div class="vazio-bloco">Poucos pontos pra calcular.</div>`;
       return;

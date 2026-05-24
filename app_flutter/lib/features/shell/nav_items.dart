@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Item de navegação do menu lateral.
+/// Item de navegação do menu lateral. Nota: "Sensores" NÃO é um NavItem —
+/// é um `SensoresExpansor` que renderizamos manualmente entre Dashboard
+/// e Sala de Controle, com chips de filtro e lista agrupada por ambiente.
 class NavItem {
   const NavItem({
     required this.path,
@@ -14,23 +16,25 @@ class NavItem {
   final bool adminOnly;
 }
 
-/// Lista mestre — toda a navegação do app em ordem.
-/// Compartilhada entre NavigationRail (desktop) e Drawer (mobile).
 class NavItems {
-  static const List<NavItem> todos = [
-    NavItem(path: '/dashboard',     label: 'Dashboard',          icon: Icons.dashboard_rounded),
-    NavItem(path: '/sala-controle', label: 'Sala de controle',   icon: Icons.tune_rounded, adminOnly: true),
-    NavItem(path: '/sensores',      label: 'Sensores',           icon: Icons.sensors_rounded),
-    NavItem(path: '/ambientes',     label: 'Ambientes',          icon: Icons.factory_rounded),
-    NavItem(path: '/notificacoes',  label: 'Notificações',       icon: Icons.notifications_rounded),
-    NavItem(path: '/agentes',       label: 'Agentes',            icon: Icons.smart_toy_rounded),
-    NavItem(path: '/prototipo',     label: 'Protótipo',          icon: Icons.account_tree_rounded, adminOnly: true),
-    NavItem(path: '/apresentacao',  label: 'Apresentação',       icon: Icons.slideshow_rounded,    adminOnly: true),
-    NavItem(path: '/usuarios',      label: 'Usuários',           icon: Icons.group_rounded,        adminOnly: true),
-    NavItem(path: '/conta',         label: 'Minha conta',        icon: Icons.account_circle_rounded),
+  /// Itens acima do expansor "Sensores"
+  static const List<NavItem> topo = [
+    NavItem(path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard_rounded),
   ];
 
-  /// Filtra os itens conforme papel do usuário.
-  static List<NavItem> paraPapel({required bool admin}) =>
-      admin ? todos : todos.where((i) => !i.adminOnly).toList();
+  /// Itens abaixo do expansor "Sensores"
+  static const List<NavItem> base = [
+    NavItem(path: '/sala-controle', label: 'Sala de controle', icon: Icons.tune_rounded, adminOnly: true),
+    NavItem(path: '/ambientes',     label: 'Ambientes',        icon: Icons.factory_rounded),
+    NavItem(path: '/notificacoes',  label: 'Notificações',     icon: Icons.notifications_rounded),
+    NavItem(path: '/agentes',       label: 'Agentes',          icon: Icons.smart_toy_rounded),
+    NavItem(path: '/prototipo',     label: 'Protótipo',        icon: Icons.account_tree_rounded, adminOnly: true),
+    NavItem(path: '/apresentacao',  label: 'Apresentação',     icon: Icons.slideshow_rounded,    adminOnly: true),
+    NavItem(path: '/usuarios',      label: 'Usuários',         icon: Icons.group_rounded,        adminOnly: true),
+    NavItem(path: '/conta',         label: 'Minha conta',      icon: Icons.account_circle_rounded),
+  ];
+
+  /// Filtra por papel (admin vê tudo, operador vê os non-admin-only)
+  static List<NavItem> filtrar(List<NavItem> lista, {required bool admin}) =>
+      admin ? lista : lista.where((i) => !i.adminOnly).toList();
 }

@@ -595,6 +595,115 @@ body{
   background: var(--azul-medio);
   box-shadow: 0 0 0 3px rgba(30,111,214,.18);
 }
+
+/* Header do chart com título + toggle (quando aplicável) */
+.chart-bloco-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.chart-bloco-head h4{
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Grupo de ações (toggles) no header do chart */
+.chart-bloco-acoes{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Botões pequenos no canto superior direito (fases + tipo) */
+.chart-toggle-fases,
+.chart-toggle-tipo{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--azul-gelo);
+  color: var(--azul-medio);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--t-rapida), border-color var(--t-rapida), color var(--t-rapida);
+  font-family: var(--fonte);
+}
+.chart-toggle-ic{
+  display: block;
+  flex-shrink: 0;
+}
+.chart-toggle-fases:hover,
+.chart-toggle-tipo:hover{
+  background: rgba(30,111,214,.14);
+  color: var(--azul-profundo);
+  border-color: rgba(30,111,214,.25);
+}
+.chart-toggle-fases[aria-pressed="true"],
+.chart-toggle-tipo[aria-pressed="true"]{
+  background: rgba(30,111,214,.18);
+  color: var(--azul-profundo);
+  border-color: var(--azul-medio);
+}
+
+/* Cluster Exportar (PDF · XML · CSV) ao lado dos toggles do chart */
+.chart-export{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  margin-left: 4px;
+  border-left: 1px solid var(--borda);
+  border-radius: 999px;
+}
+.chart-export-rotulo{
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-right: 2px;
+}
+.chart-export-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--azul-profundo);
+  border: 1px solid var(--borda);
+  cursor: pointer;
+  font-family: var(--fonte);
+  transition: background var(--t-rapida), border-color var(--t-rapida), color var(--t-rapida), transform var(--t-rapida);
+}
+.chart-export-btn svg{ display: block; flex-shrink: 0; }
+.chart-export-btn:hover{
+  background: var(--azul-gelo);
+  border-color: var(--azul-medio);
+  color: var(--azul-medio);
+  transform: translateY(-1px);
+}
+.chart-export-btn.export-pdf:hover{ background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.chart-export-btn.export-xml:hover{ background: #f0f9ff; color: #0a93c4; border-color: #7dd3fc; }
+.chart-export-btn.export-csv:hover{ background: #f0fdf4; color: #047857; border-color: #6ee7b7; }
+
+@media (max-width: 720px){
+  .chart-export{ border-left: none; padding-left: 4px; margin-top: 4px; }
+  .chart-export-rotulo{ display: none; }
+  .chart-bloco-acoes{ flex-wrap: wrap; }
+}
+
 .chart-wrap{ position: relative; height: 280px; }
 
 /* ---- Tabela ---- */
@@ -1263,6 +1372,17 @@ body{
 }
 .gauge-card .gauge-valor{ font-size: 22px; font-weight: 800; color: var(--texto, #0f172a); margin-top: -6px; }
 .gauge-card .gauge-unidade{ font-size: 11px; color: var(--texto-suave, #6b7280); letter-spacing: .5px; }
+.gauge-card .gauge-carga{
+  font-size: 10.5px;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--texto-suave, #6b7280);
+}
+.gauge-card .gauge-carga.ok  { color: #15803d; }
+.gauge-card .gauge-carga.warn{ color: #b45309; }
+.gauge-card .gauge-carga.crit{ color: #b1241a; }
 
 .termometro-card{
   background: #fff; border: 1px solid var(--borda);

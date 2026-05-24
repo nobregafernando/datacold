@@ -87,6 +87,10 @@ const RPCS_PERMITIDAS = new Set([
   "obter_email_usuario",
   // Público (sem JWT): usado pelo login pra detectar conta desativada
   "checar_ativo_por_email",
+  // Público (sem JWT): usado pela recuperação de senha pra retornar
+  // "Conta não encontrada" em vez da resposta genérica do /recover.
+  // Aceita o trade-off de email enumeration (decisão consciente do produto).
+  "status_email_recuperacao",
 ]);
 
 // Whitelist de ações de auth.

@@ -73,19 +73,19 @@
 </script>
 <!-- GUARDA-AUTH:FIM -->
 <title>DataCold · Apresentação</title>
-<link rel="icon" href="/favicon.ico?v=1779635887949" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779635887949">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779635887949">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779635887949">
+<link rel="icon" href="/favicon.ico?v=1779652097937" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779652097937">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779652097937">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779652097937">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779635887949">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779635887949">
-<link rel="stylesheet" href="../admin.css?v=1779635887949">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779652097937">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779652097937">
+<link rel="stylesheet" href="../admin.css?v=1779652097937">
 
 <style>
   .apr-cabecalho{
@@ -126,6 +126,48 @@
     text-align: center; line-height: 1.5;
   }
   .apr-ajuda code{ background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 11.5px; }
+
+  /* Tabs de viewer */
+  .apr-viewer-tabs{
+    display: flex; align-items: center; gap: 8px;
+    margin: 18px 0 10px;
+    flex-wrap: wrap;
+  }
+  .apr-tab{
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px;
+    border: 1px solid var(--borda);
+    background: var(--branco);
+    border-radius: 999px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--texto-suave);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .apr-tab:hover{ border-color: var(--azul-medio); color: var(--azul-medio); }
+  .apr-tab.ativa{
+    background: var(--azul-medio); color: #fff; border-color: var(--azul-medio);
+  }
+  .apr-tab-rec{
+    font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px;
+    background: rgba(255,255,255,.20); color: inherit;
+  }
+  .apr-tab:not(.ativa) .apr-tab-rec{
+    background: rgba(22,163,74,.12); color: #16a34a;
+  }
+  .apr-loading{
+    margin-left: auto;
+    font-size: 11.5px; color: var(--texto-suave); font-style: italic;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .apr-loading::before{
+    content: ""; width: 12px; height: 12px;
+    border: 2px solid var(--azul-medio); border-top-color: transparent;
+    border-radius: 50%;
+    animation: apr-spin .8s linear infinite;
+  }
+  @keyframes apr-spin{ to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -169,31 +211,41 @@
       </div>
     </section>
 
+    <div class="apr-viewer-tabs" data-viewer-tabs>
+      <button class="apr-tab ativa" data-viewer="google">
+        Google Viewer <span class="apr-tab-rec">recomendado</span>
+      </button>
+      <button class="apr-tab" data-viewer="office">Office Online</button>
+      <span class="apr-loading" data-viewer-loading hidden>Carregando…</span>
+    </div>
+
     <section class="apr-visualizador">
       <iframe
         id="visualizadorPPT"
         title="Visualizador de slides DataCold"
         src=""
+        loading="lazy"
         allowfullscreen></iframe>
     </section>
 
     <p class="apr-ajuda">
-      Visualização via <strong>Office Online</strong> (Microsoft). Se não carregar,
-      use <strong>Baixar</strong> ou <strong>Abrir em nova aba</strong>.
+      Os viewers online (Google/Office) podem demorar 5-15s pra carregar slides .pptx pesados.
+      Se travar, prefira <strong>Baixar</strong> ou <strong>Abrir em nova aba</strong> — abre direto
+      no PowerPoint/Keynote do seu computador.
     </p>
 
   </main>
 
 </div>
 
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779635887949"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779635887949"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779635887949"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779652097937"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779652097937"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779652097937"></script>
 
 <script>
 (async () => {
@@ -204,15 +256,33 @@
   await new MenuLateral({ usuario, raiz, paginaAtiva: "apresentacao" }).montar("#menu-lateral");
   new MenuTopo({ titulo: "Apresentação · Arquitetura", raiz }).montar("#menu-topo");
 
-  // Aponta o iframe pro viewer da Microsoft com a URL pública do arquivo.
+  // URL pública do arquivo (precisa ser absoluta pros viewers externos)
   const urlArquivo = new URL(
     "DataCold-Arquitetura-Solucao.pptx",
     window.location.href
   ).toString();
-  const urlViewer  =
-    "https://view.officeapps.live.com/op/embed.aspx?src=" +
-    encodeURIComponent(urlArquivo);
-  document.getElementById("visualizadorPPT").src = urlViewer;
+
+  const viewers = {
+    // Google Viewer: geralmente mais rápido pra .pptx que Office Online.
+    google: "https://docs.google.com/viewer?url=" + encodeURIComponent(urlArquivo) + "&embedded=true",
+    // Microsoft Office Online: renderização mais fiel mas mais lenta.
+    office: "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(urlArquivo),
+  };
+
+  const iframe = document.getElementById("visualizadorPPT");
+  const loading = document.querySelector("[data-viewer-loading]");
+  const tabs    = document.querySelectorAll("[data-viewer]");
+
+  function trocar(viewer) {
+    loading.hidden = false;
+    iframe.src = viewers[viewer];
+    iframe.onload = () => { loading.hidden = true; };
+    tabs.forEach(t => t.classList.toggle("ativa", t.dataset.viewer === viewer));
+  }
+  tabs.forEach(t => t.addEventListener("click", () => trocar(t.dataset.viewer)));
+
+  // Carrega Google por padrão (default mais rápido)
+  trocar("google");
 })();
 </script>
 

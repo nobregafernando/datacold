@@ -24,6 +24,18 @@ class Autenticacao {
   static CHAVE = "datacold_sessao";
   static JWT_STORAGE = "datacold_jwt";   // espelha access_token pro ApiBEM
 
+  /** Ações que NUNCA devem receber o JWT da sessão atual automaticamente.
+   *  Signin/signup/recover são fluxos públicos — enviar o token de uma
+   *  sessão anterior pode fazer o servidor identificar o usuário errado. */
+  static ACOES_PUBLICAS = new Set([
+    "auth:signin",
+    "auth:signup",
+    "auth:recover",
+    "auth:recuperar_senha",
+    "auth:refresh",
+    "rpc:checar_ativo_por_email",
+  ]);
+
   /** Sessão MVP — usuário visitante anônimo (sem dados pessoais). */
   static USUARIO_MVP = {
     id:    null,
@@ -108,8 +120,19 @@ class Autenticacao {
     return Usuario.deserializar(perfil);
   }
 
+  /**
+   * Sessão é "real" — tem access_token (Supabase) OU perfil (MVP).
+   * MESMO critério usado pelo GUARDA-AUTH inline no <head> das páginas admin.
+   * Se divergir, login.js manda pro admin → GUARDA-AUTH manda de volta → loop.
+   */
   static autenticado() {
-    return Autenticacao.usuarioAtual() !== null;
+    const s = Autenticacao._lerSessao();
+    if (!s) return false;
+    if (s.access_token || s.perfil) return true;
+    // Sessão "lixo" (legado de versão antiga, signin abortado no meio, etc.).
+    // Auto-limpa pra não disparar redirect→guard→redirect.
+    try { Autenticacao._limparSessao(); } catch {}
+    return false;
   }
 
   /**
@@ -145,6 +168,10 @@ class Autenticacao {
   /**
    * Chama uma ação no proxy. Se a ação exige JWT do usuário, passa o
    * token explicitamente (ou usa o da sessão atual se nada for passado).
+   *
+   * Ações em ACOES_PUBLICAS NUNCA recebem JWT automaticamente — evita
+   * que um signin "vaze" o token do usuário anterior (causou bug de
+   * logar como outra conta após logout).
    */
   static async _proxy(acao, payload = {}, jwt = null) {
     const proxyUrl = (typeof ApiBEM !== "undefined" && ApiBEM.PROXY_URL_PADRAO)
@@ -153,8 +180,9 @@ class Autenticacao {
     if (!proxyUrl) throw new Error("ApiBEM não carregada — proxy URL indefinida.");
 
     const corpo = { acao, payload };
-    if (jwt) corpo.jwt = jwt;
-    else {
+    if (jwt) {
+      corpo.jwt = jwt;
+    } else if (!Autenticacao.ACOES_PUBLICAS.has(acao)) {
       const s = Autenticacao._lerSessao();
       if (s?.access_token) corpo.jwt = s.access_token;
     }
@@ -216,6 +244,13 @@ class Autenticacao {
     const e = Sanitizar.email(email);
     if (!e) throw new Error("E-mail inválido.");
     if (!senha || typeof senha !== "string") throw new Error("Senha obrigatória.");
+
+    // CRÍTICO: limpa qualquer resquício de sessão anterior ANTES do signin.
+    // Se o usuário acabou de sair de outra conta, o JWT antigo pode estar
+    // no localStorage e ser injetado em chamadas que vinham depois,
+    // identificando o usuário errado. Hoje o ACOES_PUBLICAS evita isso no
+    // _proxy, mas zerar aqui é defesa em profundidade.
+    Autenticacao._limparSessao();
 
     // Pré-checagem ANTES de gastar signin no Supabase: a conta está ativa?
     // Função SECURITY DEFINER e idempotente (devolve true pra emails que
@@ -431,18 +466,46 @@ class Autenticacao {
    * "Esqueci minha senha" — usa a Edge Function (admin generate_link +
    * Gmail SMTP + template DataCold) em vez de /auth/v1/recover, que
    * usaria o SMTP padrão do Supabase com o template antigo em inglês.
-   * Resposta sempre sucesso (não vaza se o email existe ou não).
+   *
+   * Por decisão de produto (UX > anti-enumeração), checa antes se o email
+   * existe e lança erro com `codigo` específico pro front mostrar mensagem
+   * adequada ("Conta não encontrada" / "Conta desativada").
    */
   static async pedirRecuperacao(email) {
     const e = Sanitizar.email(email);
     if (!e) throw new Error("E-mail inválido.");
+
+    // 1) Checa o status (RPC pública: 'inexistente' | 'inativo' | 'ativo')
+    let status = "ativo";
+    try {
+      status = await Autenticacao._proxy("rpc:status_email_recuperacao", { p_email: e });
+    } catch {
+      // Falha de rede na checagem: segue otimisticamente pra não bloquear
+      // recuperação por causa de uma falha transitória.
+    }
+
+    if (status === "inexistente") {
+      const err = new Error("Não encontramos uma conta com esse e-mail.");
+      err.codigo = "conta-inexistente";
+      throw err;
+    }
+    if (status === "inativo") {
+      const err = new Error("Esta conta está desativada. Fale com o administrador.");
+      err.codigo = "conta-inativa";
+      throw err;
+    }
+
+    // 2) Existe e está ativa: dispara o email
     try {
       await Autenticacao._proxy("auth:recuperar_senha", {
         email: e,
         redirect_to: `${location.origin}/paginas/conta/redefinir/`,
       });
-    } catch {
-      // Mesmo em erro, devolve sucesso pra não vazar quais e-mails têm conta.
+    } catch (err) {
+      // Falha de SMTP/Edge — devolve erro genérico legível
+      const e2 = new Error("Não foi possível enviar o link agora. Tente em alguns segundos.");
+      e2.codigo = "envio-falhou";
+      throw e2;
     }
     return true;
   }

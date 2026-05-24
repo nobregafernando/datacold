@@ -37,17 +37,39 @@ class AuthRepository {
   }
 
   /// Envia link de redefinição de senha por email.
+  ///
+  /// Antes de disparar, consulta a RPC pública `status_email_recuperacao`
+  /// pra diferenciar "conta inexistente" e "conta desativada" da resposta
+  /// genérica de `/auth/v1/recover`. UX > anti-enumeração — decisão
+  /// consciente do produto.
   Future<String?> enviarLinkRecuperacao(String email) async {
+    final e = email.trim();
     try {
+      // 1) Checa status do email (anon-acessível)
+      String status = 'ativo';
+      try {
+        final r = await _client.rpc('status_email_recuperacao', params: {'p_email': e});
+        if (r is String) status = r;
+      } catch (_) {
+        // Falha transitória: segue otimisticamente
+      }
+      if (status == 'inexistente') {
+        return 'Não encontramos uma conta com esse e-mail.';
+      }
+      if (status == 'inativo') {
+        return 'Esta conta está desativada. Fale com o administrador.';
+      }
+
+      // 2) Existe e está ativa — dispara o link
       await _client.auth.resetPasswordForEmail(
-        email.trim(),
+        e,
         redirectTo: 'datacold://redefinir-senha',
       );
       return null;
-    } on AuthException catch (e) {
-      return _traduzir(e.message);
-    } catch (e) {
-      return 'Erro inesperado: $e';
+    } on AuthException catch (err) {
+      return _traduzir(err.message);
+    } catch (err) {
+      return 'Erro inesperado: $err';
     }
   }
 

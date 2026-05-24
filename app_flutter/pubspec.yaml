@@ -38,6 +38,7 @@ dependencies:
   go_router: ^17.2.3
   google_fonts: ^8.1.0
   intl: ^0.20.2
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -49,22 +50,34 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/logo/
+
+# Configuração do gerador de ícones do app (Android + iOS + web).
+# Usa o "app mark" da marca (quadrado escuro arredondado com o snowflake).
+# Para regenerar:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0B1D3A"      # azul-noite (combina com o app mark)
+  adaptive_icon_foreground: "assets/logo/foreground.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/logo/app_icon.png"
+    background_color: "#0B1D3A"
+    theme_color: "#1E6FD6"
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -28,17 +28,22 @@
  * AFTER INSERT nas tabelas de leituras (Postgres). Front só consome.
  */
 class Notificacoes {
-  static INTERVALO_POLLING_MS = 10000;   // 10s (aba visível); reduz pra 60s quando oculta
+  // Polling agressivo na aba visível pra dar sensação de "tempo real".
+  // 5s é o sweet-spot entre carga no servidor e latência percebida.
+  static INTERVALO_POLLING_MS = 5000;
   static INTERVALO_POLLING_OCULTO_MS = 60000;
   static LIMITE_INICIAL = 50;
+  static CANAL_BROADCAST = "datacold-notificacoes";
 
   static _api = null;
   static _cache = [];                    // últimas notificações carregadas
   static _contagem = { total: 0, critica: 0 };
+  static _contagemAnterior = null;       // detecta SUBIDA pra animar o sino
   static _assinantes = new Set();
   static _timer = null;
   static _carregando = false;
   static _statusFiltro = "ativas";       // 'todas'|'ativas'|'nao_lidas'|'arquivadas'
+  static _broadcast = null;              // BroadcastChannel entre abas
 
   static _getApi() {
     if (!Notificacoes._api) Notificacoes._api = new ApiBEM();
@@ -50,6 +55,7 @@ class Notificacoes {
   // -------------------------------------------------------------------
   static iniciar() {
     if (Notificacoes._timer) return;
+    Notificacoes._abrirBroadcast();
     Notificacoes.recarregar();
     Notificacoes._reagendar();
     // Recarrega imediatamente quando a aba volta a ficar visível
@@ -62,6 +68,30 @@ class Notificacoes {
       };
       document.addEventListener("visibilitychange", Notificacoes._visListener);
     }
+  }
+
+  /**
+   * BroadcastChannel sincroniza várias abas do mesmo navegador. Quando
+   * uma aba detecta nova notificação (contagem subindo), ela manda evento
+   * e as outras puxam imediatamente — sem esperar o próximo polling.
+   */
+  static _abrirBroadcast() {
+    if (Notificacoes._broadcast || typeof BroadcastChannel === "undefined") return;
+    try {
+      Notificacoes._broadcast = new BroadcastChannel(Notificacoes.CANAL_BROADCAST);
+      Notificacoes._broadcast.onmessage = (ev) => {
+        if (ev.data?.tipo === "novas-notificacoes") {
+          // Outra aba viu novidade — puxa agora
+          Notificacoes.recarregar();
+        }
+      };
+    } catch { /* ignora */ }
+  }
+
+  static _broadcastSubida() {
+    try {
+      Notificacoes._broadcast?.postMessage({ tipo: "novas-notificacoes", t: Date.now() });
+    } catch { /* ignora */ }
   }
   static parar() {
     if (Notificacoes._timer) clearInterval(Notificacoes._timer);
@@ -91,9 +121,27 @@ class Notificacoes {
         }),
         api.contarNaoLidas(),
       ]);
+
+      const novaCont = cont || { total: 0, critica: 0 };
+      const ant = Notificacoes._contagemAnterior;
+
+      // Detecta SUBIDA pra disparar animação "pisca" e broadcast pras abas.
+      // Ignora a primeira carga (ant === null) pra não piscar no boot.
+      const subiu = ant !== null && (
+        (novaCont.total   > ant.total) ||
+        (novaCont.critica > ant.critica)
+      );
+
       Notificacoes._cache = Array.isArray(lista?.notificacoes) ? lista.notificacoes : [];
-      Notificacoes._contagem = cont || { total: 0, critica: 0 };
-      Notificacoes._notificarAssinantes();
+      Notificacoes._contagem = novaCont;
+      Notificacoes._contagemAnterior = { ...novaCont };
+
+      // Chama assinantes (MenuTopo). Passa flag de subida pra UI piscar.
+      Notificacoes._notificarAssinantes({ subiu });
+
+      // Avisa outras abas — assim todas reagem juntas mesmo se só uma
+      // viu primeiro
+      if (subiu) Notificacoes._broadcastSubida();
     } catch (e) {
       // sem sessão / rede caiu — mantém cache antigo
     } finally {
@@ -150,17 +198,46 @@ class Notificacoes {
   static async marcarTodos()        { return Notificacoes.marcarTodosLidos(); }
   static async remover(id)          { return Notificacoes.arquivar(id); }
 
+  /**
+   * Arquiva todas as notificações visíveis (não-arquivadas) — botão "Limpar"
+   * do sino. Otimista: marca tudo localmente, depois faz fetch em paralelo
+   * e força recarregar pra sincronizar com o servidor.
+   *
+   * Sem RPC bulk; o overhead de 50 chamadas em paralelo é ~500ms no Supabase.
+   */
+  static async limpar() {
+    const ativos = Notificacoes._cache.filter(n => !n.arquivado);
+    if (!ativos.length) return;
+
+    // Optimista no cache local + render imediato
+    const agora = new Date().toISOString();
+    ativos.forEach(n => {
+      n.arquivado = true;
+      n.lido = true;
+      n.arquivado_em = agora;
+    });
+    Notificacoes._notificarAssinantes();
+
+    // Persiste em paralelo (ignora erros individuais — recarregar sincroniza)
+    const api = Notificacoes._getApi();
+    await Promise.allSettled(
+      ativos.map(n => api.arquivarNotificacao(n.id))
+    );
+    Notificacoes.recarregar();
+  }
+
   // -------------------------------------------------------------------
   //  Compat — descontinuados. Mantemos pra não quebrar callsites antigos
-  //  que ainda chamem .enviar(), .critica(), .limpar() etc.
+  //  que ainda chamem .enviar(), .critica() etc.
   // -------------------------------------------------------------------
   static enviar()  { console.warn("Notificacoes.enviar() removido — notificações vêm do servidor."); }
   static critica() { Notificacoes.enviar(); }
   static alta()    { Notificacoes.enviar(); }
   static media()   { Notificacoes.enviar(); }
   static comum()   { Notificacoes.enviar(); }
-  static limpar()  { console.warn("Notificacoes.limpar() não tem efeito no servidor."); }
-  static remover() { console.warn("Use arquivar(id)."); }
+  // OBS: `remover(id)` é definido na seção de aliases acima (→ arquivar).
+  // Não redefinir como stub aqui — class fields tem regra de "última vence"
+  // e sobrescreveria a definição funcional.
 
   // -------------------------------------------------------------------
   //  Assinantes (MenuTopo/sino se inscreve aqui)
@@ -170,9 +247,9 @@ class Notificacoes {
     try { cb(Notificacoes.listar()); } catch {}
     return () => Notificacoes._assinantes.delete(cb);
   }
-  static _notificarAssinantes() {
+  static _notificarAssinantes(extra = {}) {
     for (const cb of Notificacoes._assinantes) {
-      try { cb(Notificacoes.listar()); } catch (e) { console.error("assinante notif:", e); }
+      try { cb(Notificacoes.listar(), extra); } catch (e) { console.error("assinante notif:", e); }
     }
   }
 

@@ -8,6 +8,7 @@ import 'core/theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/recuperar_senha_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
+import 'features/sensores/detalhe/sensor_detalhe_screen.dart';
 import 'features/sensores/lista_sensores_screen.dart';
 import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
@@ -41,7 +42,7 @@ class _DataColdAppState extends State<DataColdApp> {
             GoRoute(path: '/dashboard',     builder: (_, __) => const DashboardScreen()),
             GoRoute(path: '/sala-controle', builder: (_, __) => const SalaControleStub()),
             GoRoute(path: '/sensores',      builder: (_, __) => const ListaSensoresScreen()),
-            GoRoute(path: '/sensores/:id',  builder: (_, s)  => SensorDetalheStub(sensorId: s.pathParameters['id']!)),
+            GoRoute(path: '/sensores/:id',  builder: (_, s)  => SensorDetalheScreen(sensorId: s.pathParameters['id']!)),
             GoRoute(path: '/ambientes',     builder: (_, __) => const AmbientesStub()),
             GoRoute(path: '/notificacoes',  builder: (_, __) => const NotificacoesStub()),
             GoRoute(path: '/agentes',       builder: (_, __) => const AgentesStub()),

@@ -44,7 +44,10 @@ class MenuTopo {
     this._verificarStatusApi();
 
     // Inscrição automática no sistema de notificações
-    this._cancelarAssinatura = Notificacoes.assinar(() => this._reRenderizarDropdown());
+    this._cancelarAssinatura = Notificacoes.assinar((_lista, extra) => {
+      this._reRenderizarDropdown();
+      if (extra?.subiu) this._piscarSino();
+    });
   }
 
   desmontar() {
@@ -134,6 +137,24 @@ class MenuTopo {
     this._ligarEventosSino();
   }
 
+  /**
+   * Pisca o sino por ~1.6s quando chega notificação nova (não-lidas
+   * subiu). Adiciona classe que dispara animação CSS `mt-sino-piscando`,
+   * e remove ao final pra poder re-disparar na próxima.
+   */
+  _piscarSino() {
+    const sino = this.raizEl?.querySelector("[data-mt-sino]");
+    if (!sino) return;
+    sino.classList.remove("piscando");
+    // Reflow força o restart da animação caso já estivesse
+    void sino.offsetWidth;
+    sino.classList.add("piscando");
+    clearTimeout(this._piscarTimer);
+    this._piscarTimer = setTimeout(() => {
+      sino?.classList.remove("piscando");
+    }, 1600);
+  }
+
   _htmlSino() {
     const lista = Notificacoes.listar();
     const naoLidos = lista.filter(n => !n.lido).length;
@@ -162,11 +183,6 @@ class MenuTopo {
         <div class="mt-dropdown-corpo">
           ${this._htmlLista(lista)}
         </div>
-        <footer class="mt-dropdown-rodape">
-          <span class="mt-info">
-            Use <code>Notificacoes.critica/alta/media/comum()</code> em qualquer página.
-          </span>
-        </footer>
       </div>
     `;
   }

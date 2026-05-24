@@ -132,11 +132,31 @@ class ModalReconstrucao {
   // ------------------------------------------------------------------
   //  Conteúdo
   // ------------------------------------------------------------------
-  _exibir({ meta, rotuloDataset, valorPonto, dataPonto }) {
-    if (!meta || !meta.reconstruido) return;
-    const titulo = rotuloDataset || "Reconstrução";
+  _exibir(opts) {
+    const modo = opts.modo || (opts.meta?.reconstruido ? "estimado" : "real");
+    this.el.dataset.modo = modo;
+
+    // Cabeçalho varia por modo
+    const eyebrow = this.el.querySelector(".modal-rec-eyebrow");
+    const icone   = this.el.querySelector(".modal-rec-icon");
+    if (modo === "real") {
+      eyebrow.textContent = "Leitura real do sensor";
+      icone.textContent = "📊";
+    } else {
+      eyebrow.textContent = "Ponto estimado pelo agente";
+      icone.textContent = "🧩";
+    }
+
+    const titulo = opts.rotuloDataset || (modo === "real" ? "Leitura" : "Reconstrução");
     this.el.querySelector("[data-mr-titulo]").textContent = titulo;
-    this.el.querySelector("[data-mr-body]").innerHTML = this._montarHtml(meta, valorPonto, dataPonto);
+
+    const html = modo === "real"
+      ? this._montarHtmlReal(opts.pontoDados || {}, opts.sensorTipo, opts.dataPonto, opts.historico, opts.rotuloDataset, opts.valorPonto)
+      : (opts.meta?.reconstruido
+          ? this._montarHtml(opts.meta, opts.valorPonto, opts.dataPonto)
+          : "");
+    if (!html) return;
+    this.el.querySelector("[data-mr-body]").innerHTML = html;
 
     // Restaura posição salva, senão usa default (canto inferior-direito)
     const salva = (() => {
@@ -259,6 +279,154 @@ class ModalReconstrucao {
         <span>🧠 Reconstruído pelo <strong>AgenteReconstrutor</strong></span>
       </div>
     `;
+  }
+
+  // ------------------------------------------------------------------
+  //  Modo "real" — mostra todos os campos do ponto + mini-análise
+  // ------------------------------------------------------------------
+  _montarHtmlReal(p, sensorTipo, dataPonto, historico, rotuloDataset, valorPonto) {
+    const hPonto = dataPonto ? new Date(dataPonto).toLocaleString("pt-BR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    }) : "—";
+
+    // Mini-análise: valor atual vs. média dos pontos recentes do histórico
+    const compararContexto = (campos) => {
+      if (!Array.isArray(historico) || historico.length < 3) return null;
+      const valoresContexto = [];
+      for (const ponto of historico) {
+        if (ponto?._reconstruido) continue;
+        for (const c of campos) {
+          if (typeof ponto[c] === "number" && Number.isFinite(ponto[c])) valoresContexto.push(ponto[c]);
+        }
+      }
+      if (valoresContexto.length < 3) return null;
+      const media = valoresContexto.reduce((s, x) => s + x, 0) / valoresContexto.length;
+      const min = Math.min(...valoresContexto);
+      const max = Math.max(...valoresContexto);
+      const atual = (() => {
+        const v = campos.map(c => p[c]).filter(x => typeof x === "number" && Number.isFinite(x));
+        if (!v.length) return null;
+        return v.reduce((s, x) => s + x, 0) / v.length;
+      })();
+      return { media, min, max, atual };
+    };
+
+    let camposHtml = "";
+    let analiseHtml = "";
+
+    if (sensorTipo === "energia") {
+      // Grid 3×3: fases × (corrente / tensão / FP)
+      const linhas = ["a", "b", "c"].map(fase => `
+        <tr>
+          <td class="mr-real-fase">Fase ${fase.toUpperCase()}</td>
+          <td>${this._fmt(p[`corrente_fase_${fase}`])} A</td>
+          <td>${this._fmt(p[`tensao_fase_${fase}`])} V</td>
+          <td>${this._fmt(p[`fator_potencia_${fase}`], 3)}</td>
+        </tr>`).join("");
+
+      camposHtml = `
+        <div class="mr-real-tabela-wrap">
+          <table class="mr-real-tabela">
+            <thead>
+              <tr><th></th><th>Corrente</th><th>Tensão</th><th>FP</th></tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>`;
+
+      // Potência ativa total calculada
+      const pot = ((p.tensao_fase_a||0)*(p.corrente_fase_a||0)*(p.fator_potencia_a||0) +
+                   (p.tensao_fase_b||0)*(p.corrente_fase_b||0)*(p.fator_potencia_b||0) +
+                   (p.tensao_fase_c||0)*(p.corrente_fase_c||0)*(p.fator_potencia_c||0)) / 1000;
+
+      // Mini-análise: comparar corrente média com histórico
+      const ctx = compararContexto(["corrente_fase_a","corrente_fase_b","corrente_fase_c"]);
+      if (ctx) {
+        const delta = ctx.atual - ctx.media;
+        const pct = Math.abs(delta / ctx.media) * 100;
+        const seta = Math.abs(delta) < 0.5 ? "→" : delta > 0 ? "↑" : "↓";
+        const corDelta = Math.abs(delta) < 0.5 ? "var(--texto-suave)" : delta > 0 ? "#d97706" : "#0a93c4";
+        analiseHtml = `
+          <div class="mr-real-analise">
+            <div class="mr-real-analise-titulo">Comparação com o contexto recente</div>
+            <div class="mr-real-analise-grid">
+              <div><span class="mr-real-an-lbl">Corrente atual</span><span class="mr-real-an-val">${this._fmt(ctx.atual)} A</span></div>
+              <div><span class="mr-real-an-lbl">Média recente</span><span class="mr-real-an-val">${this._fmt(ctx.media)} A</span></div>
+              <div><span class="mr-real-an-lbl">Mín / Máx</span><span class="mr-real-an-val">${this._fmt(ctx.min)} / ${this._fmt(ctx.max)}</span></div>
+              <div><span class="mr-real-an-lbl">Variação</span><span class="mr-real-an-val" style="color:${corDelta}">${seta} ${pct.toFixed(1)}%</span></div>
+            </div>
+          </div>
+          <div class="mr-real-pot">Potência ativa total: <strong>${pot.toFixed(2)} kW</strong></div>`;
+      } else {
+        analiseHtml = `<div class="mr-real-pot">Potência ativa total: <strong>${pot.toFixed(2)} kW</strong></div>`;
+      }
+    }
+    else if (sensorTipo === "temperatura") {
+      const t = p.temperatura;
+      camposHtml = `
+        <div class="mr-real-destaque">
+          <div class="mr-real-destaque-num">${this._fmt(t, 2)}<small> °C</small></div>
+          <div class="mr-real-destaque-lbl">Temperatura medida</div>
+        </div>`;
+      const ctx = compararContexto(["temperatura"]);
+      if (ctx) {
+        const delta = ctx.atual - ctx.media;
+        const seta = Math.abs(delta) < 0.05 ? "→" : delta > 0 ? "↑" : "↓";
+        const corDelta = Math.abs(delta) < 0.05 ? "var(--texto-suave)" : delta > 0 ? "#d97706" : "#0a93c4";
+        analiseHtml = `
+          <div class="mr-real-analise">
+            <div class="mr-real-analise-titulo">Comparação com o contexto recente</div>
+            <div class="mr-real-analise-grid">
+              <div><span class="mr-real-an-lbl">Atual</span><span class="mr-real-an-val">${this._fmt(t, 2)} °C</span></div>
+              <div><span class="mr-real-an-lbl">Média recente</span><span class="mr-real-an-val">${this._fmt(ctx.media, 2)} °C</span></div>
+              <div><span class="mr-real-an-lbl">Mín / Máx</span><span class="mr-real-an-val">${this._fmt(ctx.min, 2)} / ${this._fmt(ctx.max, 2)}</span></div>
+              <div><span class="mr-real-an-lbl">Variação</span><span class="mr-real-an-val" style="color:${corDelta}">${seta} ${this._fmt(delta, 2)} °C</span></div>
+            </div>
+          </div>`;
+      }
+    }
+    else if (sensorTipo === "porta") {
+      const v = p.abertura_porta;
+      const estado = v == null ? "—" : (v >= 0.5 ? "Aberta" : "Fechada");
+      const cor = v == null ? "#5b6b86" : (v >= 0.5 ? "#d97706" : "#16a34a");
+      camposHtml = `
+        <div class="mr-real-destaque">
+          <div class="mr-real-destaque-num" style="color:${cor}">${this._esc(estado)}</div>
+          <div class="mr-real-destaque-lbl">Sinal: ${this._fmt(v, 2)}</div>
+        </div>`;
+    }
+    else {
+      // Fallback: lista todos os campos numéricos
+      const items = Object.entries(p)
+        .filter(([k, v]) => k !== "time" && !k.startsWith("_") && typeof v === "number")
+        .map(([k, v]) => `<div><span class="mr-real-an-lbl">${this._esc(k)}</span><span class="mr-real-an-val">${this._fmt(v, 3)}</span></div>`)
+        .join("");
+      camposHtml = `<div class="mr-real-analise-grid">${items}</div>`;
+    }
+
+    return `
+      <div class="mr-real-cabec">
+        <div class="mr-real-quando">
+          <span class="mr-real-quando-lbl">Leitura registrada em</span>
+          <span class="mr-real-quando-val">${this._esc(hPonto)}</span>
+        </div>
+        ${rotuloDataset ? `<span class="mr-real-dataset">${this._esc(rotuloDataset)}</span>` : ""}
+      </div>
+
+      ${camposHtml}
+      ${analiseHtml}
+
+      <div class="mr-rodape-info">
+        <span>📡 Leitura real enviada pelo sensor — sem estimativa</span>
+      </div>
+    `;
+  }
+
+  _fmt(v, casas = 1) {
+    if (v == null || !Number.isFinite(v)) return "—";
+    return Number(v).toFixed(casas);
   }
 
   _formatarDuracao(s) {

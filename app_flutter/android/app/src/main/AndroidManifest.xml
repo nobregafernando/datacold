@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sem essas duas, o release APK não resolve DNS → SocketException
+         no Supabase Auth. O debug build ganha automaticamente, release não. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
     <application
-        android:label="datacold"
+        android:label="DataCold"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

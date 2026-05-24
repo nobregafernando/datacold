@@ -469,6 +469,94 @@ body{
   box-shadow: 0 16px 40px rgba(0,0,0,.3);
 }
 
+/* === Selos no hero (MVP + status da API) === */
+.selos-hero{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.selo-mvp{
+  background: linear-gradient(135deg, rgba(217,119,6,.14), rgba(11,29,58,.10));
+  border-color: rgba(217,119,6,.4);
+  color: #8a5a06;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.selo-mvp .ponto{ background: var(--alerta); animation: piscar 2.2s ease-in-out infinite; }
+@keyframes piscar { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* === Apoio do hackathon === */
+.secao-apoio{
+  background: linear-gradient(180deg, transparent 0%, rgba(11,29,58,.025) 100%);
+  padding-top: 30px;
+}
+.cards-apoio{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-top: 36px;
+}
+.card-apoio{
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-md);
+  padding: 26px 18px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: transform var(--t-rapida), box-shadow var(--t-rapida), border-color var(--t-rapida);
+}
+.card-apoio:hover{
+  transform: translateY(-3px);
+  border-color: var(--azul-medio);
+  box-shadow: 0 14px 32px rgba(11,29,58,.10);
+}
+.apoio-logo{
+  width: 160px;
+  height: 80px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f4f7fb, #e9eff7);
+  border: 1px solid var(--borda);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  padding: 10px 16px;
+  box-sizing: border-box;
+}
+.apoio-logo img{
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.apoio-iniciais{
+  display: none;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: .04em;
+  color: var(--azul-medio);
+}
+/* Quando a imagem falha (onerror remove o <img>), mostra as iniciais */
+.apoio-logo.sem-img .apoio-iniciais{ display: block; }
+.apoio-nome{
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--azul-noite);
+  line-height: 1.25;
+}
+.apoio-papel{
+  font-size: 12.5px;
+  color: var(--texto-suave);
+  line-height: 1.35;
+}
+
 /* === Rodapé === */
 .rodape{
   padding: 50px 0 30px;
@@ -483,6 +571,7 @@ body{
 @media (max-width: 960px){
   .cards-sensores,
   .cards-capacidades{ grid-template-columns: 1fr; }
+  .cards-apoio{ grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .faixa-grid{ grid-template-columns: repeat(2, 1fr); gap: 24px; }
   .secao{ padding: 80px 0; }
   .hero{ padding: 50px 0 60px; }
@@ -490,4 +579,6 @@ body{
 @media (max-width: 600px){
   .nav-links a:not(.btn){ display: none; }
   .marca img{ height: 36px; }
+  .cards-apoio{ grid-template-columns: 1fr; }
+  .apoio-logo{ width: 140px; height: 72px; }
 }

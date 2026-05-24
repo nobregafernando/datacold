@@ -288,6 +288,167 @@
 }
 .modal-rec-btn:hover{ background: var(--azul-profundo); }
 
+/* ================================================================
+   MODO "real" — abre quando usuário clica num ponto AZUL (não estimado)
+   Header azul/ciano (em vez de roxo), conteúdo focado nos dados
+   ================================================================ */
+.modal-rec[data-modo="real"] .modal-rec-head{
+  background: linear-gradient(135deg, rgba(30,111,214,.10) 0%, rgba(0,184,240,.08) 100%);
+}
+.modal-rec[data-modo="real"] .modal-rec-icon{
+  background: linear-gradient(135deg, #1E6FD6 0%, #00B8F0 100%);
+  box-shadow: 0 6px 14px rgba(30,111,214,.30);
+}
+.modal-rec[data-modo="real"] .modal-rec-eyebrow{
+  color: var(--azul-medio);
+}
+
+/* Cabeçalho do corpo "real" */
+.mr-real-cabec{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--borda);
+}
+.mr-real-quando-lbl{
+  display: block;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  font-weight: 700;
+}
+.mr-real-quando-val{
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--azul-noite);
+  margin-top: 2px;
+}
+.mr-real-dataset{
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--azul-gelo);
+  color: var(--azul-profundo);
+  font-weight: 600;
+}
+
+/* Tabela 3×3 (energia: fases × métricas) */
+.mr-real-tabela-wrap{
+  overflow-x: auto;
+}
+.mr-real-tabela{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mr-real-tabela th, .mr-real-tabela td{
+  padding: 8px 10px;
+  text-align: left;
+}
+.mr-real-tabela th{
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--texto-suave);
+  font-weight: 700;
+  border-bottom: 1px solid var(--borda);
+}
+.mr-real-tabela td{
+  font-family: var(--fonte-mono);
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--borda);
+}
+.mr-real-tabela td.mr-real-fase{
+  font-family: var(--fonte);
+  font-weight: 700;
+  color: var(--azul-medio);
+}
+.mr-real-tabela tbody tr:last-child td{ border-bottom: none; }
+
+/* Destaque pra temperatura/porta (1 valor único, grande) */
+.mr-real-destaque{
+  text-align: center;
+  padding: 18px;
+  background: var(--painel-soft);
+  border-radius: var(--raio-md);
+  border: 1px solid var(--borda);
+}
+.mr-real-destaque-num{
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--azul-medio);
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+.mr-real-destaque-num small{
+  font-size: 18px;
+  opacity: .7;
+}
+.mr-real-destaque-lbl{
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--texto-suave);
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+/* Mini-análise (atual vs. histórico recente) */
+.mr-real-analise{
+  background: rgba(30,111,214,.05);
+  border: 1px solid rgba(30,111,214,.18);
+  border-radius: var(--raio-md);
+  padding: 12px 14px;
+}
+.mr-real-analise-titulo{
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.mr-real-analise-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.mr-real-analise-grid > div{
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  background: var(--branco);
+  border-radius: 6px;
+}
+.mr-real-an-lbl{
+  font-size: 10px;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.mr-real-an-val{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul-noite);
+  margin-top: 2px;
+  font-family: var(--fonte-mono);
+}
+.mr-real-pot{
+  font-size: 13px;
+  padding: 10px 12px;
+  background: rgba(30,111,214,.08);
+  border-radius: 8px;
+  text-align: center;
+}
+.mr-real-pot strong{
+  font-family: var(--fonte-mono);
+  color: var(--azul-profundo);
+}
+
 /* Responsivo */
 @media (max-width: 540px){
   .modal-rec{
