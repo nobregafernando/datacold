@@ -34,33 +34,46 @@ const BLOCO = `${MARCA_INICIO}
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
+/* DataCold · invalidação de cache agressiva.
+ * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
+ * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
+ */
 (function(){
-  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      rs.forEach(function(r){ r.unregister(); });
-    }).catch(function(){});
-  }
-  // 2) Apaga todas as caches da Cache API
-  if ('caches' in window) {
-    caches.keys().then(function(ks){
-      ks.forEach(function(k){ caches.delete(k); });
-    }).catch(function(){});
-  }
-  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
   try {
-    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
+    if ('caches' in window) {
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ caches.delete(k); });
+      }).catch(function(){});
+    }
+    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
+    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
+    fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
         if (!v || !v.build_id) return;
         var anterior = localStorage.getItem('__build_id');
-        if (anterior && anterior !== v.build_id) {
-          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
-          Object.keys(sessionStorage).forEach(function(k){
-            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
-          });
-        }
+        var marcador = '__reloaded_' + v.build_id;
         localStorage.setItem('__build_id', v.build_id);
+        if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
+          // Build mudou — limpa marcadores antigos e força reload sem cache.
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
+              sessionStorage.removeItem(k);
+            }
+          });
+          sessionStorage.setItem(marcador, '1');
+          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
+          var url = new URL(location.href);
+          url.searchParams.set('_v', v.build_id);
+          location.replace(url.toString());
+        }
       })
       .catch(function(){});
   } catch (_) {}

@@ -11,28 +11,37 @@
 //    }
 //
 //  Variáveis de ambiente (configurar via `supabase secrets set ...`):
-//    SB_URL              ex: https://fcverbceppwdbveustvq.supabase.co
-//    SB_ANON_KEY         anon key pública do Supabase
-//    SB_SERVICE_KEY      service_role key (usada em auth:admin_criar, que
-//                        cria usuários sem cair no rate-limit do /signup
-//                        anônimo). Nunca exposta ao cliente.
-//    RESEND_API_KEY      chave Resend para enviar email de convite (evita
-//                        rate-limit do SMTP padrão Supabase, 3 emails/h).
-//    RESEND_FROM         remetente (default: "onboarding@resend.dev" =
-//                        sandbox do Resend, só envia pro dono da conta).
-//                        Em produção, configurar pra "noreply@<seu-dominio>"
-//                        após verificar o domínio no Resend.
-//    BEM_API_KEY         chave da BEM Inteligência (não usado hoje, reservado)
+//    SB_URL                ex: https://fcverbceppwdbveustvq.supabase.co
+//    SB_ANON_KEY           anon key pública do Supabase
+//    SB_SERVICE_KEY        service_role key (usada em auth:admin_criar, que
+//                          cria usuários sem cair no rate-limit do /signup
+//                          anônimo). Nunca exposta ao cliente.
+//    GMAIL_USER            email Gmail que envia (ex: datacold26@gmail.com).
+//                          Requer App Password (https://myaccount.google.com/apppasswords)
+//                          e 2FA ativado.
+//    GMAIL_APP_PASSWORD    App Password de 16 chars (sem espaços).
+//    GMAIL_FROM_NAME       nome de exibição do remetente (default "DataCold").
+//
+//  Fallback (se GMAIL_* não configurado, tenta via Resend):
+//    RESEND_API_KEY        chave Resend
+//    RESEND_FROM           remetente Resend (default "onboarding@resend.dev")
+//
+//    BEM_API_KEY           chave da BEM Inteligência (não usado, reservado)
 //
 //  Deploy:
 //    supabase functions deploy proxy --no-verify-jwt
 // =============================================================================
 
-const SB_URL         = Deno.env.get("SB_URL")          ?? "";
-const SB_ANON_KEY    = Deno.env.get("SB_ANON_KEY")     ?? "";
-const SB_SERVICE_KEY = Deno.env.get("SB_SERVICE_KEY")  ?? "";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")  ?? "";
-const RESEND_FROM    = Deno.env.get("RESEND_FROM")     ?? "DataCold <onboarding@resend.dev>";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+
+const SB_URL             = Deno.env.get("SB_URL")             ?? "";
+const SB_ANON_KEY        = Deno.env.get("SB_ANON_KEY")        ?? "";
+const SB_SERVICE_KEY     = Deno.env.get("SB_SERVICE_KEY")     ?? "";
+const GMAIL_USER         = Deno.env.get("GMAIL_USER")         ?? "";
+const GMAIL_APP_PASSWORD = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
+const GMAIL_FROM_NAME    = Deno.env.get("GMAIL_FROM_NAME")    ?? "DataCold";
+const RESEND_API_KEY     = Deno.env.get("RESEND_API_KEY")     ?? "";
+const RESEND_FROM        = Deno.env.get("RESEND_FROM")        ?? "DataCold <onboarding@resend.dev>";
 
 // CORS — em produção restringe ao domínio Firebase Hosting.
 const ORIGENS_PERMITIDAS = new Set([
@@ -196,7 +205,7 @@ function montarHtmlConvite(link: string, email: string, siteUrl: string): string
         <div style="background:#F4F8FF;border:1px solid #DDE4EF;border-radius:10px;padding:18px 20px;margin:0 0 24px;">
           <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b86;font-weight:700;margin-bottom:10px;">Requisitos da senha</div>
           <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.65;color:#0B1D3A;">
-            <li>Mínimo de <strong>10 caracteres</strong></li>
+            <li>Mínimo de <strong>8 caracteres</strong></li>
             <li>Pelo menos 1 letra <strong>maiúscula</strong> e 1 <strong>minúscula</strong></li>
             <li>Pelo menos 1 <strong>número</strong></li>
             <li>Pelo menos 1 <strong>caractere especial</strong> (ex: ! @ # $)</li>
@@ -230,7 +239,7 @@ function montarTextoConvite(link: string, email: string, siteUrl: string): strin
     link,
     "",
     "Requisitos da senha:",
-    "  - Mínimo de 10 caracteres",
+    "  - Mínimo de 8 caracteres",
     "  - Pelo menos 1 letra maiúscula e 1 minúscula",
     "  - Pelo menos 1 número",
     "  - Pelo menos 1 caractere especial (ex: ! @ # $)",
@@ -249,11 +258,52 @@ function escHtml(s: string): string {
 }
 
 /**
- * Envia email via Resend API. Retorna true em sucesso.
- * Documentação: https://resend.com/docs/api-reference/emails/send-email
+ * Envia email via SMTP do Gmail (preferência) OU Resend (fallback).
+ *
+ * Gmail SMTP via denomailer:
+ *   - Host: smtp.gmail.com:465 (SSL)
+ *   - Auth: GMAIL_USER + GMAIL_APP_PASSWORD (App Password, não senha real)
+ *   - Limite: 500 emails/dia (free)
+ *   - Funciona pra QUALQUER destinatário, sem domínio verificado
  */
-async function enviarViaResend(opts: { to: string; subject: string; html: string; text: string }): Promise<{ ok: boolean; erro?: string }> {
-  if (!RESEND_API_KEY) return { ok: false, erro: "RESEND_API_KEY não configurada" };
+async function enviarEmail(opts: { to: string; subject: string; html: string; text: string }): Promise<{ ok: boolean; erro?: string; via?: string }> {
+  // 1) Tenta Gmail SMTP
+  if (GMAIL_USER && GMAIL_APP_PASSWORD) {
+    try {
+      const client = new SMTPClient({
+        connection: {
+          hostname: "smtp.gmail.com",
+          port: 465,
+          tls: true,
+          auth: {
+            username: GMAIL_USER,
+            password: GMAIL_APP_PASSWORD.replace(/\s+/g, ""),
+          },
+        },
+      });
+      await client.send({
+        from: `${GMAIL_FROM_NAME} <${GMAIL_USER}>`,
+        to: opts.to,
+        subject: opts.subject,
+        content: opts.text,
+        html: opts.html,
+      });
+      await client.close();
+      return { ok: true, via: "gmail" };
+    } catch (e) {
+      // Cai pro fallback Resend se também estiver configurado
+      const erroGmail = String((e as Error).message ?? e);
+      if (!RESEND_API_KEY) {
+        return { ok: false, erro: `Gmail SMTP falhou: ${erroGmail}`, via: "gmail" };
+      }
+      console.error("Gmail SMTP falhou, tentando Resend:", erroGmail);
+    }
+  }
+
+  // 2) Fallback Resend
+  if (!RESEND_API_KEY) {
+    return { ok: false, erro: "Nem GMAIL_* nem RESEND_API_KEY configurados" };
+  }
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -271,11 +321,11 @@ async function enviarViaResend(opts: { to: string; subject: string; html: string
     });
     if (!r.ok) {
       const t = await r.text();
-      return { ok: false, erro: `Resend HTTP ${r.status}: ${t.slice(0, 200)}` };
+      return { ok: false, erro: `Resend HTTP ${r.status}: ${t.slice(0, 200)}`, via: "resend" };
     }
-    return { ok: true };
+    return { ok: true, via: "resend" };
   } catch (e) {
-    return { ok: false, erro: String((e as Error).message) };
+    return { ok: false, erro: String((e as Error).message), via: "resend" };
   }
 }
 
@@ -393,14 +443,16 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
   // 5) Envia via Resend
   let convite_enviado = false;
   let erro_envio: string | undefined;
+  let via_envio: string | undefined;
   if (actionLink) {
-    const env = await enviarViaResend({
+    const env = await enviarEmail({
       to: email,
       subject: "Você foi convidado para a DataCold",
       html: montarHtmlConvite(actionLink, email, siteUrl),
       text: montarTextoConvite(actionLink, email, siteUrl),
     });
     convite_enviado = env.ok;
+    via_envio = env.via;
     if (!env.ok) erro_envio = env.erro;
   } else {
     erro_envio = "Não foi possível gerar o link de definição de senha.";
@@ -412,6 +464,7 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
     papel: papelNovo,
     id: criado?.id,
     convite_enviado,
+    via_envio,
     erro_envio,
     reenvio: usuarioJaExistia,
   }, 200);

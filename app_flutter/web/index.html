@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+/* DataCold · invalidação de cache agressiva.
+ * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
+ * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
+ */
+(function(){
+  try {
+    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
+    if ('caches' in window) {
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ caches.delete(k); });
+      }).catch(function(){});
+    }
+    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
+    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
+    fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        var marcador = '__reloaded_' + v.build_id;
+        localStorage.setItem('__build_id', v.build_id);
+        if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
+          // Build mudou — limpa marcadores antigos e força reload sem cache.
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
+              sessionStorage.removeItem(k);
+            }
+          });
+          sessionStorage.setItem(marcador, '1');
+          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
+          var url = new URL(location.href);
+          url.searchParams.set('_v', v.build_id);
+          location.replace(url.toString());
+        }
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="datacold">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png?v=1779630027638">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png?v=1779630027638"/>
+
+  <title>datacold</title>
+  <link rel="manifest" href="manifest.json?v=1779630027638">
+</head>
+<body>
+  <script src="flutter_bootstrap.js?v=1779630027638" async></script>
+</body>
+</html>

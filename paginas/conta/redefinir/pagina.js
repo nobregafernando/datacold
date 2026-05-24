@@ -85,7 +85,7 @@ class PaginaRedefinir {
     if (this.elForcaRotulo) this.elForcaRotulo.textContent = ValidadorSenha.rotuloForca(v.forca);
 
     const s = senha || "";
-    this._req("len",        s.length >= 10);
+    this._req("len",        s.length >= 8);
     this._req("maiuscula",  /[A-Z]/.test(s));
     this._req("minuscula",  /[a-z]/.test(s));
     this._req("digito",     /\d/.test(s));

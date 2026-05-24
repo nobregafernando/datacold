@@ -84,6 +84,7 @@ class ApiBEM {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(corpo),
+      cache: "no-store",
     });
     const texto = await resp.text().catch(() => "");
     let dados;

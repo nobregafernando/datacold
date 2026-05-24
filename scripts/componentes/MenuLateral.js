@@ -160,8 +160,14 @@ class MenuLateral {
       const acao = ev.target.closest("[data-acao]")?.dataset.acao;
       if (acao === "sair") {
         ev.preventDefault();
-        Autenticacao.logout();
-        window.location.href = `${this.raiz}paginas/login/`;
+        // 1) Limpa sessão local IMEDIATO (síncrono) — garante que o guard
+        //    do login não veja sessão válida e te jogue de volta pro admin.
+        Autenticacao._limparSessao();
+        // 2) Dispara signout no servidor em background (best-effort) e
+        //    redireciona com replace() pra que o "voltar" do navegador
+        //    não retorne pra página autenticada.
+        Autenticacao.logout().catch(() => {});
+        window.location.replace(`${this.raiz}paginas/login/`);
       }
       if (acao === "toggle-sensores") {
         ev.preventDefault();

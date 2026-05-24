@@ -17,7 +17,8 @@
       "scripts/build/**",
       "estudos/explorador-api.html",
       "simulador/**",
-      "supabase/**"
+      "supabase/**",
+      "app_flutter/**"
     ],
     "cleanUrls": true,
     "trailingSlash": true,

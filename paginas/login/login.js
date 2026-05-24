@@ -1,15 +1,12 @@
 /**
- * Página de login real (Supabase Auth) + atalho MVP.
+ * Página de login (Supabase Auth).
  *
- * - O botão MVP cria uma sessão fake (Autenticacao.loginMvp) e vai pro
- *   dashboard. Fica até o admin real estar criado e a gente derrubar.
- * - O formulário usa Autenticacao.loginEmail(email, senha) que valida
- *   entrada via Sanitizar/ValidadorSenha antes de bater no Supabase.
+ * O formulário usa Autenticacao.loginEmail(email, senha), que valida
+ * entrada via Sanitizar/ValidadorSenha antes de bater no Supabase.
  */
 class PaginaLogin {
   constructor() {
     this.form      = document.querySelector("[data-form]");
-    this.botaoMvp  = document.querySelector("[data-acao='mvp']");
     this.btnEntrar = document.querySelector("[data-btn-entrar]");
     this.elErro    = document.querySelector("[data-erro]");
   }
@@ -19,7 +16,6 @@ class PaginaLogin {
       window.location.replace("../admin/");
       return;
     }
-    this.botaoMvp?.addEventListener("click", () => this._entrarMvp());
     this.form?.addEventListener("submit", (ev) => this._entrarFormulario(ev));
 
     // Olhinho mostrar/ocultar senha
@@ -52,11 +48,6 @@ class PaginaLogin {
         this.form.requestSubmit?.() || this.form.dispatchEvent(new Event("submit", { cancelable: true }));
       });
     });
-  }
-
-  _entrarMvp() {
-    Autenticacao.loginMvp();
-    window.location.href = "../admin/";
   }
 
   async _entrarFormulario(ev) {

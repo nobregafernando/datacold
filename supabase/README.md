@@ -30,7 +30,7 @@ Antes do primeiro login real, configure no Dashboard do Supabase
 - **"Confirm email"** ⇒ **DESABILITADO** (login libera direto, alinhado com a decisão do projeto).
 
 ### Authentication → Policies
-- **Minimum password length** ⇒ `10`.
+- **Minimum password length** ⇒ `8`.
 
 ### Authentication → URL Configuration
 - **Site URL** ⇒ `https://datacold.web.app`

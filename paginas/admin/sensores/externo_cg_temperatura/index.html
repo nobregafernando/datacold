@@ -8,55 +8,88 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
+/* DataCold · invalidação de cache agressiva.
+ * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
+ * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
+ */
 (function(){
-  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      rs.forEach(function(r){ r.unregister(); });
-    }).catch(function(){});
-  }
-  // 2) Apaga todas as caches da Cache API
-  if ('caches' in window) {
-    caches.keys().then(function(ks){
-      ks.forEach(function(k){ caches.delete(k); });
-    }).catch(function(){});
-  }
-  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
   try {
-    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
+    if ('caches' in window) {
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ caches.delete(k); });
+      }).catch(function(){});
+    }
+    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
+    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
+    fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
         if (!v || !v.build_id) return;
         var anterior = localStorage.getItem('__build_id');
-        if (anterior && anterior !== v.build_id) {
-          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
-          Object.keys(sessionStorage).forEach(function(k){
-            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
-          });
-        }
+        var marcador = '__reloaded_' + v.build_id;
         localStorage.setItem('__build_id', v.build_id);
+        if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
+          // Build mudou — limpa marcadores antigos e força reload sem cache.
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
+              sessionStorage.removeItem(k);
+            }
+          });
+          sessionStorage.setItem(marcador, '1');
+          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
+          var url = new URL(location.href);
+          url.searchParams.set('_v', v.build_id);
+          location.replace(url.toString());
+        }
       })
       .catch(function(){});
   } catch (_) {}
 })();
 </script>
 <!-- BLOCO-SEM-CACHE:FIM -->
+<!-- GUARDA-AUTH:INICIO -->
+<style>html[data-aguardando-auth]{visibility:hidden}html[data-aguardando-auth] body{visibility:hidden}</style>
+<script>
+(function(){
+  try {
+    var bruto = localStorage.getItem("datacold_sessao");
+    if (bruto) {
+      var s = JSON.parse(bruto);
+      // Sessão "real" tem access_token; sessão MVP tem só perfil.
+      if (s && (s.access_token || s.perfil)) return;
+    }
+  } catch (e) {}
+  // Sem sessão: esconde tudo (CSS sincronicamente) e redireciona pra login.
+  document.documentElement.setAttribute("data-aguardando-auth", "");
+  var alvo = "/paginas/login/";
+  try { sessionStorage.setItem("datacold_redirect_apos_login", location.pathname + location.search); } catch(e){}
+  location.replace(alvo);
+})();
+</script>
+<!-- GUARDA-AUTH:FIM -->
 <title>DataCold · Sensor</title>
-<link rel="icon" href="/favicon.ico?v=1779582676984" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779582676984">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779582676984">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779582676984">
+<link rel="icon" href="/favicon.ico?v=1779630027638" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779630027638">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779630027638">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779630027638">
 
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../../estilos/global.css?v=1779582676984">
-<link rel="stylesheet" href="../../../../estilos/sensor.css?v=1779582676984">
-<link rel="stylesheet" href="../../../../scripts/componentes/MenuLateral.css?v=1779582676984">
-<link rel="stylesheet" href="../../../../scripts/componentes/MenuTopo.css?v=1779582676984">
-<link rel="stylesheet" href="../_compartilhado/estilo.css?v=1779582676984">
+<link rel="stylesheet" href="../../../../estilos/global.css?v=1779630027638">
+<link rel="stylesheet" href="../../../../estilos/sensor.css?v=1779630027638">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuLateral.css?v=1779630027638">
+<link rel="stylesheet" href="../../../../scripts/componentes/MenuTopo.css?v=1779630027638">
+<link rel="stylesheet" href="../_compartilhado/estilo.css?v=1779630027638">
 </head>
 <body>
 
@@ -254,31 +287,31 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <!-- Núcleo + componentes -->
-<script src="../../../../scripts/nucleo/ApiBEM.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/Sensor.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/SensorEnergia.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/SensorTemperatura.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/SensorPorta.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/FabricaSensor.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/Usuario.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/Sanitizar.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/ValidadorSenha.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/Autenticacao.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/Notificacoes.js?v=1779582676984"></script>
-<script src="../../../../scripts/componentes/MenuLateral.js?v=1779582676984"></script>
-<script src="../../../../scripts/componentes/MenuTopo.js?v=1779582676984"></script>
+<script src="../../../../scripts/nucleo/ApiBEM.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/Sensor.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/SensorEnergia.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/SensorTemperatura.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/SensorPorta.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/FabricaSensor.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/Usuario.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/Sanitizar.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/ValidadorSenha.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/Autenticacao.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/Notificacoes.js?v=1779630027638"></script>
+<script src="../../../../scripts/componentes/MenuLateral.js?v=1779630027638"></script>
+<script src="../../../../scripts/componentes/MenuTopo.js?v=1779630027638"></script>
 <!-- Agentes (carregar nesta ordem: normas → Regra → comuns → base → tipos → fábrica) -->
-<script src="../../../../scripts/agentes/normas.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/Regra.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/verificacoesComuns.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/AgenteBase.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/AgenteEnergia.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/AgenteTemperatura.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/AgentePorta.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/FabricaAgente.js?v=1779582676984"></script>
-<script src="../../../../scripts/agentes/AgenteReconstrutor.js?v=1779582676984"></script>
-<script src="../../../../scripts/nucleo/AnalisadorSensor.js?v=1779582676984"></script>
-<script src="../_compartilhado/pagina.js?v=1779582676984"></script>
+<script src="../../../../scripts/agentes/normas.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/Regra.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/verificacoesComuns.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/AgenteBase.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/AgenteEnergia.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/AgenteTemperatura.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/AgentePorta.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/FabricaAgente.js?v=1779630027638"></script>
+<script src="../../../../scripts/agentes/AgenteReconstrutor.js?v=1779630027638"></script>
+<script src="../../../../scripts/nucleo/AnalisadorSensor.js?v=1779630027638"></script>
+<script src="../_compartilhado/pagina.js?v=1779630027638"></script>
 
 </body>
 </html>

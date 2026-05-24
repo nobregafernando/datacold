@@ -433,6 +433,9 @@ class PaginaSensor {
       return;
     }
     el.hidden = false;
+
+    // Marca como "cancelando…" os incidentes cujo cancel está em voo.
+    this._cancelandoIncidentes = this._cancelandoIncidentes || new Set();
     el.innerHTML = `
       <div class="ia-cabecalho">
         <span class="ia-icone">🎛️</span>
@@ -442,26 +445,41 @@ class PaginaSensor {
         </div>
       </div>
       <div class="ia-lista">
-        ${lista.map(i => this._htmlIncidente(i)).join("")}
+        ${lista.map(i => this._htmlIncidente(i, this._cancelandoIncidentes.has(String(i.id)))).join("")}
       </div>
     `;
-    el.querySelectorAll("[data-cancelar-incidente]").forEach(b => {
-      b.addEventListener("click", async (ev) => {
+
+    // Event delegation: handler fica no container e sobrevive a innerHTML
+    // replacement do auto-refresh (que rolava a cada 3s).
+    if (!el._delegacaoCancelar) {
+      el.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("[data-cancelar-incidente]");
+        if (!btn || btn.disabled) return;
         ev.preventDefault();
-        const id = b.dataset.cancelarIncidente;
-        b.disabled = true; b.textContent = "Cancelando…";
+        const id = String(btn.dataset.cancelarIncidente);
+        this._cancelandoIncidentes.add(id);
+        btn.disabled = true; btn.textContent = "Cancelando…";
         try {
           await this.api.cancelarIncidente(id);
+          // Remove imediatamente do estado local pra UI não esperar 3s.
+          this.incidentesAtivos = (this.incidentesAtivos || []).filter(
+            i => String(i.id) !== id
+          );
+          this._renderizarIncidentesAtivos();
           await this._carregarDados();
         } catch (e) {
-          b.disabled = false; b.textContent = "Tentar de novo";
           console.error("cancelar incidente falhou:", e);
+          btn.disabled = false;
+          btn.textContent = "Tentar de novo";
+        } finally {
+          this._cancelandoIncidentes.delete(id);
         }
       });
-    });
+      el._delegacaoCancelar = true;
+    }
   }
 
-  _htmlIncidente(i) {
+  _htmlIncidente(i, cancelando = false) {
     const sev = ({ offline: "crit", gap: "crit", spike: "warn", drift: "warn", valor_impossivel: "crit" })[i.tipo] || "info";
     const ico = ({ offline: "📴", gap: "📡", spike: "⚡", drift: "📈", valor_impossivel: "🛑" })[i.tipo] || "ℹ️";
     const rotulo = ({
@@ -483,7 +501,9 @@ class PaginaSensor {
           <div class="ia-titulo">${rotulo}</div>
           <div class="ia-meta">resta <strong>${restanteStr}</strong>${i.descricao ? ` · ${i.descricao}` : ""}</div>
         </div>
-        <button class="ia-cancelar" data-cancelar-incidente="${i.id}">Cancelar</button>
+        <button class="ia-cancelar" data-cancelar-incidente="${i.id}" ${cancelando ? "disabled" : ""}>
+          ${cancelando ? "Cancelando…" : "Cancelar"}
+        </button>
       </div>
     `;
   }
@@ -624,6 +644,24 @@ class PaginaSensor {
     this._estaOffline = false;
     this._segDesde = 0;
     this._cadenciaObservada = 60;
+
+    // Incidente ativo de gap/offline = sensor está offline AGORA mesmo que
+    // o cron ainda não tenha parado de inserir. Evita a "espera de 2 min"
+    // entre clicar em "Desconectar" e a UI refletir.
+    const incOffline = (this.incidentesAtivos || []).find(
+      i => i.tipo === "gap" || i.tipo === "offline"
+    );
+    if (incOffline) {
+      this._estaOffline = true;
+      this._incidenteOffline = incOffline;
+      if (dados?.points?.length) {
+        const ultimo = dados.points[dados.points.length - 1];
+        this._segDesde = (Date.now() - new Date(ultimo.time).getTime()) / 1000;
+      }
+      return;
+    }
+    this._incidenteOffline = null;
+
     if (!dados?.points?.length) {
       this._estaOffline = true;
       return;
@@ -684,18 +722,38 @@ class PaginaSensor {
     // Se o sensor está offline, o banner inteiro vira o aviso de offline.
     let bannerData;
     if (this._estaOffline) {
-      const tempo = this._segDesde < 60
-        ? `${Math.round(this._segDesde)}s`
-        : this._segDesde < 3600
-          ? `${Math.floor(this._segDesde / 60)} min`
-          : `${(this._segDesde / 3600).toFixed(1)}h`;
-      bannerData = {
-        sev: "crit",
-        emoji: "📡",
-        titulo: "SENSOR OFFLINE",
-        sub: `Sem leitura há ${tempo}. Velocímetros/termômetro abaixo refletem o último valor lido — não está mais ativo.`,
-        valor: "OFFLINE",
-      };
+      const inc = this._incidenteOffline;
+      // Quando o offline vem de um incidente injetado pela Sala de Controle,
+      // mostra exatamente isso — usuário sabe que é simulação.
+      if (inc) {
+        const restante = inc.segundos_restantes;
+        const restanteTxt = restante == null
+          ? "sem prazo"
+          : restante >= 60
+            ? `~${Math.floor(restante / 60)} min ${restante % 60}s restantes`
+            : `${restante}s restantes`;
+        const rotuloTipo = inc.tipo === "gap" ? "Sem conectividade" : "Equipamento offline";
+        bannerData = {
+          sev: "crit",
+          emoji: "📡",
+          titulo: rotuloTipo.toUpperCase(),
+          sub: `Simulação disparada pela Sala de Controle · ${restanteTxt}.`,
+          valor: "OFFLINE",
+        };
+      } else {
+        const tempo = this._segDesde < 60
+          ? `${Math.round(this._segDesde)}s`
+          : this._segDesde < 3600
+            ? `${Math.floor(this._segDesde / 60)} min`
+            : `${(this._segDesde / 3600).toFixed(1)}h`;
+        bannerData = {
+          sev: "crit",
+          emoji: "📡",
+          titulo: "SENSOR OFFLINE",
+          sub: `Sem leitura há ${tempo}. Velocímetros/termômetro abaixo refletem o último valor lido — não está mais ativo.`,
+          valor: "OFFLINE",
+        };
+      }
     } else {
       bannerData = this._avaliarStatus(dados, ultimo);
     }

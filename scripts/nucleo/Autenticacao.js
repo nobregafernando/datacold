@@ -51,9 +51,53 @@ class Autenticacao {
       localStorage.removeItem(Autenticacao.JWT_STORAGE);
     }
   }
+  /**
+   * Limpa TUDO relacionado à sessão. Síncrono e agressivo:
+   *  - sessão e JWT espelhado (chaves datacold_sessao + datacold_jwt);
+   *  - flags voláteis (notificações antigas, demos, chaves legadas);
+   *  - sessionStorage com prefixos `cache:` ou `datacold_`;
+   *  - cookies de auth do Supabase (sb-*) caso o navegador tenha setado.
+   * Mantém preferências de UI inofensivas (menu fechado/aberto, build_id).
+   */
   static _limparSessao() {
-    localStorage.removeItem(Autenticacao.CHAVE);
-    localStorage.removeItem(Autenticacao.JWT_STORAGE);
+    try {
+      localStorage.removeItem(Autenticacao.CHAVE);
+      localStorage.removeItem(Autenticacao.JWT_STORAGE);
+
+      // Flags voláteis e legados (não derrubam UI nem cache de build).
+      [
+        "datacold_notif_migracao_v2",
+        "datacold_demo_notificacoes",
+        "datacold_api_key",
+        "datacold_api_url",
+      ].forEach(k => localStorage.removeItem(k));
+
+      // sessionStorage volátil
+      try {
+        Object.keys(sessionStorage).forEach(k => {
+          if (k.startsWith("cache:") || k.startsWith("datacold_")) {
+            sessionStorage.removeItem(k);
+          }
+        });
+      } catch {}
+
+      // Cookies do Supabase Auth (sb-*) — caso o navegador tenha guardado
+      // além do localStorage. Expira no path raiz pra qualquer subdomínio.
+      try {
+        const dominios = ["", window.location.hostname];
+        document.cookie.split(";").forEach(c => {
+          const nome = c.split("=")[0].trim();
+          if (nome.startsWith("sb-") || nome.startsWith("supabase")) {
+            dominios.forEach(d => {
+              const dom = d ? `;domain=${d}` : "";
+              document.cookie = `${nome}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/${dom}`;
+            });
+          }
+        });
+      } catch {}
+    } catch (e) {
+      console.warn("limparSessao falhou parcialmente:", e);
+    }
   }
 
   /** Devolve o Usuario logado, ou null. */
@@ -119,6 +163,7 @@ class Autenticacao {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(corpo),
+      cache: "no-store",
     });
     const txt = await r.text();
     let data = null;
@@ -293,13 +338,23 @@ class Autenticacao {
     }
   }
 
+  /**
+   * Logout robusto:
+   *  1) Limpa sessão local SÍNCRONO PRIMEIRO — garante que qualquer guard
+   *     de auth nas próximas páginas (login.js linha 15) já veja deslogado.
+   *  2) Best-effort: avisa o servidor pra revogar o refresh_token. Se a
+   *     rede cair, paciência — o access_token expira em 1h e o refresh
+   *     já foi descartado localmente.
+   */
   static async logout() {
     const s = Autenticacao._lerSessao();
+    // 1) síncrono e imediato — invalida qualquer detecção de sessão.
+    Autenticacao._limparSessao();
+    // 2) signout no servidor (best-effort).
     if (s?.access_token) {
       try { await Autenticacao._proxy("auth:signout", {}, s.access_token); }
       catch { /* offline: ok */ }
     }
-    Autenticacao._limparSessao();
   }
 
   // ===================================================================

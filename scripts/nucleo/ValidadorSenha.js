@@ -3,7 +3,7 @@
  * de conta e redefinição.
  *
  * Regras (todas obrigatórias para `ok = true`):
- *   - mínimo 10 caracteres
+ *   - mínimo 8 caracteres
  *   - máximo 128 caracteres (Supabase Auth aceita até esse limite)
  *   - pelo menos 1 letra MAIÚSCULA
  *   - pelo menos 1 letra minúscula
@@ -17,7 +17,7 @@
  */
 class ValidadorSenha {
 
-  static MIN = 10;
+  static MIN = 8;
   static MAX = 128;
   static RE_MAIUSCULA = /[A-Z]/;
   static RE_MINUSCULA = /[a-z]/;

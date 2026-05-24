@@ -8,33 +8,46 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
+/* DataCold · invalidação de cache agressiva.
+ * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
+ * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
+ */
 (function(){
-  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(rs){
-      rs.forEach(function(r){ r.unregister(); });
-    }).catch(function(){});
-  }
-  // 2) Apaga todas as caches da Cache API
-  if ('caches' in window) {
-    caches.keys().then(function(ks){
-      ks.forEach(function(k){ caches.delete(k); });
-    }).catch(function(){});
-  }
-  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
   try {
-    fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
+    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
+    if ('caches' in window) {
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ caches.delete(k); });
+      }).catch(function(){});
+    }
+    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
+    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
+    fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
         if (!v || !v.build_id) return;
         var anterior = localStorage.getItem('__build_id');
-        if (anterior && anterior !== v.build_id) {
-          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
-          Object.keys(sessionStorage).forEach(function(k){
-            if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
-          });
-        }
+        var marcador = '__reloaded_' + v.build_id;
         localStorage.setItem('__build_id', v.build_id);
+        if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
+          // Build mudou — limpa marcadores antigos e força reload sem cache.
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
+              sessionStorage.removeItem(k);
+            }
+          });
+          sessionStorage.setItem(marcador, '1');
+          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
+          var url = new URL(location.href);
+          url.searchParams.set('_v', v.build_id);
+          location.replace(url.toString());
+        }
       })
       .catch(function(){});
   } catch (_) {}
@@ -43,16 +56,31 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Definir sua conta</title>
 
-<link rel="icon" href="/favicon.ico?v=1779582676984" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779582676984">
+<link rel="icon" href="/favicon.ico?v=1779630027638" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779630027638">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779582676984">
-<link rel="stylesheet" href="../_conta.css?v=1779582676984">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779630027638">
+<link rel="stylesheet" href="../../../estilos/nav-publica.css?v=1779630027638">
+<link rel="stylesheet" href="../_conta.css?v=1779630027638">
 </head>
 <body>
+
+<header class="nav">
+  <div class="container">
+    <a href="/" class="marca" aria-label="DataCold">
+      <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
+    </a>
+    <nav class="nav-links" aria-label="navegação principal">
+      <a href="/#sensores">Sensores</a>
+      <a href="/#capacidades">Capacidades</a>
+      <a href="/#tecnologia">Tecnologia</a>
+      <a href="/paginas/login/" class="btn btn-pequeno">Entrar →</a>
+    </nav>
+  </div>
+</header>
 
 <div class="conta-fundo" aria-hidden="true"></div>
 
@@ -82,7 +110,7 @@
 
       <label class="campo">
         <span>Crie uma senha</span>
-        <input type="password" name="senha" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Mínimo 10 caracteres" data-senha>
+        <input type="password" name="senha" autocomplete="new-password" required minlength="8" maxlength="128" placeholder="Mínimo 8 caracteres" data-senha>
       </label>
 
       <div class="forca-senha">
@@ -93,7 +121,7 @@
       </div>
 
       <ul class="requisitos-senha" data-requisitos>
-        <li data-req="len">10 caracteres ou mais</li>
+        <li data-req="len">8 caracteres ou mais</li>
         <li data-req="maiuscula">1 letra maiúscula</li>
         <li data-req="minuscula">1 letra minúscula</li>
         <li data-req="digito">1 número</li>
@@ -103,7 +131,7 @@
 
       <label class="campo">
         <span>Confirmar senha</span>
-        <input type="password" name="senha2" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Repita a senha">
+        <input type="password" name="senha2" autocomplete="new-password" required minlength="8" maxlength="128" placeholder="Repita a senha">
       </label>
 
       <div class="conta-erro" data-erro hidden></div>
@@ -114,13 +142,13 @@
   </section>
 </main>
 
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779582676984"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779582676984"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779582676984"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779582676984"></script>
-<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779582676984"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779582676984"></script>
-<script src="pagina.js?v=1779582676984"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779630027638"></script>
+<script src="pagina.js?v=1779630027638"></script>
 
 </body>
 </html>
