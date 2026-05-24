@@ -75,19 +75,19 @@
 </script>
 <!-- GUARDA-AUTH:FIM -->
 <title>DataCold · Protótipo</title>
-<link rel="icon" href="/favicon.ico?v=1779653166740" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779653166740">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779653166740">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779653166740">
+<link rel="icon" href="/favicon.ico?v=1779655008811" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779655008811">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779655008811">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779655008811">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779653166740">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779653166740">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779653166740">
-<link rel="stylesheet" href="estilo.css?v=1779653166740">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779655008811">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779655008811">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779655008811">
+<link rel="stylesheet" href="estilo.css?v=1779655008811">
 </head>
 <body>
 
@@ -291,7 +291,7 @@
                   <span>📟</span><span class="q-set">→</span>
                   <span>🔀</span>
                 </div>
-                <div class="q-leg">Modbus → Ethernet local</div>
+                <div class="q-leg q-leg-wifi">Modbus → Wi-Fi</div>
               </div>
               <div class="quadro">
                 <div class="q-titulo">Quadro B · <em>Câmara fria</em></div>
@@ -301,7 +301,7 @@
                   <span>📟</span><span class="q-set">→</span>
                   <span>🔀</span>
                 </div>
-                <div class="q-leg">Modbus → Ethernet local</div>
+                <div class="q-leg q-leg-wifi">Modbus → Wi-Fi</div>
               </div>
               <div class="quadro quadro-lora">
                 <div class="q-titulo">Quadro N · <em>Externo / distante</em></div>
@@ -320,17 +320,17 @@
               <svg viewBox="0 0 80 200" preserveAspectRatio="none" aria-hidden="true">
                 <defs>
                   <marker id="seta-cv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                    <path d="M0,0 L10,5 L0,10 z" fill="#6b3eb8"/>
+                    <path d="M0,0 L10,5 L0,10 z" fill="#ec4899"/>
                   </marker>
                 </defs>
-                <!-- Quadro A (topo) → centro -->
-                <path d="M 0 30  C 35 30, 35 100, 70 100" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
+                <!-- Quadro A (topo) → centro (pink, Wi-Fi até o centro da fábrica) -->
+                <path d="M 0 30  C 35 30, 35 100, 70 100" fill="none" stroke="#ec4899" stroke-width="2.5"/>
                 <!-- Quadro B (meio) → centro -->
-                <path d="M 0 100 L 70 100" fill="none" stroke="#6b3eb8" stroke-width="2.5"/>
-                <!-- Quadro N (base) com LoRa, tracejado laranja -->
+                <path d="M 0 100 L 70 100" fill="none" stroke="#ec4899" stroke-width="2.5"/>
+                <!-- Quadro N (base) com LoRa, tracejado laranja (mantém) -->
                 <path d="M 0 170 C 35 170, 35 100, 70 100" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="5,4"/>
-                <circle cx="70" cy="100" r="5" fill="#6b3eb8"/>
-                <line x1="70" y1="100" x2="78" y2="100" stroke="#6b3eb8" stroke-width="2.5" marker-end="url(#seta-cv)"/>
+                <circle cx="70" cy="100" r="5" fill="#ec4899"/>
+                <line x1="70" y1="100" x2="78" y2="100" stroke="#ec4899" stroke-width="2.5" marker-end="url(#seta-cv)"/>
               </svg>
               <span class="conv-lbl">convergem num ponto</span>
             </div>
@@ -660,15 +660,15 @@
 </div>
 
 <!-- Scripts (a página não usa sensores, só auth + menus + notificações) -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779653166740"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779653166740"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779653166740"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779653166740"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779653166740"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779653166740"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779653166740"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779653166740"></script>
-<script src="pagina.js?v=1779653166740"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779655008811"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779655008811"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779655008811"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779655008811"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779655008811"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779655008811"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779655008811"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779655008811"></script>
+<script src="pagina.js?v=1779655008811"></script>
 
 </body>
 </html>

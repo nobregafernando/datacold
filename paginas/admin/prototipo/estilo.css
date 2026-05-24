@@ -987,11 +987,18 @@ body{
 .mn-multi  { border-color: #16a34a; background: linear-gradient(135deg, rgba(22,163,74,.07), #fff); }
 .mn-broker { border-color: #6b3eb8; background: linear-gradient(135deg, rgba(107,62,184,.07), #fff); }
 .mn-centro {
-  border-color: #6b3eb8;
-  background: linear-gradient(135deg, rgba(107,62,184,.12), #fff 70%);
-  box-shadow: 0 2px 8px rgba(107,62,184,.14);
+  border-color: #ec4899;
+  background: linear-gradient(135deg, rgba(236,72,153,.14), #fff 70%);
+  box-shadow: 0 2px 8px rgba(236,72,153,.18);
   min-width: 160px;
   max-width: 200px;
+}
+/* Label "Wi-Fi" no rodapé do quadro fica em pink pra casar com o fio
+   que sai dali até o centro da fábrica. */
+.q-leg.q-leg-wifi{
+  color: #be185d;
+  background: rgba(236,72,153,.10);
+  border-color: rgba(236,72,153,.30);
 }
 
 /* Seta horizontal entre nós, label ACIMA (no padding-top do .mod-fluxo) */

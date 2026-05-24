@@ -1279,9 +1279,18 @@ class PaginaSensor {
     // O histórico estendido (30d) JÁ foi carregado no _carregarDados em
     // paralelo com a janela atual — então this._historicoEstendido sempre
     // está populado nesse ponto.
-    const recon = (typeof AgenteReconstrutor !== "undefined")
-      ? new AgenteReconstrutor(this.sensor).reconstruir(dados.points, this._historicoEstendido)
-      : { pontos: dados.points, gaps: [] };
+    // REUTILIZA a INSTÂNCIA do AgenteReconstrutor entre refreshes — sem
+    // isso, os caches internos (Hampel, resíduos do conformal) são
+    // descartados a cada call e o INP explodia pra 5s+ por reconstrução.
+    let recon;
+    if (typeof AgenteReconstrutor !== "undefined") {
+      if (!this._reconstrutor || this._reconstrutor.sensor?.id !== this.sensor?.id) {
+        this._reconstrutor = new AgenteReconstrutor(this.sensor);
+      }
+      recon = this._reconstrutor.reconstruir(dados.points, this._historicoEstendido);
+    } else {
+      recon = { pontos: dados.points, gaps: [] };
+    }
     let pontos = recon.pontos;
     this._ultimoRecon = recon;
 
