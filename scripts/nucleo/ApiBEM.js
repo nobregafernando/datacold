@@ -92,6 +92,20 @@ class ApiBEM {
     catch { dados = texto; }
 
     if (!resp.ok) {
+      // 401 = JWT inválido/expirado. Mata a sessão local e devolve pro login —
+      // evita o usuário ficar travado vendo a UI quebrar com chamadas seguidas.
+      if (resp.status === 401 && this._jwt()) {
+        try {
+          localStorage.removeItem(ApiBEM.JWT_STORAGE);
+          localStorage.removeItem("datacold_sessao");
+        } catch {}
+        // Só redireciona se não estiver já na página de login (evita loop)
+        if (typeof location !== "undefined" && !/\/(login|conta)\//.test(location.pathname)) {
+          const raiz = location.pathname.split("/paginas/")[0] || "";
+          location.replace(`${raiz}/paginas/login/?sessao=expirada`);
+          return;
+        }
+      }
       const msg = (dados && dados.erro) ? dados.erro : `HTTP ${resp.status}`;
       throw new Error(msg);
     }

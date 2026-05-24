@@ -8,6 +8,16 @@ um banco para análise histórica.
 **Site público:** https://datacold.web.app
 **Repositório:** https://github.com/nobregafernando/datacold
 
+### 🔑 Credenciais de acesso (admin)
+
+| E-mail | Senha |
+|---|---|
+| `admin@datacloud.com` | `Admin@123` |
+| `admin@datacold.com.br` | `Admin@123` |
+
+> Os dois apontam para o mesmo painel. Operadores podem ser convidados a
+> partir do menu **Criar conta** depois de logar como admin.
+
 > Projeto do hackathon **BEM Inteligência — Dale Sorvetes / Indústria** (54h).
 
 ---
@@ -18,11 +28,12 @@ um banco para análise histórica.
 2. [Os 14 sensores](#2-os-14-sensores)
 3. [Os 4 agentes de análise](#3-os-4-agentes-de-análise)
 4. [Infraestrutura — 3 pilares](#4-infraestrutura--3-pilares)
-5. [Banco de dados](#5-banco-de-dados-supabase--postgresql)
-6. [Simulador — nosso ambiente controlado de geração](#6-simulador--nosso-ambiente-controlado-de-geração)
-7. [Sala de testes — injetando falhas reais](#7-sala-de-testes--injetando-falhas-reais)
-8. [Passeio pelo código](#8-passeio-pelo-código)
-9. [Como rodar localmente](#9-como-rodar-localmente)
+5. [Segurança](#5-segurança)
+6. [Banco de dados](#6-banco-de-dados-supabase--postgresql)
+7. [Simulador — nosso ambiente controlado de geração](#7-simulador--nosso-ambiente-controlado-de-geração)
+8. [Sala de testes — injetando falhas reais](#8-sala-de-testes--injetando-falhas-reais)
+9. [Passeio pelo código](#9-passeio-pelo-código)
+10. [Como rodar localmente](#10-como-rodar-localmente)
 
 ---
 
@@ -283,7 +294,138 @@ sempre a janela `[start, stop]` e ignora o resto.
 
 ---
 
-## 5. Banco de dados (Supabase / PostgreSQL)
+## 5. Segurança
+
+Decisões de segurança aplicadas no projeto, em camadas:
+
+### 🔒 Zero chaves no front
+
+Toda comunicação com o Supabase passa por uma **Edge Function** própria
+(`supabase/functions/proxy/index.ts`). O JavaScript do navegador
+**não conhece** nenhuma chave do Supabase — só a URL pública do proxy.
+Isso vale para:
+
+- Chamadas RPC (catálogo de sensores, séries temporais, incidentes)
+- Auth (`signin`, `signup`, `recover`, `refresh`, `user`, `atualizar`)
+- Convites de usuário (`admin_criar` usa `service_role` server-side)
+- Email transacional (Gmail SMTP server-side, App Password fica nos
+  secrets da Edge Function)
+
+A whitelist de RPCs e ações de auth é fechada — qualquer chamada fora
+do menu pré-aprovado volta `403`.
+
+### 🛡 Sanitização de formulários
+
+`scripts/nucleo/Sanitizar.js` é chamado em todo submit antes de enviar
+para o servidor:
+
+- `email(valor)` — trim, lowercase, regex RFC-5322 simplificada
+- `nome(valor)` — só letras (Unicode), espaços, hífen, apóstrofo
+- `texto(valor)` — strip de tags HTML/JS, colapsa whitespace, limita
+- `escapar(valor)` — escape HTML antes de qualquer `innerHTML`
+- `parecePerigoso(valor)` — bloqueia padrões clássicos de SQL/XSS
+  (`union select`, `drop table`, `--`, `;`, `/*`, `*/`, etc.)
+
+Defesa em profundidade: o PostgREST já é parametrizado (SQL injection
+impossível por construção), mas a gente rejeita no cliente pra dar UX
+clara e não desperdiçar request.
+
+### 🔐 Senha forte (cliente + servidor)
+
+`scripts/nucleo/ValidadorSenha.js` valida em tempo real conforme o
+usuário digita:
+
+- Mínimo **8 caracteres**
+- Pelo menos 1 letra maiúscula
+- Pelo menos 1 letra minúscula
+- Pelo menos 1 número
+- Pelo menos 1 caractere especial
+- Sem espaços
+
+O Supabase Auth também recebe `password_min_length = 8` (config via
+Management API). Senhas são hasheadas com **bcrypt** server-side —
+nunca em texto claro no banco.
+
+### 👁 UX de senha
+
+`scripts/nucleo/UtilFormulario.js`:
+
+- **Olhinho** mostrar/ocultar senha (acoplado em todos os inputs
+  `type="password"`)
+- **Conferência live** entre senha e confirmação, com feedback
+  verde ("senhas conferem ✓") ou vermelho ("estão diferentes")
+- **Bloqueio anti-injection** antes de cada submit
+
+### 🔁 HTTPS em todo lado
+
+- Firebase Hosting força HTTPS automaticamente
+- Edge Function só aceita origens do allow-list (`https://datacold.web.app`,
+  `https://datacold.firebaseapp.com`, `localhost:*` pra dev)
+- CORS responde `Access-Control-Allow-Origin` apenas se a origem casa
+
+### 🚪 Proteção de rotas
+
+`Autenticacao.protegerPagina(urlLogin, papelMin)` é chamado no `iniciar()`
+de toda página interna. Se a sessão não existir (ou JWT expirou), faz
+`window.location.replace(urlLogin)`. Se o papel for insuficiente
+(ex: operador tentando abrir `/paginas/conta/criar/`), redireciona pro
+dashboard.
+
+### 🛡 RLS (Row Level Security) no Postgres
+
+`supabase/auth.sql` ativa RLS em **todas as tabelas** com policies:
+
+- `grupos`, `sensores`, `leituras_*`: SELECT para `authenticated`,
+  mutações apenas para `eh_admin()`
+- `incidentes`: SELECT para `authenticated`, mutações apenas admin
+- `auditoria`: leitura apenas admin
+- `perfis_usuarios`: cada usuário vê o próprio; admin vê/atualiza todos
+
+Mesmo que alguém pegue a `anon key` (que é pública por design) e
+chame o PostgREST direto, o banco **rejeita** qualquer escrita não
+autorizada.
+
+### 📧 Email transacional sem rate-limit
+
+SMTP custom (Gmail App Password) configurado no Supabase, com:
+
+- **`rate_limit_email_sent = 100/h`** (default era 2/h)
+- **`mailer_otp_exp = 86400s (24h)`** (default era 1h)
+- Templates HTML próprios (`supabase/email-templates/*.html`) aplicados
+  via Management API — Outlook/Gmail/Apple Mail compatíveis (CSS
+  inline + table-based + `bgcolor` sólido como fallback)
+
+### 🚫 Cache invalidation agressivo
+
+`scripts/build/aplicar-sem-cache.js` injeta em todo HTML um bloco que:
+
+1. Headers `Cache-Control: no-store, no-cache, must-revalidate` (firebase.json)
+2. Meta tags equivalentes no `<head>` como fallback
+3. Versionamento `?v=<timestamp>` em scripts e CSS (`versionar.js` no predeploy)
+4. Desregistra Service Workers antigos + apaga Cache API
+5. **Detecta build novo** comparando com `localStorage.__build_id` e
+   força `location.replace()` com `?_v=<build>` — fura o memory cache
+   do Chrome
+6. `cache: 'no-store'` em todos os `fetch()` críticos
+
+Resultado: usuário nunca fica preso em versão antiga após deploy.
+
+### 🔍 Auditoria automática
+
+Triggers em `grupos`, `sensores`, `incidentes` e `perfis_usuarios`
+gravam toda `INSERT`/`UPDATE`/`DELETE` na tabela `auditoria` com:
+
+- Estado antes (`dados_antes` jsonb)
+- Estado depois (`dados_depois` jsonb)
+- Autor (email do JWT, ou `current_user`, ou `app.autor`)
+- Timestamp
+
+Leituras não são auditadas (geram volume demais), mas tudo que
+muda configuração ou injeta falha fica registrado.
+
+---
+
+## 6. Banco de dados (Supabase / PostgreSQL)
 
 Schema completo em `supabase/schema.sql` (266 linhas). 7 tabelas:
 
@@ -329,7 +471,7 @@ A função `buscar_dados` aceita expressões relativas (`-1h`, `-7d`, `now`) via
 
 ---
 
-## 6. Simulador — nosso ambiente controlado de geração
+## 7. Simulador — nosso ambiente controlado de geração
 
 Para conseguir testar comportamentos específicos (FP caindo, porta esquecida
 aberta, fase ausente, sensor com defeito) sem esperar acontecer na fábrica,
@@ -424,7 +566,7 @@ costuma ver:
 
 ---
 
-## 7. Sala de testes — injetando falhas reais
+## 8. Sala de testes — injetando falhas reais
 
 `paginas/admin/sala-controle/` é uma página administrativa que cria
 **incidentes** — alterações temporárias na geração de dados que vão valer
@@ -449,7 +591,7 @@ em <30s (próximo auto-refresh).
 
 ---
 
-## 8. Passeio pelo código
+## 9. Passeio pelo código
 
 ```
 datacold/
@@ -549,7 +691,7 @@ datacold/
 
 ---
 
-## 9. Como rodar localmente
+## 10. Como rodar localmente
 
 ```bash
 # 1. Clonar

@@ -1201,7 +1201,8 @@ class PaginaSensor {
       const ds = [
         { label, data: real, borderColor: color },
         {
-          label: `${label} (reconstruído · ${Math.round(confMediaRec * 100)}%)`,
+          // Legenda clara: "estimado pelo agente · confiabilidade média X%"
+          label: `${label} · estimado (${Math.round(confMediaRec * 100)}% conf. média)`,
           data: rec,
           borderColor: corRecBorda,
           backgroundColor: corRecFundo,
@@ -1364,49 +1365,57 @@ class PaginaSensor {
             boxPadding: 6,
             usePointStyle: true,
             callbacks: {
-              // Mostra info de reconstrução quando o ponto é estimado pelo agente
+              // Tooltip MINIMALISTA: só confiabilidade + dica de clique.
+              // Detalhes completos vão no modal flutuante (ModalReconstrucao).
               afterBody: (items) => {
                 if (!items?.length) return "";
                 for (const it of items) {
                   const meta = it.dataset?.recInfo?.[it.dataIndex];
-                  if (meta && meta.reconstruido) {
-                    const conf = Math.round((meta.confianca || 0) * 100);
-                    const dur = meta.duracao_s < 60
-                      ? `${Math.round(meta.duracao_s)}s`
-                      : meta.duracao_s < 3600
-                        ? `${Math.round(meta.duracao_s/60)} min`
-                        : `${(meta.duracao_s/3600).toFixed(1)}h`;
-                    const linhas = [];
-                    linhas.push("");
-                    linhas.push(`🧩 PONTO RECONSTRUÍDO PELO AGENTE`);
-                    linhas.push(`Confiança agregada: ${conf}%`);
-                    linhas.push(`Gap: ${dur}`);
-                    if (meta.ciclosUsados?.length) {
-                      linhas.push(`Ciclos históricos usados: ${meta.ciclosUsados.join(" + ")}`);
-                    } else {
-                      linhas.push(`Sem ciclo histórico — fallback de interpolação`);
-                    }
-                    // Mostra estratégia por campo (até 6 campos pra não poluir)
-                    if (meta.camposEstrategia) {
-                      const entradas = Object.entries(meta.camposEstrategia).slice(0, 6);
-                      linhas.push(`Estratégia por campo:`);
-                      for (const [k, e] of entradas) {
-                        const c = Math.round((meta.camposConfianca?.[k] || 0) * 100);
-                        const nome = e === "splc" ? "SPLC (ciclo histórico)"
-                                   : e === "media" ? "média estável"
-                                   : e === "step" ? "step (último estado)"
-                                   : e;
-                        linhas.push(`  • ${k}: ${nome} (${c}%)`);
-                      }
-                    }
-                    linhas.push(`Âncora antes: ${meta.nAntes} pontos · depois: ${meta.nDepois} pontos`);
-                    return linhas;
-                  }
+                  if (!meta || !meta.reconstruido) continue;
+                  const conf = Math.round((meta.confianca || 0) * 100);
+                  return [
+                    "",
+                    `🧩 Ponto estimado · ${conf}% conf.`,
+                    `🖱  Clique para ver detalhes (janela, base, etc.)`,
+                  ];
                 }
                 return "";
               },
             },
           },
+        },
+        // Click em um ponto reconstruído abre o modal flutuante com detalhes.
+        onClick: (ev, els, chart) => {
+          if (!els?.length) return;
+          for (const el of els) {
+            const ds = chart.data.datasets[el.datasetIndex];
+            const meta = ds?.recInfo?.[el.index];
+            if (meta && meta.reconstruido && typeof ModalReconstrucao !== "undefined") {
+              const valor = ds.data?.[el.index];
+              const label = chart.data.labels?.[el.index];
+              // Tenta extrair data ISO do label do gráfico OU do meta
+              const dataPonto = meta.gap_inicio_ts && meta.gap_fim_ts
+                ? new Date((new Date(meta.gap_inicio_ts).getTime() + new Date(meta.gap_fim_ts).getTime()) / 2).toISOString()
+                : label;
+              ModalReconstrucao.abrir({
+                meta,
+                rotuloDataset: ds.label?.replace(/\s+·\s+estimado.*$/i, "") || "Reconstrução",
+                valorPonto: valor,
+                dataPonto,
+              });
+              break;
+            }
+          }
+        },
+        // Cursor pointer ao passar sobre ponto reconstruído
+        onHover: (ev, els, chart) => {
+          const target = ev.native?.target;
+          if (!target) return;
+          const hoverRec = els?.some(el => {
+            const ds = chart.data.datasets[el.datasetIndex];
+            return ds?.recInfo?.[el.index]?.reconstruido;
+          });
+          target.style.cursor = hoverRec ? "pointer" : "default";
         },
         scales: {
           x: {

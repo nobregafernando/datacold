@@ -40,7 +40,7 @@ const TIPOS = [
     chave: "reconstrutor",
     classe: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor : null,
     titulo: "Agente Reconstrutor",
-    apelido: "Quando o sensor reconecta depois de um silêncio, preenche o trecho perdido com dados estimados.",
+    apelido: "Quando o sensor reconecta depois de um silêncio, preenche o trecho perdido usando o passado: mesmo dia da semana, mesmo horário, das últimas 4 semanas.",
     emoji: "🧩",
     cor: "reconstrutor",
     sensoresIds: ["extrusora_1","extrusora_2","extrusora_3","congelados_compressor","congelados_temperatura","estoque_compressor_1","estoque_compressor_2","estoque_temperatura","estoque_porta","graxaria_energia","graxaria_temperatura","graxaria_porta","externo_cg_temperatura","externo_tl_temperatura"],
@@ -48,28 +48,85 @@ const TIPOS = [
   },
 ];
 
-// Estratégias do reconstrutor (substituem o conceito de "regras" — ele não
-// avalia condições, ele preenche gaps).
+// Estratégias do reconstrutor — descreve o fluxo REAL do algoritmo
+// (lookback-only: só passado, nunca os pontos depois do gap).
 const ESTRATEGIAS_RECONSTRUTOR = [
   {
     id: "detectar-gap", categoria: "Detecção",
-    label: "Quando um gap é considerado lacuna?",
+    label: "Quando um intervalo vira lacuna?",
     fonte: "AgenteReconstrutor.GAP_MULT × cadência do tipo",
     parametros: {
-      gap_mult:             (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_MULT : 2.5,
+      gap_mult:             (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.GAP_MULT : 1.6,
       cadencia_energia:     (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.energia : 30,
       cadencia_temperatura: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.temperatura : 60,
       cadencia_porta:       (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.CADENCIA_S.porta : 60,
     },
   },
-  { id: "estrategia-energia",    categoria: "Energia",     label: "Como reconstrói leituras de energia",
-    fonte: "Interpolação linear das 9 métricas (correntes, tensões, FPs)" },
-  { id: "estrategia-temperatura", categoria: "Temperatura", label: "Como reconstrói leituras de temperatura",
-    fonte: "Interpolação linear da temperatura" },
-  { id: "estrategia-porta",       categoria: "Porta",       label: "Como reconstrói o sinal de porta",
-    fonte: "Função degrau — mantém último estado conhecido" },
-  { id: "marcacao",               categoria: "Marcação",    label: "Como sinaliza pontos estimados",
-    fonte: "flag `_reconstruido = true` em cada ponto" },
+  {
+    id: "ancora-antes", categoria: "Calibração",
+    label: "Âncora: últimos pontos antes do gap",
+    fonte: "AgenteReconstrutor.N_CONTEXTO (5 pontos antes)",
+    parametros: {
+      n_pontos_antes: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.N_CONTEXTO : 5,
+    },
+  },
+  {
+    id: "splc-semanal", categoria: "Estratégia principal",
+    label: "SPLC semanal: mesmo dia da semana + mesmo horário",
+    fonte: "AgenteReconstrutor.N_SEMANAS semanas anteriores · tolerância ±30 min",
+    parametros: {
+      n_semanas_lookback: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.N_SEMANAS : 4,
+      tolerancia_min:     30,
+    },
+  },
+  {
+    id: "fallback-diario", categoria: "Fallback",
+    label: "Fallback 1: mesmo horário 24h atrás",
+    fonte: "Quando não há semanas suficientes no histórico",
+  },
+  {
+    id: "fallback-mensal", categoria: "Fallback",
+    label: "Fallback 2: média móvel de 30 dias no horário-alvo",
+    fonte: "Quando 24h atrás também não tem dado válido",
+  },
+  {
+    id: "fallback-holdlast", categoria: "Fallback",
+    label: "Fallback final: mantém a média anterior ao gap",
+    fonte: "Quando nenhum histórico utilizável é encontrado",
+  },
+  {
+    id: "outlier-detection", categoria: "Qualidade",
+    label: "Descarte de outliers no histórico (z-score)",
+    fonte: "AgenteReconstrutor.Z_OUTLIER",
+    parametros: {
+      z_outlier: (typeof AgenteReconstrutor !== "undefined") ? AgenteReconstrutor.Z_OUTLIER : 3,
+    },
+  },
+  {
+    id: "estrategia-energia", categoria: "Por tipo · Energia",
+    label: "Como reconstrói leituras de energia",
+    fonte: "corrente_* → SPLC semanal · tensao_*/fator_potencia_* → média estável anterior",
+  },
+  {
+    id: "estrategia-temperatura", categoria: "Por tipo · Temperatura",
+    label: "Como reconstrói temperatura",
+    fonte: "SPLC semanal calibrada com a média dos últimos pontos antes do gap",
+  },
+  {
+    id: "estrategia-porta", categoria: "Por tipo · Porta",
+    label: "Como reconstrói o sinal de porta",
+    fonte: "Step — mantém o último estado conhecido antes do gap",
+  },
+  {
+    id: "lookback-only", categoria: "Regra crítica",
+    label: "Só passado, nunca os pontos depois do gap",
+    fonte: "Pontos pós-gap são leituras REAIS e não influenciam a estimativa",
+  },
+  {
+    id: "marcacao", categoria: "Marcação",
+    label: "Como sinaliza pontos estimados",
+    fonte: "flag `_reconstruido = true` + meta detalhada (janela, dia, estratégia, confiança)",
+  },
 ];
 
 // ===================================================================
@@ -102,12 +159,19 @@ const EXPLICACOES = {
   "sinal-binario":          "Sensor de porta devia mandar só 0 ou 1.",
   "estado-atual":           "Aberta ou fechada nesse exato momento.",
 
-  // ---- Reconstrutor ----
-  "detectar-gap":            "Considera lacuna qualquer intervalo > 2,5× o tempo normal entre leituras daquele tipo.",
-  "estrategia-energia":      "Pega o último ponto antes da queda e o primeiro depois — desenha a linha reta entre os dois pra cada uma das 9 métricas.",
-  "estrategia-temperatura":  "Mesma ideia: interpola linearmente a temperatura entre antes e depois do silêncio.",
-  "estrategia-porta":        "Mantém o último estado conhecido (aberta/fechada) até a metade do gap, depois assume o estado seguinte.",
-  "marcacao":                "Cada ponto preenchido vai com a flag _reconstruido=true, então o gráfico desenha em cinza tracejado pra você saber que é estimado.",
+  // ---- Reconstrutor (algoritmo lookback-only) ----
+  "detectar-gap":            "Se o tempo entre dois pontos passa de 1,6× a cadência normal do sensor (ex: 30s pra energia → 48s vira gap), o agente trata como lacuna.",
+  "ancora-antes":            "Pega os 5 últimos pontos REAIS antes do silêncio. A média deles serve como nível atual do sensor — é o ponto de partida da reconstrução.",
+  "splc-semanal":            "Pra cada ponto faltante, busca o MESMO horário (±30 min) no MESMO dia da semana, nas 4 semanas anteriores. Faz a média ponderada (semanas mais recentes pesam mais), descarta outliers e calibra com o nível atual.",
+  "fallback-diario":         "Se o histórico não tem semanas suficientes do mesmo dia, cai pro mesmo horário do dia anterior.",
+  "fallback-mensal":         "Se nem 24h atrás resolve, usa a média móvel dos últimos 30 dias naquele horário.",
+  "fallback-holdlast":       "Em último caso (sensor novo, sem histórico), mantém a média dos pontos antes do gap até o sensor voltar.",
+  "outlier-detection":       "Antes de usar uma amostra histórica, verifica se ela é coerente com sua vizinhança. Z-score > 3 = pico estranho, descarta.",
+  "estrategia-energia":      "Corrente segue o passado (SPLC semanal). Tensão e fator de potência ficam estáveis na média anterior — não inventa variação que não existia.",
+  "estrategia-temperatura":  "SPLC semanal calibrada: se segunda-feira 14h tem média de -8°C nas últimas 4 semanas, mas seu sensor estava em -10°C antes do gap, ele estima -10°C (mantém o nível atual do seu equipamento).",
+  "estrategia-porta":        "Porta fica como estava antes do gap. Sem inventar abertura/fechamento que não existiam.",
+  "lookback-only":           "Quando a internet volta, o agente NUNCA usa os pontos novos pra recalcular o gap antigo. Esses pontos são leituras reais — só o passado entra na estimativa.",
+  "marcacao":                "Cada ponto reconstruído fica com flag _reconstruido=true e meta completa (confiança, janela horária, dia da semana, estratégia, base de cálculo). Aparece em roxo tracejado no gráfico — clique pra ver tudo.",
 };
 
 /**

@@ -3,17 +3,23 @@
  * referência o MESMO dia da semana e MESMA janela horária do gap, nas
  * últimas 4 semanas do histórico (até 30 dias).
  *
- * ESTRATÉGIA PRINCIPAL: SPLC SEMANAL
- *  - Gap de terça 12:30 → busca amostras de terça 12:30 (±tolerância)
- *    nas 4 terças anteriores. Pondera mais semanas recentes.
- *  - Descarta outliers (z-score > 3) antes de calcular a média.
- *  - Aplica offset pra suavizar entre os pontos-âncora (sem saltos).
+ * IMPORTANTE: a reconstrução é PUREMENTE BASEADA NO PASSADO. Quando a
+ * internet/sensor volta, os pontos DEPOIS do gap são leituras REAIS —
+ * o agente NÃO os usa pra calcular nada nem pra "suavizar a chegada".
+ * O encaixe natural acontece pq o primeiro ponto pós-gap é dado real.
  *
- * FALLBACKS (em ordem):
+ * ESTRATÉGIA PRINCIPAL: SPLC SEMANAL (lookback only)
+ *  - Gap de terça 12:30 → busca amostras de terça 12:30 (±30min) nas
+ *    4 terças anteriores. Pondera mais semanas recentes (1/n).
+ *  - Descarta outliers (z-score > 3) antes de calcular a média.
+ *  - Calibra com offset entre a média dos 5 pontos ANTES do gap e
+ *    a vizinhança do horário-base na semana correspondente.
+ *
+ * FALLBACKS (em ordem, todos lookback-only):
  *  1. SPLC semanal (4 semanas no mesmo DOW + horário)        — confiança 0.80-0.95
  *  2. SPLC diário  (mesmo horário do dia anterior)           — confiança 0.65-0.75
  *  3. SPLC mensal  (média móvel de 30d no mesmo horário)     — confiança 0.55-0.65
- *  4. Interpolação linear entre as âncoras (fallback final)  — confiança 0.40-0.50
+ *  4. Hold-last: mantém a média dos últimos pontos antes     — confiança 0.40-0.50
  *
  * ESTRATÉGIA POR CAMPO:
  *  - tensao_*           → média estável do contexto adjacente (linear)
@@ -64,8 +70,6 @@ class AgenteReconstrutor {
     this.sensor = sensor;
     this.tipo = sensor?.tipo || "energia";
     this.cadencia = AgenteReconstrutor.CADENCIA_S[this.tipo] || 60;
-    // True quando o sensor é ambiente externo (ciclo dia/noite dominante)
-    this.eAmbienteExterno = !!sensor?.grupo?.startsWith("externo");
   }
 
   // -------------------------------------------------------------------
@@ -166,26 +170,19 @@ class AgenteReconstrutor {
       return "splc";
     };
 
-    // Médias-âncora antes/depois (suavização das pontas do gap)
-    const mediaAntes = {}, mediaDepois = {};
+    // Média-âncora APENAS dos pontos ANTES do gap. Os pontos depois são
+    // leituras reais — não usamos pra calcular nada (lookback-only).
+    const mediaAntes = {};
     for (const k of camposNumericos) {
-      mediaAntes[k]  = _media(antesArr.map(p => p[k]));
-      mediaDepois[k] = _media(depoisArr.map(p => p[k]));
+      mediaAntes[k] = _media(antesArr.map(p => p[k]));
     }
 
     // Limites do gap (usados na descrição da janela horária)
-    const gapInicioMs = new Date(antesArr[antesArr.length - 1].time).getTime();
-    const gapFimMs    = new Date(depoisArr[0].time).getTime();
-    const dataAlvo    = new Date(tInicialMs);
-    const diaSemana   = AgenteReconstrutor.DIAS_SEMANA[dataAlvo.getDay()];
-    const janelaInicio = this._formatarHora(new Date(gapInicioMs));
-    const janelaFim    = this._formatarHora(new Date(gapFimMs));
+    const janelaInicio = this._formatarHora(new Date(antesArr[antesArr.length - 1].time));
+    const janelaFim    = this._formatarHora(new Date(depoisArr[0].time));
 
     const out = [];
-    const camposEstrategia = {};   // {campo: "splc_semanal"/"splc_diario"/"media"/"step"/"interpolacao"}
-    const camposConfianca  = {};   // {campo: 0..1}
-    const estrategiasUsadas = new Set();
-    let nSemanasMax = 0;
+    const estrategiasNoGap = new Set();   // só pro `resumo`, não pro meta de cada ponto
 
     for (let i = 1; i <= n; i++) {
       const t = tInicialMs + passoMs * i;
@@ -193,94 +190,106 @@ class AgenteReconstrutor {
       const ponto = { time: new Date(t).toISOString(), _reconstruido: true };
       const metasCampo = {};
 
+      // ⚠ Bug fix: cada ponto tem o seu próprio estado. Antes o estado
+      // era compartilhado entre todos os pontos do gap.
+      const camposEstrategiaPonto = {};
+      const camposConfiancaPonto  = {};
+      const estrategiasNoPonto = new Set();
+      let nSemanasPonto = 0;
+
+      // Dia da semana CORRETO pra ESSE timestamp (em gaps longos que
+      // cruzam meia-noite, cada ponto pode ter dia diferente).
+      const diaSemanaPonto = AgenteReconstrutor.DIAS_SEMANA[new Date(t).getDay()];
+
       for (const k of camposNumericos) {
         const estr = estrategiaDe(k);
-        const a = mediaAntes[k], b = mediaDepois[k];
+        const a = mediaAntes[k];   // só usamos o ANTES — lookback-only
         let valor = null, confCampo = 0, estrUsada = estr, fonte = "";
 
         if (estr === "step") {
-          valor = frac < 0.5 ? (a ?? b) : (b ?? a);
-          confCampo = (a != null || b != null) ? 0.6 : 0;
-          fonte = "Step — mantém último estado conhecido";
+          // Mantém último valor conhecido antes do gap.
+          valor = a;
+          confCampo = a != null ? 0.6 : 0;
+          fonte = "Step — mantém o último estado conhecido antes do gap";
           estrUsada = "step";
         }
         else if (estr === "media") {
-          if (a != null && b != null) {
-            valor = +((a + (b - a) * frac).toFixed(3));
-            confCampo = 0.85;
-            fonte = "Média estável do contexto adjacente";
-            estrUsada = "media";
-          } else if (a != null || b != null) {
-            valor = a ?? b;
-            confCampo = 0.55;
-            fonte = "Média parcial — só um lado disponível";
+          // Campo estável (tensão, FP): mantém a média dos últimos pontos antes.
+          if (a != null) {
+            valor = +a.toFixed(3);
+            confCampo = 0.80;
+            fonte = "Hold da média dos últimos pontos antes do gap";
             estrUsada = "media";
           }
         }
         else if (estr === "splc") {
-          // 1ª tentativa: SPLC semanal (mesmo DOW + mesmo horário, últimas 4 semanas)
+          // 1ª tentativa: SPLC semanal (mesmo DOW + mesmo horário, últimas N semanas)
           let splc = this._buscarSplcSemanal(t, k, historico, passoMs);
           if (splc) {
             estrUsada = "splc_semanal";
-            nSemanasMax = Math.max(nSemanasMax, splc.nAmostras);
-            fonte = `SPLC semanal (mesmo horário em ${splc.nAmostras} ${diaSemana}${splc.nAmostras > 1 ? "s" : ""} anteriores)`;
+            nSemanasPonto = Math.max(nSemanasPonto, splc.nAmostras);
+            fonte = `SPLC semanal (${splc.nAmostras} ${diaSemanaPonto}${splc.nAmostras > 1 ? "s" : ""} anteriores no mesmo horário)`;
           } else {
             // 2ª/3ª tentativa: ciclo 24h, depois 30d
             splc = this._buscarSplcFallback(t, k, historico, passoMs);
             if (splc) {
               estrUsada = splc.ciclo === "24h" ? "splc_diario" : "splc_mensal";
-              fonte = `SPLC ${splc.ciclo} — fallback sem ${diaSemana}s suficientes no histórico`;
+              fonte = `SPLC ${splc.ciclo} — fallback (sem ${diaSemanaPonto}s suficientes no histórico)`;
             }
           }
 
           if (splc) {
-            // Suavização: cola na âncora antes/depois pra não saltar
-            const offIni = (a ?? splc.valor) - splc.valorAntesContexto;
-            const offFim = (b ?? splc.valor) - splc.valorDepoisContexto;
-            const offset = offIni + (offFim - offIni) * frac;
+            // Calibração: offset fixo entre a média ANTES do gap e o
+            // contexto da semana histórica. Sem termo "depois" — só
+            // passado. Resultado: o valor estimado segue o nível atual.
+            const offset = (a != null && splc.valorAntesContexto != null)
+              ? (a - splc.valorAntesContexto)
+              : 0;
             valor = +(splc.valor + offset).toFixed(3);
             confCampo = +(splc.confianca).toFixed(2);
-          } else if (a != null && b != null) {
-            valor = +((a + (b - a) * frac).toFixed(3));
+          } else if (a != null) {
+            // Fallback final: hold-last (mantém média anterior)
+            valor = +a.toFixed(3);
             confCampo = 0.45;
-            fonte = "Interpolação linear entre âncoras (sem histórico utilizável)";
-            estrUsada = "interpolacao";
+            fonte = "Hold-last — sem histórico utilizável, mantém a média anterior ao gap";
+            estrUsada = "hold_last";
           }
         }
 
         ponto[k] = valor;
         metasCampo[k] = { fonte, confianca: confCampo, estrategia: estrUsada };
-        camposEstrategia[k] = estrUsada;
-        camposConfianca[k]  = confCampo;
-        estrategiasUsadas.add(estrUsada);
+        camposEstrategiaPonto[k] = estrUsada;
+        camposConfiancaPonto[k]  = confCampo;
+        estrategiasNoPonto.add(estrUsada);
+        estrategiasNoGap.add(estrUsada);
       }
 
-      const confs = Object.values(camposConfianca);
+      const confs = Object.values(camposConfiancaPonto);
       const confAgregada = confs.length ? confs.reduce((s, x) => s + x, 0) / confs.length : 0;
 
-      // Estratégia principal = a mais "forte" usada nesse ponto
-      const ordem = ["splc_semanal","splc_diario","splc_mensal","media","step","interpolacao"];
-      const principal = ordem.find(e => estrategiasUsadas.has(e)) || "interpolacao";
+      // Estratégia principal = a mais "forte" usada NESSE ponto
+      const ordem = ["splc_semanal","splc_diario","splc_mensal","media","step","hold_last"];
+      const principal = ordem.find(e => estrategiasNoPonto.has(e)) || "hold_last";
 
       ponto._meta = {
         reconstruido: true,
         confianca: +confAgregada.toFixed(2),
 
-        // Janela e dia da semana — sempre presente, pro tooltip
+        // Janela e dia da semana (calculado por ponto)
         janela_horaria: `${janelaInicio} – ${janelaFim}`,
-        dia_semana: diaSemana,
+        dia_semana: diaSemanaPonto,
         gap_inicio_ts: antesArr[antesArr.length - 1].time,
         gap_fim_ts:    depoisArr[0].time,
         duracao_s,
 
-        // Estratégia usada
+        // Estratégia usada NESSE ponto
         estrategia_principal: principal,
-        n_semanas_usadas: nSemanasMax,
-        periodo_base_descricao: this._descreverBase(principal, diaSemana, janelaInicio, janelaFim, nSemanasMax),
+        n_semanas_usadas: nSemanasPonto,
+        periodo_base_descricao: this._descreverBase(principal, diaSemanaPonto, janelaInicio, janelaFim, nSemanasPonto),
 
-        // Detalhe por campo (pro tooltip mostrar opcionalmente)
-        camposEstrategia,
-        camposConfianca,
+        // Detalhe por campo
+        camposEstrategia: camposEstrategiaPonto,
+        camposConfianca: camposConfiancaPonto,
         metasPorCampo: metasCampo,
 
         nAntes: antesArr.length,
@@ -296,7 +305,7 @@ class AgenteReconstrutor {
         fim_ts: depoisArr[0].time,
         duracao_s,
         n_reconstruidos: out.length,
-        estrategias: [...estrategiasUsadas],
+        estrategias: [...estrategiasNoGap],
         confianca: out.length ? out[out.length - 1]._meta.confianca : 0,
       },
     };
@@ -310,13 +319,13 @@ class AgenteReconstrutor {
   /** Texto humano que vai pro tooltip ("periodo_base_descricao"). */
   _descreverBase(estrategia, diaSemana, hIni, hFim, nSemanas) {
     if (estrategia === "splc_semanal") {
-      return `Média das últimas ${nSemanas} ${diaSemana}${nSemanas > 1 ? "s" : ""}, entre ${hIni} e ${hFim}`;
+      return `Média das últimas ${nSemanas} ${diaSemana}${nSemanas > 1 ? "s" : ""}, entre ${hIni} e ${hFim} (calibrada com o nível dos últimos pontos antes do gap)`;
     }
-    if (estrategia === "splc_diario")  return `Média do mesmo horário (${hIni}–${hFim}) no dia anterior`;
-    if (estrategia === "splc_mensal")  return `Média móvel de 30 dias no horário ${hIni}–${hFim}`;
-    if (estrategia === "media")        return `Média estável dos minutos imediatamente antes/depois do gap`;
-    if (estrategia === "step")         return `Mantém o último valor antes do gap (sinal de estado)`;
-    return `Interpolação linear entre os pontos antes/depois`;
+    if (estrategia === "splc_diario")  return `Média do mesmo horário (${hIni}–${hFim}) do dia anterior, calibrada com a média anterior ao gap`;
+    if (estrategia === "splc_mensal")  return `Média móvel de 30 dias no horário ${hIni}–${hFim}, calibrada com a média anterior ao gap`;
+    if (estrategia === "media")        return `Mantém a média estável dos últimos pontos antes do gap`;
+    if (estrategia === "step")         return `Mantém o último valor conhecido antes do gap (sinal de estado)`;
+    return `Hold-last — mantém a média anterior ao gap (sem histórico utilizável)`;
   }
 
   // -------------------------------------------------------------------
@@ -407,15 +416,6 @@ class AgenteReconstrutor {
       };
     }
     return null;
-  }
-
-  _pontoMaisProximo(pontos, tAlvoMs, tolMs) {
-    let melhor = null, melhorDist = Infinity;
-    for (const p of pontos) {
-      const d = Math.abs(new Date(p.time).getTime() - tAlvoMs);
-      if (d < melhorDist) { melhorDist = d; melhor = p; }
-    }
-    return melhorDist <= tolMs ? melhor : null;
   }
 
   _vizinhanca(pontos, tCentroMs, raioMs, campo) {
