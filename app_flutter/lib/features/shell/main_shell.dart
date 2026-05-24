@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme.dart';
-import '../../shared/widgets/sino_notificacoes.dart';
 import '../auth/auth_repository.dart';
 import 'nav_items.dart';
 import 'sidebar/nav_tile.dart';
@@ -255,7 +254,12 @@ class _TopBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        const SinoNotificacoes(),
+        IconButton(
+          tooltip: 'Notificações',
+          icon: const Icon(Icons.notifications_outlined,
+              color: AppCores.azulNoite, size: 22),
+          onPressed: () => context.go('/notificacoes'),
+        ),
         IconButton(
           tooltip: 'Minha conta',
           icon: const CircleAvatar(

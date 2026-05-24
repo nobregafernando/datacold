@@ -320,17 +320,24 @@ class AgenteReconstrutor {
           // [6] CONFORMAL PREDICTION — intervalo ±X com base nos resíduos
           intervalo = this._conformalIntervalo(stack.valor, k, histLimpo, stack.pesos);
 
-          // [7] RESTAURAÇÃO DE RUÍDO ESTOCÁSTICO
-          //   Os 3 estimadores (SPLC=média, Kalman=linear, Spline=derivada)
-          //   retornam a TENDÊNCIA CENTRAL. Combinar 3 valores suaves dá uma
-          //   reta — a curva reconstruída fica plana e "fake demais".
-          //   Solução: medir a variância das últimas leituras reais e injetar
-          //   ruído gaussiano AR(1) (correlato entre pontos consecutivos do
-          //   gap) com a mesma textura. Mantém o ESTIMADOR central correto
-          //   mas faz a curva ONDULAR igual à fonte.
+          // [7] ÂNCORA BIDIRECIONAL DOMINANTE + RUÍDO BOOTSTRAP
+          //   Bug observado: Kalman e Spline extrapolam linearmente a
+          //   tendência dos últimos 5 pontos. Se o sinal estava descendo
+          //   antes do gap (ex: 93→91→89→88), eles continuam descendo o
+          //   gap inteiro, puxando a reconstrução pra MUITO abaixo da
+          //   média real (que é estável em torno de 91).
+          //
+          //   Solução: peso DOMINANTE pra âncora bidirecional `a`
+          //   (interpolação suave entre médias antes/depois). O ensemble
+          //   contribui só 25% — o suficiente pra capturar tendências
+          //   reais mas sem dominar o nível. Bootstrap dos resíduos
+          //   reais (camada 7 do _gerarRuidoLocal) dá a textura.
           const valorEnsemble = stack.valor;
+          const valorCentral = (a != null)
+            ? (a * 0.75 + valorEnsemble * 0.25)   // ÂNCORA dominante
+            : valorEnsemble;
           const ruido = this._gerarRuidoLocal(antesArr, k, i, histLimpo);
-          const valorComRuido = valorEnsemble + ruido.delta;
+          const valorComRuido = valorCentral + ruido.delta;
 
           valor = valorComRuido;
           confCampo = stack.confianca;

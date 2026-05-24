@@ -247,6 +247,53 @@
     margin-bottom: 32px;
   }
   .capa-tema .tema-ic{ width: 26px; height: 26px; display: grid; place-items: center; background: var(--ciano); color: var(--azul-noite); border-radius: 8px; }
+
+  /* Link "ao vivo" pro site na capa — pill verde com bolinha pulsando.
+     Posicionado entre .capa-tema e .capa-meta. Deixa óbvio que a banca
+     pode abrir o produto rodando enquanto vê o pitch. */
+  .capa-link{
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(22,163,74,.22), rgba(16,185,129,.18));
+    border: 1px solid rgba(22,163,74,.45);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    text-decoration: none;
+    color: #d6ffe8;
+    margin: -22px 0 26px;
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .capa-link:hover{
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(22,163,74,.32), rgba(16,185,129,.26));
+    box-shadow: 0 8px 22px rgba(22,163,74,.30);
+  }
+  .capa-link-vivo{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0 4px rgba(74,222,128,.25);
+    animation: capaLinkPulso 1.8s ease-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes capaLinkPulso{
+    0%   { box-shadow: 0 0 0 0   rgba(74,222,128,.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(74,222,128,0);  }
+    100% { box-shadow: 0 0 0 0   rgba(74,222,128,0);  }
+  }
+  .capa-link-label{
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(214,255,232,.75);
+  }
+  .capa-link-url{
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.01em;
+  }
+
   .capa-meta{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -315,20 +362,23 @@
     text-transform: uppercase; color: var(--crit);
   }
 
-  /* ============ 9 SOLUÇÕES ============ */
+  /* ============ 9 SOLUÇÕES ============
+     Slide 3 tem 3×3 cards + cabeçalho. Em palco 1600×900 com padding 50/70,
+     sobram 800px de altura útil. Densidade ajustada pra TUDO caber sem cortar
+     a 3ª linha — mexer aqui afeta SÓ o slide 3 (classes exclusivas).        */
   .nove-grade{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin-top: 22px;
+    gap: 14px;
+    margin-top: 14px;
   }
   .nove-card{
     background: #fff;
     border: 1px solid var(--borda);
     border-top: 4px solid var(--azul-medio);
-    border-radius: 14px;
-    padding: 22px;
-    display: flex; flex-direction: column; gap: 10px;
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 6px;
     transition: transform .15s, box-shadow .15s;
     position: relative;
     box-shadow: 0 6px 18px rgba(11,29,58,.07);
@@ -351,21 +401,23 @@
   }
   .nove-card:hover{ transform: translateY(-3px); box-shadow: 0 14px 32px rgba(11,29,58,.14); }
   .nove-card .ico{
-    width: 46px; height: 46px; border-radius: 12px;
+    width: 38px; height: 38px; border-radius: 10px;
     display: grid; place-items: center; color: #fff;
     background: var(--grad-vibrante);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
+  .nove-card .ico svg{ width: 18px; height: 18px; }
   .nove-card.modelo .ico{ background: var(--grad-azul); }
   .nove-card.complemento .ico{ background: var(--grad-laranja); }
   .nove-card.software .ico{ background: var(--grad-roxo); }
   .nove-card.app .ico{ background: var(--grad-verde); }
   .nove-card h3{
-    font-size: 1.05rem; font-weight: 800; color: var(--azul-noite); letter-spacing: -.01em;
+    font-size: .98rem; font-weight: 800; color: var(--azul-noite); letter-spacing: -.01em;
+    margin: 2px 0 0;
   }
-  .nove-card p{ font-size: .92rem; color: var(--texto-suave); line-height: 1.5; }
+  .nove-card p{ font-size: .85rem; color: var(--texto-suave); line-height: 1.42; margin: 0; }
   .nove-card .badge-cat{
-    position: absolute; top: 14px; right: 14px;
+    position: absolute; top: 10px; right: 12px;
     font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
     padding: 3px 8px; border-radius: 4px;
     background: var(--azul-gelo); color: var(--azul-medio);
@@ -472,6 +524,19 @@
     text-align: center;
   }
   .equipo-emoji{ font-size: 5rem; }
+  /* Foto real do produto (slide Nobreak). Mantém proporção retrato,
+     limita altura pro card não estourar. Fundo branco + sombra suave. */
+  .equipo-foto{
+    width: auto;
+    max-width: 160px;
+    height: 230px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 8px 24px rgba(11,29,58,.10);
+    border: 1px solid var(--borda);
+  }
   .equipo-nome{ font-size: 1.5rem; font-weight: 800; color: var(--azul-noite); letter-spacing: -.01em; }
   .equipo-modelo{
     font-family: 'JetBrains Mono', monospace;
@@ -548,67 +613,103 @@
   }
 
   /* ============ DASHBOARD (slide 10) ============ */
+  /* ============ SLIDE Dashboard + Agentes ============
+     Reorganizado em 3 colunas: PERFIS | AGENTES | IMAGEM real do produto.
+     Tudo cabe em UMA linha dentro do palco 1600×900. Densidade
+     calibrada pra a foto do dashboard ficar grande e legível,
+     sem cortar nada nem deixar elementos rolando pra fora.        */
   .dash-grade{
     display: grid;
-    grid-template-columns: 1fr 1.1fr;
-    gap: 40px;
-    margin-top: 24px;
+    grid-template-columns: 1fr 1.05fr 1.25fr;
+    gap: 18px;
+    margin-top: 16px;
     align-items: stretch;
   }
-  .dash-perfis{ display: flex; flex-direction: column; gap: 16px; }
+  .dash-perfis{ display: flex; flex-direction: column; gap: 10px; }
   .dash-perfil{
     background: #fff;
     border: 1px solid var(--borda);
-    border-radius: 14px;
-    padding: 22px;
+    border-radius: 12px;
+    padding: 12px 14px;
     display: grid;
-    grid-template-columns: 60px 1fr;
-    gap: 16px;
+    grid-template-columns: 44px 1fr;
+    gap: 12px;
     align-items: center;
   }
   .dash-perfil-ico{
-    width: 60px; height: 60px;
-    border-radius: 14px;
+    width: 44px; height: 44px;
+    border-radius: 10px;
     display: grid; place-items: center;
     color: #fff;
   }
+  .dash-perfil-ico svg{ width: 20px; height: 20px; }
   .dash-perfil.admin .dash-perfil-ico{ background: var(--grad-azul); }
   .dash-perfil.operador .dash-perfil-ico{ background: var(--grad-vibrante); }
-  .dash-perfil h4{ font-size: 1.15rem; font-weight: 800; color: var(--azul-noite); margin-bottom: 4px; }
-  .dash-perfil p{ font-size: .92rem; color: var(--texto-suave); line-height: 1.5; }
+  .dash-perfil h4{ font-size: .95rem; font-weight: 800; color: var(--azul-noite); margin-bottom: 2px; letter-spacing: -.01em; }
+  .dash-perfil p{ font-size: .78rem; color: var(--texto-suave); line-height: 1.38; }
 
   .dash-agentes{
     background: linear-gradient(135deg, #f5f3ff, #faf5ff);
     border: 1px solid #ddd6fe;
-    border-radius: 16px;
-    padding: 24px;
-    display: flex; flex-direction: column; gap: 14px;
+    border-radius: 14px;
+    padding: 14px 14px 12px;
+    display: flex; flex-direction: column; gap: 8px;
   }
   .dash-agente-titulo{
-    font-size: 12px; font-weight: 800; letter-spacing: .08em;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .07em;
     text-transform: uppercase; color: var(--roxo);
-    margin-bottom: 6px;
+    margin-bottom: 2px;
   }
   .agente-item{
     display: grid;
-    grid-template-columns: 38px 1fr;
-    gap: 14px;
+    grid-template-columns: 30px 1fr;
+    gap: 10px;
     background: #fff;
     border: 1px solid #ede9fe;
-    border-radius: 10px;
-    padding: 14px;
+    border-radius: 8px;
+    padding: 9px 11px;
     align-items: center;
   }
   .agente-num{
-    width: 38px; height: 38px;
+    width: 30px; height: 30px;
     background: var(--grad-roxo);
     color: #fff;
-    border-radius: 10px;
+    border-radius: 8px;
     display: grid; place-items: center;
-    font-weight: 900; font-size: 1rem;
+    font-weight: 900; font-size: .9rem;
   }
-  .agente-item h5{ font-size: 1rem; font-weight: 800; color: var(--azul-noite); margin-bottom: 2px; }
-  .agente-item p{ font-size: .88rem; color: var(--texto-suave); line-height: 1.4; }
+  .agente-item h5{ font-size: .88rem; font-weight: 800; color: var(--azul-noite); margin-bottom: 1px; letter-spacing: -.01em; }
+  .agente-item p{ font-size: .76rem; color: var(--texto-suave); line-height: 1.35; }
+
+  /* 3ª coluna: foto do dashboard real (encolhe pra caber inline) */
+  .dash-foto{
+    display: flex; flex-direction: column; gap: 8px;
+    min-width: 0;
+  }
+  .dash-foto-wrap{
+    flex: 1;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 14px 38px rgba(11,29,58,.18);
+    border: 1px solid #e5e9f2;
+    background: #fff;
+    display: flex;
+    align-items: stretch;
+  }
+  .dash-foto-wrap img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+  }
+  .dash-foto-cap{
+    font-size: .72rem;
+    color: #5b6b86;
+    text-align: center;
+    line-height: 1.4;
+    margin: 0;
+  }
 
   /* ============ MOBILE (slide 11) ============ */
   .mobile-grade{
@@ -682,45 +783,84 @@
 
   /* ============ EQUIPE (slide 12) ============ */
   .equipe-stage{
-    display: flex; flex-direction: column; align-items: center; gap: 30px;
-    margin-top: 20px;
-  }
-  .equipe-grade{
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
+    display: flex; flex-direction: column; gap: 26px;
+    margin: 18px auto 0;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1180px;
   }
-  .pessoa{
+  .equipe-bloco{
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 26px;
+    align-items: stretch;
+  }
+  .equipe-foto{
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--borda);
+    background: #0b1d3a;
+    box-shadow: 0 14px 36px rgba(11,29,58,.15);
+    min-height: 340px;
+  }
+  .equipe-foto img{
+    display: block;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .equipe-nomes{
     background: #fff;
     border: 1px solid var(--borda);
     border-radius: 16px;
-    padding: 24px 20px;
-    text-align: center;
-    transition: transform .15s, box-shadow .15s;
+    padding: 30px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 6px 20px rgba(11,29,58,.06);
   }
-  .pessoa:hover{ transform: translateY(-4px); box-shadow: 0 14px 32px rgba(30,111,214,.15); }
-  .pessoa-foto{
-    width: 110px; height: 110px;
+  .equipe-nomes-titulo{
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--azul-medio);
+    margin-bottom: 4px;
+  }
+  .equipe-lista{
+    list-style: none;
+    padding: 0; margin: 0;
+    display: flex; flex-direction: column;
+  }
+  .equipe-lista li{
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--azul-noite);
+    letter-spacing: -.015em;
+    line-height: 1.2;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(15,23,42,.06);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .equipe-lista li::before{
+    width: 10px; height: 10px;   /* sobrescreve o ponto pra acompanhar fonte maior */
+  }
+  .equipe-lista li:last-child{ border-bottom: 0; }
+  .equipe-lista li::before{
+    content: "";
+    width: 8px; height: 8px;
     border-radius: 50%;
     background: var(--grad-vibrante);
-    margin: 0 auto 14px;
-    display: grid; place-items: center;
-    color: #fff;
-    font-size: 2.2rem; font-weight: 900;
-    letter-spacing: -.02em;
-    box-shadow: 0 8px 24px rgba(30,111,214,.25);
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(0,184,240,.40);
   }
-  .pessoa-nome{ font-size: 1.1rem; font-weight: 800; color: var(--azul-noite); margin-bottom: 4px; }
-  .pessoa-papel{ font-size: .85rem; color: var(--texto-suave); font-weight: 600; letter-spacing: .02em; }
 
   .equipe-rodape{
     background: linear-gradient(135deg, var(--azul-noite), var(--azul-profundo));
     color: #fff;
     border-radius: 16px;
     padding: 28px 36px;
-    width: 100%; max-width: 1100px;
+    width: 100%;
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 30px;
@@ -730,6 +870,11 @@
   .equipe-rodape p{ font-size: 1rem; opacity: .85; }
   .equipe-logos{ display: flex; gap: 14px; align-items: center; }
   .equipe-logos img{ background: #fff; border-radius: 10px; padding: 8px 12px; max-height: 50px; }
+
+  @media (max-width: 900px){
+    .equipe-bloco{ grid-template-columns: 1fr; }
+    .equipe-foto{ min-height: 260px; }
+  }
 
   /* ============ INSTRUÇÕES PRO PRESENTER ============ */
   .keys-help{
@@ -779,6 +924,13 @@
         </span>
         Tema: <strong>Conectividade — saúde dos sensores</strong>
       </div>
+
+      <a class="capa-link" href="https://datacold.web.app/" target="_blank" rel="noopener">
+        <span class="capa-link-vivo" aria-hidden="true"></span>
+        <span class="capa-link-label">Acesse ao vivo</span>
+        <span class="capa-link-url">datacold.web.app</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
 
       <div class="capa-meta">
         <div class="capa-meta-it">
@@ -1180,6 +1332,12 @@
   <span class="olho"><span class="pt-ciano"></span>Modelo de instalação · 1 de 3</span>
   <h1 class="titulo">Único sensor <span class="destaque">+ reconstrução pelo agente.</span></h1>
 
+  <!-- Fluxo end-to-end (imagem real do nosso protótipo) -->
+  <div style="background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; margin: 12px 0 18px; box-shadow: 0 6px 18px rgba(11,29,58,.06); position: relative;">
+    <span style="position: absolute; top: -10px; left: 18px; background: var(--azul-noite); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px;">Fluxo deste protótipo</span>
+    <img src="imagens/fluxo-unico.png" alt="Equipamento → 1 Sensor → Logger (ESP32/RPi) → Nuvem → Banco → Web/App" style="width: 100%; height: auto; display: block; border-radius: 6px;">
+  </div>
+
   <div class="modelo-stage">
     <div class="modelo-diagrama" style="padding: 18px; background: #fff; position: relative;">
       <span class="diag-label" style="background: var(--azul-noite); color: #fff; border: 0;">Captura real · sensor Extrusora 1</span>
@@ -1241,33 +1399,39 @@
   <span class="olho"><span class="pt-ciano"></span>Modelo de instalação · 2 de 3</span>
   <h1 class="titulo">Múltiplos sensores <span class="destaque">concentrados.</span></h1>
 
-  <div class="modelo-stage">
-    <div class="modelo-diagrama">
-      <span class="diag-label">Diagrama de instalação</span>
-      <svg class="diag-svg" viewBox="0 0 400 280" fill="none">
+  <!-- Fluxo end-to-end (imagem real do nosso protótipo) -->
+  <div style="background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; margin: 12px 0 18px; box-shadow: 0 6px 18px rgba(11,29,58,.06); position: relative;">
+    <span style="position: absolute; top: -10px; left: 18px; background: var(--azul-noite); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px;">Fluxo deste protótipo</span>
+    <img src="imagens/fluxo-concentrados.png" alt="Equipamento → N sensores → Logger → Switch → Servidor local → Nuvem → Banco → Web/App" style="width: 100%; height: auto; display: block; border-radius: 6px;">
+  </div>
+
+  <div class="modelo-stage" style="margin-top: 0;">
+    <div class="modelo-diagrama" style="min-height: 220px; padding: 22px;">
+      <span class="diag-label">Por que concentrar?</span>
+      <svg class="diag-svg" viewBox="0 0 400 200" fill="none" style="max-width: 380px;">
         <!-- equipamento -->
-        <rect x="30" y="60" width="160" height="160" rx="10" fill="#e0e7ff" stroke="#1e6fd6" stroke-width="2"/>
-        <text x="110" y="100" text-anchor="middle" font-family="Inter" font-size="13" font-weight="700" fill="#0b1d3a">CÂMARA FRIA</text>
-        <text x="110" y="116" text-anchor="middle" font-family="Inter" font-size="10" fill="#6b7280">1 equipamento</text>
+        <rect x="30" y="40" width="160" height="140" rx="10" fill="#e0e7ff" stroke="#1e6fd6" stroke-width="2"/>
+        <text x="110" y="70" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#0b1d3a">CÂMARA FRIA</text>
+        <text x="110" y="86" text-anchor="middle" font-family="Inter" font-size="10" fill="#6b7280">1 equipamento</text>
         <!-- 3 sensores -->
-        <circle cx="70" cy="160" r="16" fill="#1e6fd6"/>
-        <text x="70" y="164" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S1</text>
-        <circle cx="110" cy="190" r="16" fill="#1e6fd6"/>
-        <text x="110" y="194" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S2</text>
-        <circle cx="150" cy="160" r="16" fill="#1e6fd6"/>
-        <text x="150" y="164" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S3</text>
+        <circle cx="70" cy="130" r="15" fill="#1e6fd6"/>
+        <text x="70" y="134" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S1</text>
+        <circle cx="110" cy="155" r="15" fill="#1e6fd6"/>
+        <text x="110" y="159" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S2</text>
+        <circle cx="150" cy="130" r="15" fill="#1e6fd6"/>
+        <text x="150" y="134" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">S3</text>
         <!-- gateway -->
-        <rect x="220" y="135" width="80" height="50" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
-        <text x="260" y="158" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="#c2410c">GATEWAY</text>
-        <text x="260" y="172" text-anchor="middle" font-family="Inter" font-size="9" fill="#6b7280">1 único</text>
+        <rect x="220" y="100" width="80" height="50" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+        <text x="260" y="123" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="#c2410c">GATEWAY</text>
+        <text x="260" y="137" text-anchor="middle" font-family="Inter" font-size="9" fill="#6b7280">1 único</text>
         <!-- linhas -->
-        <path d="M86 160 Q150 130 220 160" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
-        <path d="M126 190 Q175 175 220 165" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
-        <path d="M166 160 Q200 155 220 160" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
+        <path d="M85 130 Q150 95 220 125" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
+        <path d="M125 155 Q175 140 220 130" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
+        <path d="M165 130 Q200 122 220 125" stroke="#1e6fd6" stroke-width="1.8" fill="none"/>
         <!-- cloud -->
-        <ellipse cx="350" cy="160" rx="35" ry="25" fill="#f0f9ff" stroke="#0a93c4" stroke-width="2"/>
-        <text x="350" y="164" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="#0a93c4">CLOUD</text>
-        <line x1="300" y1="160" x2="315" y2="160" stroke="#00b8f0" stroke-width="2" stroke-dasharray="4,3"/>
+        <ellipse cx="350" cy="125" rx="35" ry="25" fill="#f0f9ff" stroke="#0a93c4" stroke-width="2"/>
+        <text x="350" y="129" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="#0a93c4">CLOUD</text>
+        <line x1="300" y1="125" x2="315" y2="125" stroke="#00b8f0" stroke-width="2" stroke-dasharray="4,3"/>
       </svg>
     </div>
 
@@ -1299,6 +1463,12 @@
 <section class="slide" data-titulo="Modelo 3 · Distribuídos">
   <span class="olho"><span class="pt-ciano"></span>Modelo de instalação · 3 de 3</span>
   <h1 class="titulo">Múltiplos sensores <span class="destaque">distribuídos.</span></h1>
+
+  <!-- Fluxo end-to-end (imagem real do nosso protótipo) -->
+  <div style="background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 14px 16px; margin: 12px 0 18px; box-shadow: 0 6px 18px rgba(11,29,58,.06); position: relative;">
+    <span style="position: absolute; top: -10px; left: 18px; background: var(--azul-noite); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px;">Fluxo deste protótipo</span>
+    <img src="imagens/fluxo-distribuidos.png" alt="Quadros A/B/N convergem num Centro da fábrica via Wi-Fi e LoRa → Nuvem → Banco → Web/App" style="width: 100%; height: auto; display: block; border-radius: 6px;">
+  </div>
 
   <div class="modelo-stage">
     <div class="modelo-diagrama">
@@ -1373,20 +1543,28 @@
 
   <div class="equipo-grade">
     <div class="equipo-cartao">
-      <div class="equipo-emoji">🔋</div>
-      <div class="equipo-nome">Fonte Nobreak 12V · 1A</div>
-      <div class="equipo-modelo">Intelbras EFB 1201</div>
-      <div class="equipo-preco">≈ R$ 150</div>
+      <img class="equipo-foto"
+           src="../assets/produtos/nobreak-intelbras.png"
+           alt="Fonte Nobreak Intelbras EFB 0501"
+           onerror="this.outerHTML='<div class=\'equipo-emoji\'>🔋</div>';">
+      <div class="equipo-nome">Fonte Nobreak USB</div>
+      <div class="equipo-modelo">Intelbras EFB 0501</div>
+      <div class="equipo-preco">R$ 89,90</div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px;">
+        <span style="background: #131a22; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px; letter-spacing: .03em;">★ Escolha da Amazon</span>
+        <span style="font-size: 11.5px; color: var(--texto-suave);">★ 4,5 / 5 · 16 avaliações · 10% OFF de R$ 99,90</span>
+      </div>
     </div>
 
     <div class="equipo-info">
       <h2>Energia fora não pode virar dado fora.</h2>
-      <p>Sem nobreak, qualquer oscilação na rede elétrica derruba o sensor — e a coleta para por minutos ou horas. <strong>Com R$ 150 por ponto</strong>, o sensor segue ligado, o buffer enche, e quando a conexão volta, sincroniza tudo.</p>
+      <p>Sem nobreak, qualquer oscilação na rede elétrica derruba o sensor — e a coleta para por minutos ou horas. Por <strong>menos de R$ 90 por ponto</strong>, o sensor segue ligado, o buffer enche, e quando a conexão volta, sincroniza tudo.</p>
 
       <ul class="equipo-bullets">
-        <li><strong>Autonomia:</strong> ~4 horas em quedas curtas</li>
-        <li><strong>Tensão:</strong> 12V DC · 1A · padrão da maioria dos loggers</li>
-        <li><strong>Instalação:</strong> plug-and-play, em série com a fonte do sensor</li>
+        <li><strong>Bateria interna de lítio</strong> — autonomia em quedas curtas</li>
+        <li><strong>Função DC Start</strong> · liga automático quando a energia volta</li>
+        <li><strong>Conexão USB</strong> · compatível com a maioria dos loggers</li>
+        <li><strong>Proteções:</strong> curto-circuito · sobrecarga · sobretensão</li>
         <li><strong>Combina com fila local:</strong> energia + buffer = zero perda</li>
       </ul>
     </div>
@@ -1433,15 +1611,107 @@
     </div>
 
     <div class="tec-info">
-      <span class="tec-tag">⚙ Lógica nos 2 lados</span>
-      <h2>No logger E no gateway.</h2>
-      <p>O retry roda em camada dupla: o sensor tenta reconectar com o gateway local; e o gateway tenta reconectar com o servidor cloud. Falha de uma camada não para a outra.</p>
+      <span class="tec-tag">📡 2× no Wi-Fi padrão, depois pula pro vizinho</span>
+      <h2>Logger procura outra rede sozinho.</h2>
 
-      <ul class="modelo-bullets">
-        <li><span class="check">✓</span><div><strong>Zero intervenção humana.</strong> Não precisa alguém ir até a planta reiniciar.</div></li>
-        <li><span class="check">✓</span><div><strong>Backoff inteligente.</strong> Não martela a rede quando o problema é crônico.</div></li>
-        <li><span class="check">✓</span><div><strong>Observável.</strong> Cada queda fica registrada — base pra SLA com o cliente.</div></li>
-      </ul>
+      <!-- ===== SVG: Logger + 2 roteadores Wi-Fi ===== -->
+      <div style="background: linear-gradient(135deg, #f0f9ff, #ecfeff); border: 1px solid rgba(0,184,240,.30); border-radius: 14px; padding: 14px; margin-bottom: 12px;">
+        <svg viewBox="0 0 480 200" style="width: 100%; height: 170px;" aria-hidden="true">
+          <defs>
+            <radialGradient id="waveOk" cx=".5" cy=".5" r=".5">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity=".55"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="waveFail" cx=".5" cy=".5" r=".5">
+              <stop offset="0%" stop-color="#dc2626" stop-opacity=".5"/>
+              <stop offset="100%" stop-color="#dc2626" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- LOGGER (esquerda) -->
+          <g transform="translate(20, 70)">
+            <rect width="60" height="60" rx="10" fill="#1e6fd6"/>
+            <text x="30" y="34" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#fff">LOGGER</text>
+            <circle cx="18" cy="46" r="3" fill="#22c55e">
+              <animate attributeName="opacity" values="1;.2;1" dur=".9s" repeatCount="indefinite"/>
+            </circle>
+            <text x="38" y="49" font-family="JetBrains Mono" font-size="7" fill="#bae6fd">on</text>
+          </g>
+
+          <!-- ROUTER A (FALHA, topo) -->
+          <g transform="translate(280, 18)">
+            <ellipse cx="40" cy="36" rx="36" ry="22" fill="url(#waveFail)"/>
+            <rect x="14" y="22" width="52" height="30" rx="5" fill="#1f2937" stroke="#374151" stroke-width="1.4"/>
+            <line x1="22" y1="22" x2="20" y2="6" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="58" y1="22" x2="60" y2="6" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="20" cy="6" r="2.5" fill="#dc2626"/>
+            <circle cx="60" cy="6" r="2.5" fill="#dc2626"/>
+            <circle cx="58" cy="42" r="2.5" fill="#dc2626">
+              <animate attributeName="opacity" values="1;.3;1" dur=".6s" repeatCount="indefinite"/>
+            </circle>
+            <text x="40" y="73" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#dc2626">ROUTER A · padrão</text>
+            <text x="40" y="84" text-anchor="middle" font-family="Inter" font-size="8" fill="#7f1d1d">offline ❌</text>
+          </g>
+
+          <!-- ROUTER B (OK, vizinho) -->
+          <g transform="translate(280, 118)">
+            <ellipse cx="40" cy="36" rx="36" ry="22" fill="url(#waveOk)"/>
+            <rect x="14" y="22" width="52" height="30" rx="5" fill="#0b1d3a" stroke="#1e6fd6" stroke-width="1.4"/>
+            <line x1="22" y1="22" x2="20" y2="6" stroke="#1e6fd6" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="58" y1="22" x2="60" y2="6" stroke="#1e6fd6" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="20" cy="6" r="2.5" fill="#22c55e"/>
+            <circle cx="60" cy="6" r="2.5" fill="#22c55e"/>
+            <circle cx="58" cy="42" r="2.5" fill="#22c55e">
+              <animate attributeName="opacity" values="1;.4;1" dur="1.4s" repeatCount="indefinite"/>
+            </circle>
+            <text x="40" y="73" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#047857">ROUTER B · vizinho</text>
+            <text x="40" y="84" text-anchor="middle" font-family="Inter" font-size="8" fill="#065f46">online ✓</text>
+          </g>
+
+          <!-- TENTATIVA 1 (A, falha) -->
+          <path d="M82 95 Q170 55 282 50" stroke="#dc2626" stroke-width="2" fill="none" stroke-dasharray="5,4">
+            <animate attributeName="opacity" values="0;1;1;0;0;0;0" keyTimes="0;0.05;0.18;0.22;0.5;0.85;1" dur="6s" repeatCount="indefinite"/>
+          </path>
+          <text x="170" y="46" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#dc2626">
+            tentativa 1 ❌
+            <animate attributeName="opacity" values="0;1;1;0;0;0;0" keyTimes="0;0.05;0.18;0.22;0.5;0.85;1" dur="6s" repeatCount="indefinite"/>
+          </text>
+
+          <!-- TENTATIVA 2 (A, falha) -->
+          <path d="M82 100 Q170 65 282 60" stroke="#dc2626" stroke-width="2" fill="none" stroke-dasharray="5,4">
+            <animate attributeName="opacity" values="0;0;0;0;1;1;0" keyTimes="0;0.22;0.30;0.32;0.40;0.55;0.60" dur="6s" repeatCount="indefinite"/>
+          </path>
+          <text x="170" y="78" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#dc2626">
+            tentativa 2 ❌
+            <animate attributeName="opacity" values="0;0;0;0;1;1;0" keyTimes="0;0.22;0.30;0.32;0.40;0.55;0.60" dur="6s" repeatCount="indefinite"/>
+          </text>
+
+          <!-- TENTATIVA 3 (B, sucesso) -->
+          <path d="M82 105 Q170 140 282 150" stroke="#16a34a" stroke-width="2.6" fill="none">
+            <animate attributeName="opacity" values="0;0;0;0;0;1;1" keyTimes="0;0.6;0.65;0.7;0.75;0.8;1" dur="6s" repeatCount="indefinite"/>
+          </path>
+          <text x="170" y="170" text-anchor="middle" font-family="Inter" font-size="10" font-weight="800" fill="#16a34a">
+            tentativa 3 · pula pro vizinho ✓
+            <animate attributeName="opacity" values="0;0;0;0;0;1;1" keyTimes="0;0.6;0.65;0.7;0.75;0.8;1" dur="6s" repeatCount="indefinite"/>
+          </text>
+        </svg>
+      </div>
+
+      <!-- ===== SCRIPT PYTHON (inserível no logger) ===== -->
+      <div style="background: #0b1d3a; color: #e2e8f0; border-radius: 12px; padding: 14px 18px 14px 18px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 1.55; position: relative; box-shadow: 0 8px 22px rgba(11,29,58,.20); margin-top: 18px;">
+        <span style="position: absolute; top: -10px; left: 14px; background: var(--ciano); color: var(--azul-noite); font-family: Inter; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 4px; letter-spacing: .05em;">PYTHON · inserir no firmware do logger</span>
+<pre style="margin: 0; white-space: pre-wrap;"><span style="color:#94a3b8;"># reconexao.py</span>
+<span style="color:#7dd3fc;">async def</span> <span style="color:#fde68a;">conectar</span>():
+  <span style="color:#7dd3fc;">for</span> n <span style="color:#7dd3fc;">in</span> <span style="color:#fde68a;">range</span>(<span style="color:#fcd34d;">1</span>, <span style="color:#fcd34d;">3</span>):                <span style="color:#94a3b8;"># 2× no router padrão</span>
+    <span style="color:#7dd3fc;">if</span> <span style="color:#7dd3fc;">await</span> wifi.conectar(SSID_PADRAO):
+      <span style="color:#7dd3fc;">return</span> <span style="color:#86efac;">"ok"</span>
+    <span style="color:#7dd3fc;">await</span> sleep(<span style="color:#fcd34d;">2</span> ** n)                <span style="color:#94a3b8;"># backoff 2s · 4s</span>
+  <span style="color:#94a3b8;"># falhou 2× → pula pro Wi-Fi mais próximo</span>
+  <span style="color:#7dd3fc;">for</span> rede <span style="color:#7dd3fc;">in</span> wifi.<span style="color:#fde68a;">escanear_proximas</span>(top=<span style="color:#fcd34d;">3</span>):
+    <span style="color:#7dd3fc;">if</span> <span style="color:#7dd3fc;">await</span> wifi.conectar(rede.ssid):
+      <span style="color:#7dd3fc;">return</span> <span style="color:#86efac;">"ok · vizinho"</span>
+  <span style="color:#7dd3fc;">return</span> <span style="color:#fca5a5;">"offline"</span></pre>
+      </div>
     </div>
   </div>
 </section>
@@ -1488,12 +1758,116 @@
     <div class="tec-info">
       <span class="tec-tag">💾 Persistência local</span>
       <h2>Zero perda de dado.</h2>
-      <p>Combinado com o nobreak e a reconexão automática, o buffer local <strong>fecha o ciclo</strong>: energia continua, sensor continua lendo, dados ficam guardados, e quando a rede volta, tudo sobe pro servidor.</p>
+
+      <!-- ===== SVG criativo: sensor → fila → nuvem ===== -->
+      <div style="background: linear-gradient(135deg, #f0f9ff, #ecfeff); border: 1px solid rgba(0,184,240,.30); border-radius: 16px; padding: 16px; margin-bottom: 14px;">
+        <svg viewBox="0 0 480 230" style="width: 100%; height: 230px;" aria-hidden="true">
+          <defs>
+            <linearGradient id="cloudGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#bae6fd"/>
+              <stop offset="100%" stop-color="#7dd3fc"/>
+            </linearGradient>
+            <linearGradient id="bufferGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#1e6fd6"/>
+              <stop offset="100%" stop-color="#123b7a"/>
+            </linearGradient>
+            <linearGradient id="pacote" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%"  stop-color="#fef3c7"/>
+              <stop offset="100%" stop-color="#fcd34d"/>
+            </linearGradient>
+          </defs>
+
+          <!-- SENSOR (esquerda) -->
+          <rect x="20" y="95" width="70" height="50" rx="8" fill="#1e6fd6"/>
+          <circle cx="55" cy="120" r="6" fill="#22c55e">
+            <animate attributeName="opacity" values="1;.3;1" dur="1.2s" repeatCount="indefinite"/>
+          </circle>
+          <text x="55" y="165" text-anchor="middle" font-family="Inter" font-size="10" font-weight="800" fill="#0b1d3a">SENSOR</text>
+          <text x="55" y="178" text-anchor="middle" font-family="Inter" font-size="8" fill="#6b7280">lê a cada 3s</text>
+
+          <!-- Pacotes voando do sensor pro buffer -->
+          <g>
+            <rect x="-10" y="0" width="12" height="10" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6">
+              <animateTransform attributeName="transform" type="translate" values="95,115; 140,115; 165,135" dur="2.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" dur="2.4s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="-10" y="0" width="12" height="10" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6">
+              <animateTransform attributeName="transform" type="translate" values="95,115; 140,115; 165,135" begin="0.8s" dur="2.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" begin="0.8s" dur="2.4s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="-10" y="0" width="12" height="10" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6">
+              <animateTransform attributeName="transform" type="translate" values="95,115; 140,115; 165,135" begin="1.6s" dur="2.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" begin="1.6s" dur="2.4s" repeatCount="indefinite"/>
+            </rect>
+          </g>
+
+          <!-- BUFFER (centro) -->
+          <rect x="155" y="75" width="100" height="110" rx="10" fill="#fff" stroke="url(#bufferGrad)" stroke-width="2.5"/>
+          <text x="205" y="68" text-anchor="middle" font-family="Inter" font-size="10" font-weight="800" fill="#123b7a">BUFFER LOCAL</text>
+          <text x="205" y="200" text-anchor="middle" font-family="Inter" font-size="9" fill="#6b7280">SQLite no logger</text>
+
+          <!-- Pacotes empilhados no buffer -->
+          <g>
+            <rect x="167" y="167" width="76" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6"/>
+            <text x="172" y="175" font-family="Inter" font-size="7" font-weight="700" fill="#7c2d12">001 · 16:30:12</text>
+            <rect x="167" y="155" width="76" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6"/>
+            <text x="172" y="163" font-family="Inter" font-size="7" font-weight="700" fill="#7c2d12">002 · 16:30:15</text>
+            <rect x="167" y="143" width="76" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6"/>
+            <text x="172" y="151" font-family="Inter" font-size="7" font-weight="700" fill="#7c2d12">003 · 16:30:18</text>
+            <rect x="167" y="131" width="76" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6"/>
+            <text x="172" y="139" font-family="Inter" font-size="7" font-weight="700" fill="#7c2d12">004 · 16:30:21</text>
+            <rect x="167" y="119" width="76" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".6">
+              <animate attributeName="opacity" values=".4;1;.4" dur="2.4s" repeatCount="indefinite"/>
+            </rect>
+            <text x="172" y="127" font-family="Inter" font-size="7" font-weight="700" fill="#7c2d12">005 · 16:30:24</text>
+            <line x1="167" y1="111" x2="243" y2="111" stroke="#6b7280" stroke-width=".8" stroke-dasharray="2,2"/>
+            <line x1="167" y1="103" x2="243" y2="103" stroke="#6b7280" stroke-width=".8" stroke-dasharray="2,2" opacity=".6"/>
+          </g>
+
+          <!-- Contador "n pendentes" -->
+          <g>
+            <rect x="262" y="120" width="48" height="22" rx="11" fill="#dc2626"/>
+            <text x="286" y="134" text-anchor="middle" font-family="Inter" font-size="10" font-weight="800" fill="#fff">132 pend</text>
+          </g>
+
+          <!-- NUVEM (direita) -->
+          <g transform="translate(330, 55)">
+            <path d="M30 50 Q15 50 15 35 Q15 18 35 18 Q40 5 60 5 Q85 5 90 25 Q110 25 110 45 Q110 60 95 60 L30 60 Z" fill="url(#cloudGrad)" stroke="#0891b2" stroke-width="2"/>
+            <text x="62" y="38" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="#0c4a6e">CLOUD</text>
+            <text x="62" y="50" text-anchor="middle" font-family="Inter" font-size="7.5" fill="#155e75">Supabase</text>
+          </g>
+
+          <!-- SETA + PACOTES SUBINDO EM LOTE -->
+          <path d="M310 125 Q360 75 392 75" stroke="#16a34a" stroke-width="2.5" fill="none" stroke-dasharray="5,4">
+            <animate attributeName="stroke-dashoffset" values="0;-18" dur="1s" repeatCount="indefinite"/>
+          </path>
+          <g>
+            <rect x="-8" y="-5" width="14" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".8">
+              <animateMotion path="M310 125 Q360 75 392 75" dur="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" dur="1.8s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="-8" y="-5" width="14" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".8">
+              <animateMotion path="M310 125 Q360 75 392 75" begin="0.4s" dur="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" begin="0.4s" dur="1.8s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="-8" y="-5" width="14" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".8">
+              <animateMotion path="M310 125 Q360 75 392 75" begin="0.8s" dur="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" begin="0.8s" dur="1.8s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="-8" y="-5" width="14" height="11" rx="2" fill="url(#pacote)" stroke="#92400e" stroke-width=".8">
+              <animateMotion path="M310 125 Q360 75 392 75" begin="1.2s" dur="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.2;.8;1" begin="1.2s" dur="1.8s" repeatCount="indefinite"/>
+            </rect>
+          </g>
+
+          <text x="350" y="160" text-anchor="middle" font-family="Inter" font-size="10" font-weight="800" fill="#16a34a">⬆ drena em lote</text>
+          <text x="350" y="174" text-anchor="middle" font-family="Inter" font-size="8.5" fill="#6b7280">500–1000 pontos / batch</text>
+        </svg>
+      </div>
 
       <ul class="modelo-bullets">
-        <li><span class="check">✓</span><div><strong>Complementa o agente.</strong> Buffer evita reconstruir — só recorre ao agente quando o buffer também falha.</div></li>
-        <li><span class="check">✓</span><div><strong>Cadência preservada.</strong> Cada 3s lá, cada 3s aqui no servidor — sem buracos.</div></li>
-        <li><span class="check">✓</span><div><strong>Auditável.</strong> Operador vê quantos pontos estão pendentes no buffer.</div></li>
+        <li><span class="check">✓</span><div><strong>Complementa o agente.</strong> Buffer evita reconstruir — só recorre quando o buffer também falha.</div></li>
+        <li><span class="check">✓</span><div><strong>Cadência preservada · auditável.</strong> Operador vê quantos pontos pendentes em tempo real.</div></li>
       </ul>
     </div>
   </div>
@@ -1569,11 +1943,20 @@
       <article class="agente-item" style="background: linear-gradient(135deg, #f5f3ff, #faf5ff); border-color: var(--roxo); border-left: 4px solid var(--roxo);">
         <div class="agente-num" style="background: var(--grad-roxo);">4</div>
         <div>
-          <h5>Agente Reconstrutor <span style="color: var(--roxo); font-weight: 700; font-size: .75rem;">· nosso diferencial</span></h5>
+          <h5>Agente Reconstrutor <span style="color: var(--roxo); font-weight: 700; font-size: .7rem;">· nosso diferencial</span></h5>
           <p>Quando os 3 anteriores falharem em manter os dados, este reconstrói as lacunas via ensemble estatístico.</p>
         </div>
       </article>
     </div>
+
+    <figure class="dash-foto">
+      <div class="dash-foto-wrap">
+        <img src="imagens/dashboard-multi-usuario.png" alt="Dashboard DataCold em produção: 14 sensores agrupados por ambiente, status saudável/atenção/crítico, sino de notificações ao vivo">
+      </div>
+      <figcaption class="dash-foto-cap">
+        Dashboard em produção · 14 sensores · status ao vivo
+      </figcaption>
+    </figure>
   </div>
 </section>
 
@@ -1645,30 +2028,20 @@
   <h1 class="titulo">A equipe <span class="destaque">por trás do código.</span></h1>
 
   <div class="equipe-stage">
-    <div class="equipe-grade">
-      <article class="pessoa">
-        <div class="pessoa-foto">F</div>
-        <div class="pessoa-nome">Fernando</div>
-        <div class="pessoa-papel">Full-stack · DataCold</div>
-      </article>
+    <div class="equipe-bloco">
+      <div class="equipe-foto">
+        <img src="imagens/equipe.jpg" alt="Equipe DataCold trabalhando no Hackathon BEM 2026 — Insted Co-working">
+      </div>
 
-      <article class="pessoa">
-        <div class="pessoa-foto" style="background: var(--grad-roxo);">M</div>
-        <div class="pessoa-nome">Membro 2</div>
-        <div class="pessoa-papel">Backend · Integração API BEM</div>
-      </article>
-
-      <article class="pessoa">
-        <div class="pessoa-foto" style="background: var(--grad-laranja);">M</div>
-        <div class="pessoa-nome">Membro 3</div>
-        <div class="pessoa-papel">Mobile · App Flutter</div>
-      </article>
-
-      <article class="pessoa">
-        <div class="pessoa-foto" style="background: var(--grad-verde);">M</div>
-        <div class="pessoa-nome">Membro 4</div>
-        <div class="pessoa-papel">UI/UX · Identidade visual</div>
-      </article>
+      <aside class="equipe-nomes">
+        <span class="equipe-nomes-titulo">Quem fez acontecer</span>
+        <ul class="equipe-lista">
+          <li>Fernando Alves da Nóbrega</li>
+          <li>Paulo Ricardo Ferreira Martins</li>
+          <li>Gabriel Franklin Barcellos</li>
+          <li>Matheus Victor Moreira Yamanari</li>
+        </ul>
+      </aside>
     </div>
 
     <div class="equipe-rodape">

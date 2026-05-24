@@ -995,11 +995,7 @@ body{
 }
 /* Label "Wi-Fi" no rodapé do quadro fica em pink pra casar com o fio
    que sai dali até o centro da fábrica. */
-.q-leg.q-leg-wifi{
-  color: #be185d;
-  background: rgba(236,72,153,.10);
-  border-color: rgba(236,72,153,.30);
-}
+.q-leg.q-leg-wifi{ color: #be185d; }
 
 /* Seta horizontal entre nós, label ACIMA (no padding-top do .mod-fluxo) */
 .mn-seta{
