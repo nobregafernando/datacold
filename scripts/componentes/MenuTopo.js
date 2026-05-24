@@ -30,6 +30,7 @@ class MenuTopo {
     this.raiz = raiz;
     this.api = new ApiBEM();
     this.abertoDropdown = false;
+    this.abertoPerfil   = false;
     this._cancelarAssinatura = null;
   }
 
@@ -69,8 +70,60 @@ class MenuTopo {
         <div class="mt-sino-wrap" data-mt-sino-wrap>
           ${this._htmlSino()}
         </div>
+
+        <div class="mt-perfil-wrap" data-mt-perfil-wrap>
+          ${this._htmlPerfil()}
+        </div>
       </div>
     `;
+  }
+
+  /** Avatar circular + dropdown de perfil (configurações, sair). */
+  _htmlPerfil() {
+    const u = Autenticacao.usuarioAtual();
+    const inic = u ? u.iniciais : "?";
+    const nome = u ? u.nome : "Sessão expirada";
+    const email = u?.email || "—";
+    const papel = u ? u.rotuloPapel : "—";
+    const ehAdm = !!u?.ehAdmin;
+
+    return `
+      <button class="mt-perfil-btn ${ehAdm ? 'mt-perfil-admin' : ''}"
+              data-mt-perfil
+              aria-label="Conta de ${nome}"
+              aria-expanded="${this.abertoPerfil}">
+        <span class="mt-perfil-avatar">${inic}</span>
+      </button>
+
+      <div class="mt-perfil-dropdown ${this.abertoPerfil ? 'aberto' : ''}" data-mt-perfil-dropdown role="menu">
+        <header class="mt-perfil-head">
+          <div class="mt-perfil-avatar-grande ${ehAdm ? 'admin' : ''}">${inic}</div>
+          <div class="mt-perfil-meta">
+            <div class="mt-perfil-nome">${this._escapar(nome)}</div>
+            <div class="mt-perfil-email" title="${this._escapar(email)}">${this._escapar(email)}</div>
+            <span class="mt-perfil-papel ${ehAdm ? 'admin' : 'operador'}">${this._escapar(papel)}</span>
+          </div>
+        </header>
+        <div class="mt-perfil-itens">
+          <a href="${this.raiz}paginas/conta/configuracoes/" class="mt-perfil-item" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Configurações</span>
+          </a>
+          <button type="button" class="mt-perfil-item mt-perfil-sair" data-mt-sair role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Sair</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Re-renderiza só o bloco de perfil. */
+  _reRenderizarPerfil() {
+    const wrap = this.raizEl?.querySelector("[data-mt-perfil-wrap]");
+    if (!wrap) return;
+    wrap.innerHTML = this._htmlPerfil();
+    this._ligarEventosPerfil();
   }
 
   /** Re-renderiza só o bloco do sino (mantém status da API). */
@@ -175,15 +228,45 @@ class MenuTopo {
   // ===================================================================
 
   _ligarEventosEstaticos() {
-    // Fecha dropdown ao clicar fora — registrado uma vez só.
+    // Fecha dropdowns ao clicar fora — registrado uma vez só.
     document.addEventListener("click", (ev) => {
-      if (!this.abertoDropdown) return;
-      if (!this.raizEl.contains(ev.target)) {
+      if (this.raizEl.contains(ev.target)) return;
+      let mudou = false;
+      if (this.abertoDropdown) { this.abertoDropdown = false; mudou = true; this._reRenderizarDropdown(); }
+      if (this.abertoPerfil)   { this.abertoPerfil   = false; this._reRenderizarPerfil(); }
+    });
+    // ESC fecha qualquer dropdown aberto
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape") return;
+      if (this.abertoDropdown) { this.abertoDropdown = false; this._reRenderizarDropdown(); }
+      if (this.abertoPerfil)   { this.abertoPerfil   = false; this._reRenderizarPerfil(); }
+    });
+    this._ligarEventosSino();
+    this._ligarEventosPerfil();
+  }
+
+  _ligarEventosPerfil() {
+    const wrap = this.raizEl.querySelector("[data-mt-perfil-wrap]");
+    if (!wrap) return;
+
+    const btn = wrap.querySelector("[data-mt-perfil]");
+    if (btn) btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this.abertoPerfil = !this.abertoPerfil;
+      // Fecha o de notificações se estiver aberto — só 1 dropdown por vez
+      if (this.abertoPerfil && this.abertoDropdown) {
         this.abertoDropdown = false;
         this._reRenderizarDropdown();
       }
+      this._reRenderizarPerfil();
     });
-    this._ligarEventosSino();
+
+    wrap.querySelector("[data-mt-sair]")?.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      try { await Autenticacao.logout(); }
+      catch { /* ignora — limpa local mesmo assim */ }
+      window.location.href = `${this.raiz}paginas/login/`;
+    });
   }
 
   _ligarEventosSino() {

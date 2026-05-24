@@ -1,0 +1,68 @@
+<!--
+  DataCold · Template "Invite" (convite de novo usuário)
+  ============================================================
+  ENVIADO VIA: Custom SMTP do Supabase (smtp.gmail.com)
+  CONFIGURADO EM: Dashboard → Auth → Email Templates → "Invite User"
+  Subject: "mailer_subjects_invite".
+
+  Compatibilidade Outlook/Gmail/Apple Mail garantida:
+  - CSS inline + table-based + bgcolor sólido.
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Você foi convidado para a DataCold</title>
+</head>
+<body style="margin:0;padding:0;background:#E6F6FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1D3A;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#E6F6FF" style="background:#E6F6FF;padding:40px 20px;">
+    <tr><td align="center">
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" bgcolor="#FFFFFF" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:18px;overflow:hidden;">
+
+        <tr><td bgcolor="#123B7A" style="background:#123B7A;background:linear-gradient(135deg,#0B1D3A 0%,#123B7A 45%,#1E6FD6 100%);padding:36px 40px;">
+          <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8EDBFF;font-weight:700;margin-bottom:8px;">DataCold &middot; plataforma</div>
+          <h1 style="margin:0;font-size:26px;line-height:1.2;color:#FFFFFF;font-weight:800;letter-spacing:-0.01em;">Você foi convidado<br>para a DataCold.</h1>
+        </td></tr>
+
+        <tr><td style="padding:36px 40px 24px 40px;font-size:15px;line-height:1.65;color:#0B1D3A;">
+          <p style="margin:0 0 16px;">Olá,</p>
+          <p style="margin:0 0 16px;">Um administrador criou uma conta na <strong style="color:#123B7A;">DataCold</strong> para você (<a href="mailto:{{ .Email }}" style="color:#1E6FD6;text-decoration:none;">{{ .Email }}</a>). A DataCold é uma plataforma de telemetria industrial em tempo real — energia, temperatura e portas, monitorados a cada segundo, com inteligência automática que detecta anomalias.</p>
+          <p style="margin:0 0 28px;">Para finalizar o cadastro, defina o seu nome e crie uma senha. <strong>Só você terá acesso à sua senha</strong> — nem mesmo o administrador que enviou o convite vai vê-la.</p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 28px;"><tr>
+            <td bgcolor="#1E6FD6" style="background:#1E6FD6;background:linear-gradient(135deg,#1E6FD6 0%,#00B8F0 100%);border-radius:12px;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 36px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.01em;">Definir meu acesso &rarr;</a>
+            </td>
+          </tr></table>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#F4F8FF" style="background:#F4F8FF;border-radius:10px;margin:0 0 24px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b86;font-weight:700;margin-bottom:10px;">Requisitos da senha</div>
+              <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.65;color:#0B1D3A;">
+                <li>Mínimo de <strong>8 caracteres</strong></li>
+                <li>Pelo menos 1 letra <strong>maiúscula</strong> e 1 <strong>minúscula</strong></li>
+                <li>Pelo menos 1 <strong>número</strong></li>
+                <li>Pelo menos 1 <strong>caractere especial</strong> (ex: ! @ # $)</li>
+                <li>Sem espaços</li>
+              </ul>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 8px;font-size:13px;color:#5b6b86;">Se o botão não funcionar, copie e cole o link no navegador:</p>
+          <p style="margin:0 0 24px;font-size:12px;color:#1E6FD6;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#F4F8FF;padding:10px 14px;border-radius:8px;">{{ .ConfirmationURL }}</p>
+
+          <p style="margin:0;font-size:12.5px;color:#5b6b86;line-height:1.55;">Este link é válido por <strong>24 horas</strong>. Se ele expirar, peça ao administrador para reenviar o convite. Se você não esperava receber este e-mail, pode ignorá-lo — nenhuma conta será ativada sem você definir a senha.</p>
+        </td></tr>
+
+        <tr><td bgcolor="#F4F8FF" style="background:#F4F8FF;padding:20px 40px;border-top:1px solid #DDE4EF;text-align:center;font-size:11.5px;color:#5b6b86;line-height:1.6;">
+          <strong style="color:#0B1D3A;">DataCold</strong> &middot; Monitoramento inteligente de sensores industriais<br>
+          <a href="{{ .SiteURL }}" style="color:#1E6FD6;text-decoration:none;">{{ .SiteURL }}</a>
+        </td></tr>
+
+      </table>
+
+    </td></tr>
+  </table>
+</body>
+</html>

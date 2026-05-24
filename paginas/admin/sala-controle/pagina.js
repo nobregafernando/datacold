@@ -741,6 +741,10 @@
     valor_impossivel: { rotulo: "Restaurar leitura",  ico: "↩", classe: "valor" },
   };
 
+  // ids cuja request de cancel está em voo — pra UI mostrar "Cancelando…"
+  // mesmo entre re-renders e impedir clique duplo.
+  const cancelandoIds = new Set();
+
   function renderizarIncidentes() {
     const lista = document.querySelector("[data-ib-lista]");
     const banner = document.querySelector("[data-incidentes-ativos]");
@@ -754,6 +758,7 @@
       const fimTexto = i.fim ? `expira em ${formatarRestante(i.fim)}` : "permanente";
       const acao = ACAO_REVERSA[i.tipo] || { rotulo: "Cancelar incidente", ico: "✕", classe: "valor" };
       const sensorLabel = (sensores.find(s => s.id === i.sensor_id)?.label) || i.sensor_id;
+      const emVoo = cancelandoIds.has(String(i.id));
       return `
         <div class="ib-item ib-tipo-${acao.classe}">
           <span class="ib-tipo">${i.tipo.replace("_", " ")}</span>
@@ -762,36 +767,52 @@
             <div class="ib-desc">${i.descricao || "sem descrição"}</div>
           </div>
           <span class="ib-tempo">${fimTexto}</span>
-          <button class="ib-reverter ib-acao-${acao.classe}" data-cancelar="${i.id}" title="Cancelar este incidente agora">
-            <span class="ib-rev-ico">${acao.ico}</span>
-            <span class="ib-rev-txt">${acao.rotulo}</span>
+          <button class="ib-reverter ib-acao-${acao.classe}" data-cancelar="${i.id}" ${emVoo ? "disabled" : ""} title="Cancelar este incidente agora">
+            <span class="ib-rev-ico">${emVoo ? "⏳" : acao.ico}</span>
+            <span class="ib-rev-txt">${emVoo ? "Cancelando…" : acao.rotulo}</span>
           </button>
         </div>
       `;
     }).join("");
 
-    lista.querySelectorAll("[data-cancelar]").forEach(btn => {
-      btn.onclick = async () => {
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="ib-rev-txt">Cancelando…</span>`;
+    // Delegação no container — handler é registrado UMA vez só.
+    if (!lista._delegacaoCancelar) {
+      lista.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("[data-cancelar]");
+        if (!btn || btn.disabled) return;
+        const id = String(btn.dataset.cancelar);
+        cancelandoIds.add(id);
+        renderizarIncidentes();
         try {
-          await api.cancelarIncidente(btn.dataset.cancelar);
+          await api.cancelarIncidente(id);
+          // Remove imediatamente da lista local pra UI não esperar 5s.
+          incidentesAtivos = incidentesAtivos.filter(i => String(i.id) !== id);
+          renderizarIncidentes();
           toast("Incidente cancelado", "Sensor voltando ao normal em até 60s.", "info");
           atualizar();
           window.__avisarOutrasAbas?.();
         } catch (e) {
           toast("Erro ao cancelar", e.message, "erro");
-          btn.innerHTML = original;
-          btn.disabled = false;
+        } finally {
+          cancelandoIds.delete(id);
         }
-      };
-    });
+      });
+      lista._delegacaoCancelar = true;
+    }
   }
 
   // ===================================================================
   //  Modal
   // ===================================================================
+  function fecharModal() {
+    const modal = document.querySelector("[data-modal]");
+    if (!modal) return;
+    modal.hidden = true;
+    // limpa o handler do confirmar pra não vazar entre aberturas
+    const btn = document.querySelector("[data-modal-confirmar]");
+    if (btn) btn.onclick = null;
+  }
+
   function abrirModal(sensorId, preset) {
     const modal = document.querySelector("[data-modal]");
     const sensor = sensores.find(s => s.id === sensorId);
@@ -812,7 +833,7 @@
 
     modal.hidden = false;
     document.querySelector("[data-modal-confirmar]").onclick = async () => {
-      modal.hidden = true;
+      fecharModal();
       try {
         const r = await api.criarIncidente({
           sensor: sensorId,
@@ -822,9 +843,6 @@
           duracaoS: preset.duracaoS,
           descricao: preset.descricao,
         });
-        // Cancelamento automático de conflitantes (feito no SQL): se o
-        // sensor estava offline/gap e você dispara um "pico", a função
-        // do banco cancela o silenciador antes — o sensor reconecta.
         const cancelados = r?.cancelados_substituidos || 0;
         const extra = cancelados > 0
           ? ` · ${cancelados} incidente${cancelados>1?'s':''} anterior${cancelados>1?'es':''} cancelado${cancelados>1?'s':''}`
@@ -839,8 +857,20 @@
       } catch (e) { toast("Erro ao injetar", e.message, "erro"); }
     };
   }
-  document.querySelectorAll("[data-modal-close]").forEach(el => {
-    el.onclick = () => document.querySelector("[data-modal]").hidden = true;
+
+  // Event delegation no MODAL inteiro pra Cancelar/Backdrop. Funciona mesmo
+  // se o DOM for re-renderizado e independe de quando os botões são clicados.
+  const modalEl = document.querySelector("[data-modal]");
+  if (modalEl) {
+    modalEl.addEventListener("click", (ev) => {
+      if (ev.target.closest("[data-modal-close]")) {
+        ev.preventDefault();
+        fecharModal();
+      }
+    });
+  }
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && modalEl && !modalEl.hidden) fecharModal();
   });
 
   // ===================================================================

@@ -217,6 +217,22 @@ class Autenticacao {
     if (!e) throw new Error("E-mail inválido.");
     if (!senha || typeof senha !== "string") throw new Error("Senha obrigatória.");
 
+    // Pré-checagem ANTES de gastar signin no Supabase: a conta está ativa?
+    // Função SECURITY DEFINER e idempotente (devolve true pra emails que
+    // ainda não existem, deixando o erro real do signin tomar conta).
+    try {
+      const ativo = await Autenticacao._proxy(
+        "rpc:checar_ativo_por_email", { p_email: e }
+      );
+      if (ativo === false) {
+        throw new Error("Esta conta foi DESATIVADA por um administrador. Entre em contato com o admin pra reativar o acesso.");
+      }
+    } catch (errAtivo) {
+      // Se já é a mensagem de inativo, propaga.
+      if (/desativada/i.test(errAtivo.message)) throw errAtivo;
+      // Outros erros (ex: RPC fora do ar) — segue o fluxo normal.
+    }
+
     const tok = await Autenticacao._proxy("auth:signin", { email: e, password: senha });
 
     const sessao = {
@@ -231,6 +247,22 @@ class Autenticacao {
     perfil.email = tok.user?.email || e;
     sessao.perfil = perfil.serializar();
     Autenticacao._gravarSessao(sessao);
+
+    // Defense in depth: checa também pela coluna direta após signin,
+    // caso o token de pré-checagem tenha sido tolerado.
+    const perfilCompleto = await Autenticacao._proxy(
+      "perfil:buscar", { id: tok.user?.id }, tok.access_token
+    ).catch(() => null);
+    const linha = Array.isArray(perfilCompleto) ? perfilCompleto[0] : perfilCompleto;
+    if (linha && linha.ativo === false) {
+      Autenticacao._limparSessao();
+      try { await Autenticacao._proxy("auth:signout", {}, tok.access_token); } catch {}
+      throw new Error("Esta conta foi DESATIVADA por um administrador. Entre em contato com o admin pra reativar o acesso.");
+    }
+
+    // Best-effort: registra o evento de acesso (não bloqueia o login)
+    Autenticacao.registrarAcesso("login");
+
     return perfil;
   }
 
@@ -263,15 +295,99 @@ class Autenticacao {
   }
 
   /**
-   * Lista todos os perfis cadastrados (admin only — RLS bloqueia o
-   * resto). Retorna array ordenado por papel (admin primeiro) e nome.
+   * Lista todos os perfis cadastrados (admin only — RPC valida via
+   * fn_eh_admin no Postgres). Retorna array ordenado por papel + nome.
+   * Cada item: { id, nome, email, papel, ativo, criado_em, atualizado_em, ultimo_acesso }
    */
   static async listarUsuarios() {
-    return Autenticacao._autenticado(
-      "/rest/v1/perfis_usuarios?select=id,nome,papel,criado_em,atualizado_em&order=papel.asc,nome.asc",
-      null,
-      "GET"
-    );
+    return Autenticacao._proxy("rpc:listar_usuarios", {});
+  }
+
+  /** Admin: desativa usuário (login será bloqueado). */
+  static async desativarUsuario(id) {
+    return Autenticacao._proxy("rpc:desativar_usuario", { p_id: id });
+  }
+
+  /** Admin: reativa usuário previamente desativado. */
+  static async reativarUsuario(id) {
+    return Autenticacao._proxy("rpc:reativar_usuario", { p_id: id });
+  }
+
+  /**
+   * Admin: deleta a conta completa (auth.users + perfil + acessos via
+   * CASCADE). Operação irreversível — UI deve confirmar.
+   */
+  static async deletarUsuario(id) {
+    return Autenticacao._proxy("auth:admin_deletar", { id });
+  }
+
+  /**
+   * Admin: dispara link de recuperação de senha pra qualquer usuário.
+   * Busca o email pela RPC (admin only), depois chama auth:recover.
+   */
+  static async enviarRecuperacaoPara(id) {
+    const email = await Autenticacao._proxy("rpc:obter_email_usuario", { p_id: id });
+    if (!email) throw new Error("Email não encontrado.");
+    const redirectTo = `${location.origin}/paginas/conta/redefinir/`;
+    await Autenticacao._proxy("auth:recover", { email, redirect_to: redirectTo });
+    return email;
+  }
+
+  /**
+   * Registra um evento de acesso pro usuário atual (idempotente — sem
+   * JWT vira no-op no banco). Chamado após cada login bem-sucedido.
+   */
+  static async registrarAcesso(origem = "login") {
+    try {
+      const ua = typeof navigator !== "undefined" ? (navigator.userAgent || "").slice(0, 500) : "";
+      await Autenticacao._proxy("rpc:registrar_acesso", { p_ua: ua, p_origem: origem });
+    } catch { /* falha em registrar não derruba o login */ }
+  }
+
+  /**
+   * Histórico de acessos do próprio usuário (máx 100).
+   * Retorna [{ id, criado_em, ip, user_agent, origem }].
+   */
+  static async listarMeusAcessos(limite = 20) {
+    return Autenticacao._proxy("rpc:listar_meus_acessos", { p_limite: limite });
+  }
+
+  /**
+   * Troca a senha do usuário logado. Verifica a senha atual fazendo
+   * um signin (sem efeitos colaterais visíveis) e em seguida chama
+   * auth:atualizar com a nova senha. Sessão é atualizada com o token
+   * fresquinho emitido pelo signin.
+   */
+  static async alterarSenha(senhaAtual, novaSenha) {
+    if (!senhaAtual) throw new Error("Informe a senha atual.");
+    const eu = Autenticacao.usuarioAtual();
+    if (!eu) throw new Error("Sessão expirada — entre novamente.");
+    if (!eu.email) throw new Error("E-mail do usuário não encontrado na sessão.");
+
+    const v = ValidadorSenha.validar(novaSenha);
+    if (!v.ok) throw new Error("Senha fraca: " + v.motivos.join("; ") + ".");
+    if (senhaAtual === novaSenha) throw new Error("A nova senha precisa ser diferente da atual.");
+
+    // 1) Confirma a senha atual com um signin. Se errada, o proxy lança.
+    let tok;
+    try {
+      tok = await Autenticacao._proxy("auth:signin", { email: eu.email, password: senhaAtual });
+    } catch (err) {
+      throw new Error("Senha atual incorreta.");
+    }
+
+    // Aproveita o token novo na sessão antes do PUT
+    const sessaoNova = {
+      access_token:  tok.access_token,
+      refresh_token: tok.refresh_token,
+      expires_at:    Math.floor(Date.now() / 1000) + (tok.expires_in || 3600),
+      perfil:        Autenticacao._lerSessao()?.perfil || null,
+    };
+    Autenticacao._gravarSessao(sessaoNova);
+
+    // 2) Atualiza a senha
+    await Autenticacao._proxy("auth:atualizar", { password: novaSenha }, tok.access_token);
+    return { ok: true };
   }
 
   /**
@@ -311,13 +427,22 @@ class Autenticacao {
     return s;
   }
 
+  /**
+   * "Esqueci minha senha" — usa a Edge Function (admin generate_link +
+   * Gmail SMTP + template DataCold) em vez de /auth/v1/recover, que
+   * usaria o SMTP padrão do Supabase com o template antigo em inglês.
+   * Resposta sempre sucesso (não vaza se o email existe ou não).
+   */
   static async pedirRecuperacao(email) {
     const e = Sanitizar.email(email);
     if (!e) throw new Error("E-mail inválido.");
     try {
-      await Autenticacao._proxy("auth:recover", { email: e });
+      await Autenticacao._proxy("auth:recuperar_senha", {
+        email: e,
+        redirect_to: `${location.origin}/paginas/conta/redefinir/`,
+      });
     } catch {
-      // Mesmo em erro, devolve sucesso — evita enumeration attack.
+      // Mesmo em erro, devolve sucesso pra não vazar quais e-mails têm conta.
     }
     return true;
   }

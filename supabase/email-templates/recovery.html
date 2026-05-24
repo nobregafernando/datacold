@@ -1,0 +1,84 @@
+<!--
+  DataCold · Template "Recovery" (esqueci a senha)
+  ============================================================
+  ENVIADO VIA: Custom SMTP do Supabase (smtp.gmail.com)
+  CONFIGURADO EM: Dashboard → Auth → Email Templates → "Reset Password"
+  OU via Management API (supabase/email-templates/aplicar.py)
+
+  Variáveis Go templates aceitas pelo Supabase Auth:
+    {{ .ConfirmationURL }}  → link clicável (já formatado)
+    {{ .Email }}            → e-mail do destinatário
+    {{ .SiteURL }}          → Site URL configurada
+    {{ .Token }}            → token bruto (não usamos)
+    {{ .TokenHash }}        → hash do token
+
+  Subject: configurado separadamente como "mailer_subjects_recovery".
+
+  COMPATIBILIDADE EMAIL:
+  - CSS 100% INLINE (Outlook ignora <style>)
+  - Layout table-based (Outlook não entende flex/grid)
+  - bgcolor="..." em todo <td> com gradient (fallback Outlook)
+  - Sem background-image (Outlook bloqueia em alguns clientes)
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Redefinir sua senha — DataCold</title>
+</head>
+<body style="margin:0;padding:0;background:#E6F6FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1D3A;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#E6F6FF" style="background:#E6F6FF;padding:40px 20px;">
+    <tr><td align="center">
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" bgcolor="#FFFFFF" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:18px;overflow:hidden;">
+
+        <!-- Header com gradient + fallback sólido -->
+        <tr><td bgcolor="#123B7A" style="background:#123B7A;background:linear-gradient(135deg,#0B1D3A 0%,#123B7A 45%,#1E6FD6 100%);padding:36px 40px;">
+          <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8EDBFF;font-weight:700;margin-bottom:8px;">DataCold &middot; recuperação</div>
+          <h1 style="margin:0;font-size:26px;line-height:1.2;color:#FFFFFF;font-weight:800;letter-spacing:-0.01em;">Redefinir sua senha</h1>
+        </td></tr>
+
+        <!-- Corpo -->
+        <tr><td style="padding:36px 40px 24px 40px;font-size:15px;line-height:1.65;color:#0B1D3A;">
+          <p style="margin:0 0 16px;">Olá,</p>
+          <p style="margin:0 0 16px;">Recebemos uma solicitação para redefinir a senha da conta <strong>{{ .Email }}</strong>. Clique no botão abaixo para criar uma nova senha.</p>
+
+          <!-- Botão CTA -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 28px;"><tr>
+            <td bgcolor="#1E6FD6" style="background:#1E6FD6;background:linear-gradient(135deg,#1E6FD6 0%,#00B8F0 100%);border-radius:12px;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 36px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.01em;">Redefinir senha &rarr;</a>
+            </td>
+          </tr></table>
+
+          <!-- Requisitos da senha -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#F4F8FF" style="background:#F4F8FF;border-radius:10px;margin:0 0 24px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b86;font-weight:700;margin-bottom:10px;">Requisitos da nova senha</div>
+              <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.65;color:#0B1D3A;">
+                <li>Mínimo de <strong>8 caracteres</strong></li>
+                <li>Pelo menos 1 letra <strong>maiúscula</strong> e 1 <strong>minúscula</strong></li>
+                <li>Pelo menos 1 <strong>número</strong></li>
+                <li>Pelo menos 1 <strong>caractere especial</strong> (ex: ! @ # $)</li>
+                <li>Sem espaços</li>
+              </ul>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 8px;font-size:13px;color:#5b6b86;">Se o botão não funcionar, copie e cole o link no navegador:</p>
+          <p style="margin:0 0 24px;font-size:12px;color:#1E6FD6;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#F4F8FF;padding:10px 14px;border-radius:8px;">{{ .ConfirmationURL }}</p>
+
+          <p style="margin:0;font-size:12.5px;color:#5b6b86;line-height:1.55;">Este link é válido por <strong>24 horas</strong>. Se você <strong>não solicitou</strong> a redefinição, pode ignorar este e-mail com segurança — sua senha atual continua válida.</p>
+        </td></tr>
+
+        <!-- Rodapé -->
+        <tr><td bgcolor="#F4F8FF" style="background:#F4F8FF;padding:20px 40px;border-top:1px solid #DDE4EF;text-align:center;font-size:11.5px;color:#5b6b86;line-height:1.6;">
+          <strong style="color:#0B1D3A;">DataCold</strong> &middot; Monitoramento inteligente de sensores industriais<br>
+          <a href="{{ .SiteURL }}" style="color:#1E6FD6;text-decoration:none;">{{ .SiteURL }}</a>
+        </td></tr>
+
+      </table>
+
+    </td></tr>
+  </table>
+</body>
+</html>

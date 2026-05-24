@@ -28,7 +28,8 @@
  * AFTER INSERT nas tabelas de leituras (Postgres). Front só consome.
  */
 class Notificacoes {
-  static INTERVALO_POLLING_MS = 30000;   // 30s
+  static INTERVALO_POLLING_MS = 10000;   // 10s (aba visível); reduz pra 60s quando oculta
+  static INTERVALO_POLLING_OCULTO_MS = 60000;
   static LIMITE_INICIAL = 50;
 
   static _api = null;
@@ -50,14 +51,31 @@ class Notificacoes {
   static iniciar() {
     if (Notificacoes._timer) return;
     Notificacoes.recarregar();
-    Notificacoes._timer = setInterval(
-      () => Notificacoes.recarregar(),
-      Notificacoes.INTERVALO_POLLING_MS
-    );
+    Notificacoes._reagendar();
+    // Recarrega imediatamente quando a aba volta a ficar visível
+    if (!Notificacoes._visListener) {
+      Notificacoes._visListener = () => {
+        if (document.visibilityState === "visible") {
+          Notificacoes.recarregar();
+        }
+        Notificacoes._reagendar();
+      };
+      document.addEventListener("visibilitychange", Notificacoes._visListener);
+    }
   }
   static parar() {
     if (Notificacoes._timer) clearInterval(Notificacoes._timer);
     Notificacoes._timer = null;
+  }
+  static _reagendar() {
+    if (Notificacoes._timer) clearInterval(Notificacoes._timer);
+    const intervalo = (typeof document !== "undefined" && document.hidden)
+      ? Notificacoes.INTERVALO_POLLING_OCULTO_MS
+      : Notificacoes.INTERVALO_POLLING_MS;
+    Notificacoes._timer = setInterval(
+      () => Notificacoes.recarregar(),
+      intervalo
+    );
   }
 
   static async recarregar({ status = null, severidade = null, limit = null } = {}) {

@@ -8,26 +8,18 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-/* DataCold · invalidação de cache agressiva.
- * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
- * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
- */
 (function(){
   try {
-    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(rs){
         rs.forEach(function(r){ r.unregister(); });
       }).catch(function(){});
     }
-    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
     if ('caches' in window) {
       caches.keys().then(function(ks){
         ks.forEach(function(k){ caches.delete(k); });
       }).catch(function(){});
     }
-    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
-    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
     fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
@@ -36,14 +28,12 @@
         var marcador = '__reloaded_' + v.build_id;
         localStorage.setItem('__build_id', v.build_id);
         if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
-          // Build mudou — limpa marcadores antigos e força reload sem cache.
           Object.keys(sessionStorage).forEach(function(k){
             if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
               sessionStorage.removeItem(k);
             }
           });
           sessionStorage.setItem(marcador, '1');
-          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
           var url = new URL(location.href);
           url.searchParams.set('_v', v.build_id);
           location.replace(url.toString());
@@ -62,11 +52,9 @@
     var bruto = localStorage.getItem("datacold_sessao");
     if (bruto) {
       var s = JSON.parse(bruto);
-      // Sessão "real" tem access_token; sessão MVP tem só perfil.
       if (s && (s.access_token || s.perfil)) return;
     }
   } catch (e) {}
-  // Sem sessão: esconde tudo (CSS sincronicamente) e redireciona pra login.
   document.documentElement.setAttribute("data-aguardando-auth", "");
   var alvo = "/paginas/login/";
   try { sessionStorage.setItem("datacold_redirect_apos_login", location.pathname + location.search); } catch(e){}
@@ -74,167 +62,139 @@
 })();
 </script>
 <!-- GUARDA-AUTH:FIM -->
-<title>DataCold · Apresentação da Arquitetura</title>
-
-<link rel="icon" href="/assets/favicon.ico?v=1779630027638" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779630027638">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779630027638">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779630027638">
+<title>DataCold · Apresentação</title>
+<link rel="icon" href="/favicon.ico?v=1779631365789" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779631365789">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779631365789">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779631365789">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../estilos/global.css?v=1779630027638">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779631365789">
+<link rel="stylesheet" href="../admin.css?v=1779631365789">
 
 <style>
-  body{
-    background: linear-gradient(180deg, var(--azul-gelo, #eaf4ff) 0%, #ffffff 60%);
-    min-height: 100vh;
-    font-family: Inter, system-ui, sans-serif;
-    color: #0f172a;
-  }
-  .page{ max-width: 1240px; margin: 0 auto; padding: 36px 24px 48px; }
-
-  .topo-apr{
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 18px; flex-wrap: wrap; margin-bottom: 18px;
-  }
-  .marca-apr{ display: flex; align-items: center; gap: 12px; }
-  .marca-apr img{ height: 34px; }
-  .marca-apr h1{ font-size: 18px; margin: 0; font-weight: 700; }
-  .marca-apr small{ display: block; font-size: 12px; color: #6b7280; }
-  .voltar-link{
-    font-size: 13px; color: #1E6FD6; font-weight: 600;
-    display: inline-flex; align-items: center; gap: 4px;
-  }
-  .voltar-link:hover{ text-decoration: underline; }
-
-  .cabecalho-apr{
+  .apr-cabecalho{
     background: #fff; border: 1px solid #e5e9f2; border-radius: 14px;
-    padding: 24px 28px; margin-bottom: 18px;
+    padding: 22px 26px; margin-bottom: 18px;
     display: flex; align-items: center; justify-content: space-between;
     gap: 24px; flex-wrap: wrap;
   }
-  .cabecalho-apr h2{
-    margin: 0 0 6px; font-size: 22px; letter-spacing: -.4px;
-  }
-  .cabecalho-apr p{ margin: 0; color: #6b7280; font-size: 13px; max-width: 640px; }
-  .acoes-apr{ display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
-
-  .btn-apr{
+  .apr-cabecalho h2{ margin: 0 0 6px; font-size: 22px; letter-spacing: -.4px; color: var(--azul-noite); }
+  .apr-cabecalho p{ margin: 0; color: var(--texto-suave); font-size: 13px; max-width: 640px; }
+  .apr-acoes{ display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+  .apr-btn{
     display: inline-flex; align-items: center; gap: 8px;
     padding: 11px 18px; border-radius: 10px;
     font-size: 14px; font-weight: 600; text-decoration: none;
     transition: transform .12s, box-shadow .2s;
     border: 1px solid transparent; cursor: pointer;
   }
-  .btn-apr svg{ width: 16px; height: 16px; }
-  .btn-apr.primario{
-    background: linear-gradient(135deg, #1E6FD6, #00B8F0); color: #fff;
+  .apr-btn svg{ width: 16px; height: 16px; }
+  .apr-btn.primario{
+    background: linear-gradient(135deg, var(--azul-medio), var(--ciano)); color: #fff;
     box-shadow: 0 6px 18px rgba(30,111,214,.25);
   }
-  .btn-apr.primario:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(30,111,214,.32); }
-  .btn-apr.ghost{
-    background: #fff; color: #0f172a; border-color: #e5e9f2;
-  }
-  .btn-apr.ghost:hover{ border-color: #1E6FD6; color: #1E6FD6; }
+  .apr-btn.primario:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(30,111,214,.32); }
+  .apr-btn.ghost{ background: #fff; color: var(--azul-noite); border-color: var(--borda); }
+  .apr-btn.ghost:hover{ border-color: var(--azul-medio); color: var(--azul-medio); }
 
-  .visualizador{
-    background: #fff; border: 1px solid #e5e9f2; border-radius: 14px;
+  .apr-visualizador{
+    background: #fff; border: 1px solid var(--borda); border-radius: 14px;
     overflow: hidden; box-shadow: 0 4px 24px rgba(15,23,42,.06);
   }
-  .visualizador iframe{
+  .apr-visualizador iframe{
     display: block; width: 100%; height: 78vh; min-height: 600px;
     border: 0; background: #f8fafc;
   }
-  .ajuda{
-    margin-top: 16px; font-size: 12.5px; color: #6b7280;
+  .apr-ajuda{
+    margin-top: 16px; font-size: 12.5px; color: var(--texto-suave);
     text-align: center; line-height: 1.5;
   }
-  .ajuda code{
-    background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 11.5px;
-  }
+  .apr-ajuda code{ background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 11.5px; }
 </style>
-
-<!-- Guard de acesso: só admin entra (operador é redirecionado pro dashboard) -->
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779630027638"></script>
-<script>
-  if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) {
-    // Para o parser aqui — o redirect já foi disparado.
-    throw new Error("redirecionando");
-  }
-</script>
 </head>
 <body>
 
-<div class="page">
+<div class="layout-admin">
 
-  <header class="topo-apr">
-    <div class="marca-apr">
-      <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="admin-main">
+
+    <div id="menu-topo"></div>
+
+    <section class="apr-cabecalho">
       <div>
-        <h1>DataCold</h1>
-        <small>Arquitetura da solução · apresentação técnica</small>
+        <h2>Apresentação: Arquitetura da Solução</h2>
+        <p>Slides técnicos que descrevem a arquitetura completa do DataCold —
+        banco no Supabase, geração contínua de dados via <code>pg_cron</code>,
+        front em Firebase Hosting e o fluxo dos sensores.</p>
       </div>
-    </div>
-    <a href="../" class="voltar-link">← voltar pra landing</a>
-  </header>
+      <div class="apr-acoes">
+        <a class="apr-btn primario"
+           href="DataCold-Arquitetura-Solucao.pptx"
+           download="DataCold-Arquitetura-Solucao.pptx">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Baixar .pptx
+        </a>
+        <a class="apr-btn ghost"
+           href="DataCold-Arquitetura-Solucao.pptx"
+           target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Abrir em nova aba
+        </a>
+      </div>
+    </section>
 
-  <section class="cabecalho-apr">
-    <div>
-      <h2>Apresentação: Arquitetura da Solução (v2)</h2>
-      <p>Slides técnicos que descrevem a arquitetura completa do DataCold —
-      banco no Supabase, geração contínua de dados via <code>pg_cron</code>,
-      front em Firebase Hosting e o fluxo dos sensores.</p>
-    </div>
-    <div class="acoes-apr">
-      <a class="btn-apr primario"
-         href="DataCold-Arquitetura-Solucao.pptx"
-         download="DataCold-Arquitetura-Solucao.pptx">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Baixar .pptx
-      </a>
-      <a class="btn-apr ghost"
-         href="DataCold-Arquitetura-Solucao.pptx"
-         target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-        Abrir em nova aba
-      </a>
-    </div>
-  </section>
+    <section class="apr-visualizador">
+      <iframe
+        id="visualizadorPPT"
+        title="Visualizador de slides DataCold"
+        src=""
+        allowfullscreen></iframe>
+    </section>
 
-  <section class="visualizador">
-    <iframe
-      id="visualizadorPPT"
-      title="Visualizador de slides DataCold"
-      src=""
-      allowfullscreen></iframe>
-  </section>
+    <p class="apr-ajuda">
+      Visualização via <strong>Office Online</strong> (Microsoft). Se não carregar,
+      use <strong>Baixar</strong> ou <strong>Abrir em nova aba</strong>.
+    </p>
 
-  <p class="ajuda">
-    Visualização via <strong>Office Online</strong> (Microsoft). Se não carregar,
-    use <strong>Baixar</strong> ou <strong>Abrir em nova aba</strong>. O arquivo é
-    público em <code>datacold.web.app/paginas/admin/apresentacao/DataCold-Arquitetura-Solucao.pptx</code>.
-  </p>
+  </main>
 
 </div>
 
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779631365789"></script>
+
 <script>
+(async () => {
+  if (!Autenticacao.protegerPagina("../../login/", "admin", "../")) return;
+  const usuario = Autenticacao.usuarioAtual();
+  const raiz = "../../../";
+
+  await new MenuLateral({ usuario, raiz, paginaAtiva: "apresentacao" }).montar("#menu-lateral");
+  new MenuTopo({ titulo: "Apresentação · Arquitetura", raiz }).montar("#menu-topo");
+
   // Aponta o iframe pro viewer da Microsoft com a URL pública do arquivo.
-  // Precisa ser absoluta (Office Online não aceita relativa).
   const urlArquivo = new URL(
     "DataCold-Arquitetura-Solucao.pptx",
     window.location.href
@@ -243,6 +203,7 @@
     "https://view.officeapps.live.com/op/embed.aspx?src=" +
     encodeURIComponent(urlArquivo);
   document.getElementById("visualizadorPPT").src = urlViewer;
+})();
 </script>
 
 </body>

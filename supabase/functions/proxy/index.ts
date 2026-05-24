@@ -76,18 +76,31 @@ const RPCS_PERMITIDAS = new Set([
   "arquivar_notificacao",
   "desarquivar_notificacao",
   "marcar_todas_lidas",
+  // Histórico de acessos (login)
+  "registrar_acesso",
+  "listar_meus_acessos",
+  // Admin: lista usuários (perfis_usuarios via RPC com fn_eh_admin)
+  "listar_usuarios",
+  // Admin: gestão de usuários
+  "desativar_usuario",
+  "reativar_usuario",
+  "obter_email_usuario",
+  // Público (sem JWT): usado pelo login pra detectar conta desativada
+  "checar_ativo_por_email",
 ]);
 
 // Whitelist de ações de auth.
 const AUTH_PERMITIDAS = new Set([
-  "signin",      // POST /auth/v1/token?grant_type=password
-  "signup",      // POST /auth/v1/signup  (rate-limited pelo Supabase — evite)
-  "signout",     // POST /auth/v1/logout              (precisa JWT)
-  "recover",     // POST /auth/v1/recover
-  "user",        // GET  /auth/v1/user                (precisa JWT)
-  "atualizar",   // PUT  /auth/v1/user                (precisa JWT — define senha/nome)
-  "refresh",     // POST /auth/v1/token?grant_type=refresh_token
-  "admin_criar", // POST /auth/v1/admin/users  (REQUER admin chamando, usa service_key)
+  "signin",          // POST /auth/v1/token?grant_type=password
+  "signup",          // POST /auth/v1/signup  (rate-limited pelo Supabase — evite)
+  "signout",         // POST /auth/v1/logout              (precisa JWT)
+  "recover",         // POST /auth/v1/recover  (legado — SMTP do Supabase)
+  "user",            // GET  /auth/v1/user                (precisa JWT)
+  "atualizar",       // PUT  /auth/v1/user                (precisa JWT — define senha/nome)
+  "refresh",         // POST /auth/v1/token?grant_type=refresh_token
+  "admin_criar",     // POST /auth/v1/admin/users  (REQUER admin chamando, usa service_key)
+  "admin_deletar",   // DELETE /auth/v1/admin/users/{id}  (REQUER admin chamando, usa service_key)
+  "recuperar_senha", // gera link admin + envia via Gmail SMTP (template DataCold)
 ]);
 
 function cors(origem: string | null) {
@@ -145,6 +158,14 @@ async function tratarAuth(acao: string, payload: any, jwt?: string) {
   // admin_criar é especial: usa service_key e exige que quem chama seja admin.
   if (acao === "admin_criar") {
     return await tratarAdminCriar(payload, jwt);
+  }
+  // admin_deletar: idem (service_key + valida admin chamador).
+  if (acao === "admin_deletar") {
+    return await tratarAdminDeletar(payload, jwt);
+  }
+  // recuperar_senha: gera link admin + envia via Gmail SMTP (template DataCold).
+  if (acao === "recuperar_senha") {
+    return await tratarRecuperarSenha(payload);
   }
 
   const mapa: Record<string, { metodo: string; path: string; precisaJwt?: boolean }> = {
@@ -330,6 +351,105 @@ async function enviarEmail(opts: { to: string; subject: string; html: string; te
 }
 
 /**
+ * Template HTML do email de redefinição de senha (botão "Esqueci a senha").
+ * Estilo idêntico ao convite — só muda título e copy.
+ */
+function montarHtmlRecuperacao(link: string, email: string, siteUrl: string): string {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Redefinir sua senha — DataCold</title></head>
+<body style="margin:0;padding:0;background:#E6F6FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1D3A;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#E6F6FF" style="background:#E6F6FF;padding:40px 20px;"><tr><td align="center">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" bgcolor="#FFFFFF" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:18px;box-shadow:0 12px 36px rgba(11,29,58,0.10);overflow:hidden;">
+      <tr><td bgcolor="#123B7A" style="background:#123B7A;background:linear-gradient(135deg,#0B1D3A 0%,#123B7A 45%,#1E6FD6 100%);padding:36px 40px;text-align:left;">
+        <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8EDBFF;font-weight:700;margin-bottom:8px;">DataCold &middot; recuperação</div>
+        <h1 style="margin:0;font-size:26px;line-height:1.2;color:#FFFFFF;font-weight:800;letter-spacing:-0.01em;">Redefinir sua senha</h1>
+      </td></tr>
+      <tr><td style="padding:36px 40px 24px 40px;font-size:15px;line-height:1.65;color:#0B1D3A;">
+        <p style="margin:0 0 16px;">Olá,</p>
+        <p style="margin:0 0 16px;">Recebemos uma solicitação para redefinir a senha da conta <strong>${escHtml(email)}</strong>. Clique no botão abaixo pra criar uma nova senha.</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 28px;"><tr>
+          <td bgcolor="#1E6FD6" style="background:#1E6FD6;background:linear-gradient(135deg,#1E6FD6 0%,#00B8F0 100%);border-radius:12px;">
+            <a href="${escHtml(link)}" style="display:inline-block;padding:16px 36px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.01em;">Redefinir senha &rarr;</a>
+          </td>
+        </tr></table>
+        <div style="background:#F4F8FF;border:1px solid #DDE4EF;border-radius:10px;padding:18px 20px;margin:0 0 24px;">
+          <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b86;font-weight:700;margin-bottom:10px;">Requisitos da nova senha</div>
+          <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.65;color:#0B1D3A;">
+            <li>Mínimo de <strong>8 caracteres</strong></li>
+            <li>Pelo menos 1 letra <strong>maiúscula</strong> e 1 <strong>minúscula</strong></li>
+            <li>Pelo menos 1 <strong>número</strong></li>
+            <li>Pelo menos 1 <strong>caractere especial</strong> (ex: ! @ # $)</li>
+            <li>Sem espaços</li>
+          </ul>
+        </div>
+        <p style="margin:0 0 8px;font-size:13px;color:#5b6b86;">Se o botão não funcionar, copie e cole o link no navegador:</p>
+        <p style="margin:0 0 24px;font-size:12px;color:#1E6FD6;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#F4F8FF;padding:10px 14px;border-radius:8px;border:1px solid #DDE4EF;">${escHtml(link)}</p>
+        <p style="margin:0;font-size:12.5px;color:#5b6b86;line-height:1.55;">Este link expira em algumas horas. Se você <strong>não solicitou</strong> a redefinição, pode ignorar este e-mail com segurança — sua senha atual continua válida.</p>
+      </td></tr>
+      <tr><td bgcolor="#F4F8FF" style="background:#F4F8FF;padding:20px 40px;border-top:1px solid #DDE4EF;text-align:center;font-size:11.5px;color:#5b6b86;line-height:1.6;">
+        <strong style="color:#0B1D3A;">DataCold</strong> &middot; Monitoramento inteligente de sensores industriais<br>
+        <a href="${escHtml(siteUrl)}" style="color:#1E6FD6;text-decoration:none;">${escHtml(siteUrl)}</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+}
+
+function montarTextoRecuperacao(link: string, email: string, siteUrl: string): string {
+  return [
+    "Redefinir sua senha — DataCold",
+    "",
+    `Recebemos uma solicitação para redefinir a senha de ${email}.`,
+    "Clique no link pra criar uma nova senha:",
+    link,
+    "",
+    "Requisitos: mín 8 chars, 1 maiúscula, 1 minúscula, 1 número, 1 especial, sem espaços.",
+    "",
+    "Se você não solicitou, ignore este e-mail — sua senha atual continua válida.",
+    "",
+    `DataCold · ${siteUrl}`,
+  ].join("\n");
+}
+
+/**
+ * Recuperação de senha — chama admin/generate_link com type=recovery.
+ *
+ * Com Custom SMTP configurado no Supabase (smtp.gmail.com via Gmail),
+ * o próprio Supabase ENVIA o email automaticamente usando o template
+ * `mailer_templates_recovery_content` configurado via
+ * supabase/email-templates/aplicar.py.
+ *
+ * Sempre devolve sucesso (não vaza se o email existe ou não).
+ */
+async function tratarRecuperarSenha(payload: any) {
+  if (!SB_SERVICE_KEY) return jsonResposta({ erro: "Servidor sem SB_SERVICE_KEY" }, 500);
+
+  const email = String(payload?.email ?? "").trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return jsonResposta({ erro: "email inválido" }, 400);
+  }
+
+  const redirectTo = String(payload?.redirect_to ?? "https://datacold.web.app/paginas/conta/redefinir/");
+
+  // generate_link dispara o email automaticamente via Custom SMTP do Supabase.
+  // Não precisamos chamar enviarEmail aqui — duplicaria o envio.
+  await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: {
+      "apikey": SB_SERVICE_KEY,
+      "Authorization": `Bearer ${SB_SERVICE_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "recovery",
+      email,
+      options: { redirect_to: redirectTo },
+    }),
+  }).catch(() => null);
+
+  return jsonResposta({ ok: true }, 200);
+}
+
+/**
  * Cria usuário via endpoint admin (sem rate-limit do /signup anônimo) e
  * já dispara o email de definir senha via Resend (sem rate-limit SMTP).
  * Quem chama precisa ter JWT de admin — validamos consultando
@@ -414,10 +534,14 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
     criado = JSON.parse(txtCriar);
   }
 
-  // 4) Gera link real via admin/generate_link (sem rate-limit) e envia via
-  //    Resend (também sem o rate-limit de 3 emails/h do SMTP Supabase).
+  // 4) Dispara o email via generate_link. Com Custom SMTP ativo, o
+  //    Supabase envia automaticamente usando o template
+  //    `mailer_templates_invite_content` (pra usuário NOVO) ou
+  //    `mailer_templates_recovery_content` (pra reenvio).
+  //    Não chamamos enviarEmail() — duplicaria o envio.
   const redirectTo = String(payload?.redirect_to ?? "https://datacold.web.app/paginas/conta/definir/");
-  const siteUrl    = new URL(redirectTo).origin;
+  // Reenvio usa "recovery" porque o user já está confirmado; novo usa "invite".
+  const linkType = usuarioJaExistia ? "recovery" : "invite";
 
   const linkResp = await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
     method: "POST",
@@ -427,35 +551,17 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      type: "recovery",
+      type: linkType,
       email,
       options: { redirect_to: redirectTo },
     }),
   });
-  let actionLink = "";
-  if (linkResp.ok) {
-    const linkData = await linkResp.json().catch(() => ({}));
-    actionLink = linkData?.properties?.action_link
-              || linkData?.action_link
-              || "";
-  }
 
-  // 5) Envia via Resend
-  let convite_enviado = false;
+  const convite_enviado = linkResp.ok;
   let erro_envio: string | undefined;
-  let via_envio: string | undefined;
-  if (actionLink) {
-    const env = await enviarEmail({
-      to: email,
-      subject: "Você foi convidado para a DataCold",
-      html: montarHtmlConvite(actionLink, email, siteUrl),
-      text: montarTextoConvite(actionLink, email, siteUrl),
-    });
-    convite_enviado = env.ok;
-    via_envio = env.via;
-    if (!env.ok) erro_envio = env.erro;
-  } else {
-    erro_envio = "Não foi possível gerar o link de definição de senha.";
+  if (!linkResp.ok) {
+    const t = await linkResp.text().catch(() => "");
+    erro_envio = `generate_link HTTP ${linkResp.status}: ${t.slice(0, 200)}`;
   }
 
   return jsonResposta({
@@ -464,10 +570,57 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
     papel: papelNovo,
     id: criado?.id,
     convite_enviado,
-    via_envio,
+    tipo_link: linkType,
     erro_envio,
     reenvio: usuarioJaExistia,
   }, 200);
+}
+
+/**
+ * Deleta usuário do auth.users (cascade leva perfil + acessos + notificações).
+ * Quem chama precisa ser admin (valida com JWT) e o alvo não pode ser ele mesmo.
+ */
+async function tratarAdminDeletar(payload: any, jwt?: string) {
+  if (!jwt) return jsonResposta({ erro: "JWT obrigatório" }, 401);
+  if (!SB_SERVICE_KEY) return jsonResposta({ erro: "Servidor sem SB_SERVICE_KEY configurada" }, 500);
+
+  // 1) Quem chama é admin?
+  const eu = await chamarPostgrest("/auth/v1/user", { method: "GET", jwt });
+  const uid = (eu.dados as any)?.id;
+  if (!uid) return jsonResposta({ erro: "Sessão inválida" }, 401);
+
+  const meuPerfil = await chamarPostgrest(
+    `/rest/v1/perfis_usuarios?id=eq.${encodeURIComponent(uid)}&select=papel`,
+    { method: "GET", jwt },
+  );
+  const papel = (meuPerfil.dados as any[])?.[0]?.papel;
+  if (papel !== "admin") {
+    return jsonResposta({ erro: "Somente admin pode deletar contas" }, 403);
+  }
+
+  // 2) Valida alvo
+  const id = String(payload?.id ?? "").trim();
+  if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+    return jsonResposta({ erro: "id (uuid) obrigatório" }, 400);
+  }
+  if (id === uid) {
+    return jsonResposta({ erro: "Você não pode deletar a si mesmo" }, 403);
+  }
+
+  // 3) Deleta via admin API (cascade leva perfis_usuarios, acessos,
+  //    notificacoes_usuario etc. via FK ON DELETE CASCADE).
+  const r = await fetch(`${SB_URL}/auth/v1/admin/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      "apikey": SB_SERVICE_KEY,
+      "Authorization": `Bearer ${SB_SERVICE_KEY}`,
+    },
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    return jsonResposta({ erro: `Falha ao deletar: ${t.slice(0, 200)}` }, r.status);
+  }
+  return jsonResposta({ ok: true, id }, 200);
 }
 
 async function tratarPerfilBuscar(payload: any, jwt?: string) {

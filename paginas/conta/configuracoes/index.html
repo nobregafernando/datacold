@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BLOCO-SEM-CACHE:INICIO -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+/* DataCold · invalidação de cache agressiva.
+ * Roda SÍNCRONO no <head>, antes de qualquer outro <script>. Em mudança
+ * de build, força hard reload UMA VEZ (sem ficar em loop infinito).
+ */
+(function(){
+  try {
+    // 1) Mata Service Workers antigos (legado PWA, residual de versões antigas).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){ r.unregister(); });
+      }).catch(function(){});
+    }
+    // 2) Apaga TODAS as caches da Cache API (PWA, fetch interceptado, etc).
+    if ('caches' in window) {
+      caches.keys().then(function(ks){
+        ks.forEach(function(k){ caches.delete(k); });
+      }).catch(function(){});
+    }
+    // 3) Detecta build novo e força hard reload (uma única vez por nova build).
+    //    Sessão fica intacta (datacold_sessao, datacold_jwt) — só recarrega assets.
+    fetch('/versao.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (!v || !v.build_id) return;
+        var anterior = localStorage.getItem('__build_id');
+        var marcador = '__reloaded_' + v.build_id;
+        localStorage.setItem('__build_id', v.build_id);
+        if (anterior && anterior !== v.build_id && !sessionStorage.getItem(marcador)) {
+          // Build mudou — limpa marcadores antigos e força reload sem cache.
+          Object.keys(sessionStorage).forEach(function(k){
+            if (k.indexOf('__reloaded_') === 0 || k.indexOf('cache:') === 0) {
+              sessionStorage.removeItem(k);
+            }
+          });
+          sessionStorage.setItem(marcador, '1');
+          // Adiciona ?_v=<build> na URL atual pra furar memory cache do Chrome.
+          var url = new URL(location.href);
+          url.searchParams.set('_v', v.build_id);
+          location.replace(url.toString());
+        }
+      })
+      .catch(function(){});
+  } catch (_) {}
+})();
+</script>
+<!-- BLOCO-SEM-CACHE:FIM -->
+<title>DataCold · Configurações</title>
+
+<link rel="icon" href="/favicon.ico?v=1779631365789" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779631365789">
+<link rel="stylesheet" href="estilo.css?v=1779631365789">
+</head>
+<body>
+
+<div class="layout-admin">
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
+
+  <main class="cfg-main">
+    <div id="menu-topo"></div>
+
+    <header class="cfg-header">
+      <div>
+        <span class="olho">Sua conta</span>
+        <h1>Configurações</h1>
+        <p>Veja seus dados, troque sua senha e confira o histórico de acessos.</p>
+      </div>
+    </header>
+
+    <!-- ============ Identidade ============ -->
+    <section class="cfg-card">
+      <header class="cfg-card-head">
+        <h2>Identidade</h2>
+        <p>Quem você é na plataforma.</p>
+      </header>
+
+      <div class="cfg-identidade">
+        <div class="cfg-avatar" data-eu-avatar aria-hidden="true">?</div>
+        <div class="cfg-identidade-info">
+          <div class="cfg-nome" data-eu-nome>—</div>
+          <div class="cfg-email-linha">
+            <span class="cfg-rotulo">E-mail</span>
+            <span class="cfg-email" data-eu-email>—</span>
+            <span class="cfg-tag-lock" title="O e-mail é a identidade da conta no Supabase Auth e não pode ser trocado por aqui.">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              somente leitura
+            </span>
+          </div>
+          <span class="cfg-papel" data-eu-papel>—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Senha ============ -->
+    <section class="cfg-card">
+      <header class="cfg-card-head">
+        <h2>Trocar senha</h2>
+        <p>Confirme a senha atual e defina a nova. Mesma régua usada no convite — 8+ chars, com maiúscula, minúscula, número e símbolo.</p>
+      </header>
+
+      <form class="cfg-form" data-form-senha novalidate>
+        <label class="campo">
+          <span>Senha atual</span>
+          <input type="password" name="atual" autocomplete="current-password" required>
+        </label>
+
+        <label class="campo">
+          <span>Nova senha</span>
+          <input type="password" name="nova" autocomplete="new-password" required minlength="8" maxlength="128">
+        </label>
+
+        <div class="cfg-forca" data-forca hidden>
+          <div class="cfg-forca-barra"><span data-forca-fill></span></div>
+          <span class="cfg-forca-rotulo" data-forca-rotulo></span>
+        </div>
+        <ul class="cfg-criterios" data-criterios>
+          <li data-criterio="comp">8+ caracteres</li>
+          <li data-criterio="maius">1 letra maiúscula</li>
+          <li data-criterio="minus">1 letra minúscula</li>
+          <li data-criterio="num">1 número</li>
+          <li data-criterio="esp">1 caractere especial</li>
+        </ul>
+
+        <label class="campo">
+          <span>Confirme a nova senha</span>
+          <input type="password" name="confirmar" autocomplete="new-password" required minlength="8" maxlength="128">
+        </label>
+
+        <div class="cfg-erro" data-erro hidden></div>
+        <div class="cfg-ok"   data-ok   hidden></div>
+
+        <div class="cfg-form-acoes">
+          <button type="submit" class="btn btn-primario" data-btn-trocar>Trocar senha</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ Histórico de acessos ============ -->
+    <section class="cfg-card">
+      <header class="cfg-card-head">
+        <h2>Histórico de acessos</h2>
+        <p>Últimos logins na sua conta. Registramos data, navegador e origem; nunca a sua senha.</p>
+      </header>
+
+      <div class="cfg-acessos" data-acessos>
+        <div class="cfg-loading">Carregando…</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779631365789"></script>
+<script src="pagina.js?v=1779631365789"></script>
+
+</body>
+</html>

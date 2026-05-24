@@ -8,21 +8,39 @@
   if (window.location.pathname.indexOf('/index.html/') !== -1) {
     window.location.replace('/404.html');
   }
-  // Supabase Auth sempre redireciona pro Site URL (raiz) após verify, mesmo
-  // que tenhamos passado redirect_to com um path. Aqui interceptamos o hash
-  // (#access_token=...&type=recovery|invite) e mandamos pra página correta
-  // preservando o hash com o token.
+  // Supabase Auth sempre redireciona pro Site URL (raiz) após verify,
+  // ignorando redirect_to com path. Interceptamos aqui em 2 formatos:
+  //   1) #access_token=...&type=recovery|invite  (formato implicit/legado)
+  //   2) ?code=...                                (formato PKCE novo)
+  // Mandamos pra página correta preservando o token/code.
   try {
-    var h = window.location.hash || "";
+    var h = window.location.hash  || "";
+    var q = window.location.search || "";
+
+    // 1) Formato implicit (hash) — links gerados via admin/generate_link
     if (h.indexOf("access_token=") !== -1) {
       var p = new URLSearchParams(h.substring(1));
       var tipo = p.get("type") || "";
-      if (tipo === "recovery" || tipo === "invite" || tipo === "signup") {
-        var alvo = "/paginas/conta/definir/" + h;
-        window.location.replace(alvo);
-      } else if (tipo === "magiclink") {
-        var alvoMl = "/paginas/login/" + h;
-        window.location.replace(alvoMl);
+      if (tipo === "recovery") {
+        window.location.replace("/paginas/conta/redefinir/" + h);
+        return;
+      }
+      if (tipo === "invite" || tipo === "signup") {
+        window.location.replace("/paginas/conta/definir/" + h);
+        return;
+      }
+      if (tipo === "magiclink") {
+        window.location.replace("/paginas/login/" + h);
+        return;
+      }
+    }
+
+    // 2) Formato PKCE (query string) — fallback pra emails antigos
+    if (q.indexOf("code=") !== -1) {
+      var qp = new URLSearchParams(q);
+      if (qp.get("code")) {
+        window.location.replace("/paginas/conta/redefinir/" + q);
+        return;
       }
     }
   } catch (_) {}
@@ -81,17 +99,17 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Monitoramento inteligente de sensores industriais</title>
 <meta name="description" content="Plataforma DataCold: telemetria em tempo real de energia, temperatura e portas para câmaras frias, linhas de produção e ambientes industriais.">
-<link rel="icon" href="/favicon.ico?v=1779630027638" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779630027638">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779630027638">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779630027638">
+<link rel="icon" href="/favicon.ico?v=1779631365789" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779631365789">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png?v=1779631365789">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1779631365789">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="estilos/global.css?v=1779630027638">
-<link rel="stylesheet" href="landing.css?v=1779630027638">
+<link rel="stylesheet" href="estilos/global.css?v=1779631365789">
+<link rel="stylesheet" href="landing.css?v=1779631365789">
 </head>
 <body>
 
@@ -294,13 +312,13 @@
 </footer>
 
 <!-- ============ SCRIPTS ============ -->
-<script src="scripts/nucleo/ApiBEM.js?v=1779630027638"></script>
-<script src="scripts/nucleo/Sensor.js?v=1779630027638"></script>
-<script src="scripts/nucleo/SensorEnergia.js?v=1779630027638"></script>
-<script src="scripts/nucleo/SensorTemperatura.js?v=1779630027638"></script>
-<script src="scripts/nucleo/SensorPorta.js?v=1779630027638"></script>
-<script src="scripts/nucleo/FabricaSensor.js?v=1779630027638"></script>
-<script src="landing.js?v=1779630027638"></script>
+<script src="scripts/nucleo/ApiBEM.js?v=1779631365789"></script>
+<script src="scripts/nucleo/Sensor.js?v=1779631365789"></script>
+<script src="scripts/nucleo/SensorEnergia.js?v=1779631365789"></script>
+<script src="scripts/nucleo/SensorTemperatura.js?v=1779631365789"></script>
+<script src="scripts/nucleo/SensorPorta.js?v=1779631365789"></script>
+<script src="scripts/nucleo/FabricaSensor.js?v=1779631365789"></script>
+<script src="landing.js?v=1779631365789"></script>
 
 </body>
 </html>

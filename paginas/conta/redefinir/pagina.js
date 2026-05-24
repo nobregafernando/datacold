@@ -34,8 +34,13 @@ class PaginaRedefinir {
     this.accessToken = null;
   }
 
-  iniciar() {
+  async iniciar() {
     this.accessToken = this._lerTokenDoHash();
+
+    // Se chegou via PKCE (?code=...), troca por access_token via proxy.
+    if (!this.accessToken && this._codigoPkce) {
+      this.accessToken = await this._trocarCodePorToken(this._codigoPkce);
+    }
 
     if (!this.accessToken) {
       // Sem token: avisa e desabilita form.
@@ -70,13 +75,38 @@ class PaginaRedefinir {
   }
 
   _lerTokenDoHash() {
+    // 1) Formato implicit (hash): #access_token=...&type=recovery
     const h = location.hash || "";
-    if (!h.startsWith("#")) return null;
-    const p = new URLSearchParams(h.slice(1));
-    const t = p.get("access_token");
-    // Só aceita se for um recovery (não signup/magic-link)
-    if (p.get("type") && p.get("type") !== "recovery") return null;
-    return t || null;
+    if (h.startsWith("#")) {
+      const p = new URLSearchParams(h.slice(1));
+      const t = p.get("access_token");
+      if (t && (!p.get("type") || p.get("type") === "recovery")) {
+        return t;
+      }
+    }
+    // 2) Formato PKCE (query): ?code=... — troca por sessão via proxy
+    //    (acontece quando o link vem de SDK do Supabase ou versão antiga)
+    const q = location.search || "";
+    if (q.indexOf("code=") !== -1) {
+      const qp = new URLSearchParams(q);
+      const code = qp.get("code");
+      if (code) {
+        // Dispara troca assíncrona e devolve null por enquanto;
+        // iniciar() detecta e segue o fluxo via _trocarCode.
+        this._codigoPkce = code;
+      }
+    }
+    return null;
+  }
+
+  /** Troca um `?code=` PKCE por access_token via proxy. */
+  async _trocarCodePorToken(code) {
+    try {
+      const r = await Autenticacao._proxy("auth:verificar_recovery", { code });
+      return r?.access_token || null;
+    } catch {
+      return null;
+    }
   }
 
   _atualizarForca(senha) {

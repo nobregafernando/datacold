@@ -56,16 +56,16 @@
 <!-- BLOCO-SEM-CACHE:FIM -->
 <title>DataCold · Usuários</title>
 
-<link rel="icon" href="/favicon.ico?v=1779630027638" sizes="any">
+<link rel="icon" href="/favicon.ico?v=1779631365789" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779630027638">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779630027638">
-<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779630027638">
-<link rel="stylesheet" href="estilo.css?v=1779630027638">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779631365789">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779631365789">
+<link rel="stylesheet" href="estilo.css?v=1779631365789">
 </head>
 <body>
 
@@ -103,6 +103,10 @@
         <span class="us-stat-num" data-stat-op>—</span>
         <span class="us-stat-rotulo">operadores</span>
       </div>
+      <div class="us-stat us-stat-inativos">
+        <span class="us-stat-num" data-stat-inativos>—</span>
+        <span class="us-stat-rotulo">desativados</span>
+      </div>
     </section>
 
     <section class="usuarios-lista" data-lista>
@@ -110,6 +114,12 @@
     </section>
   </main>
 </div>
+
+<!-- Modal de ação genérico (desativar/reativar/recovery/deletar) -->
+<div class="modal-conv modal-acao" data-modal-acao hidden></div>
+
+<!-- Toast de feedback -->
+<div class="us-toast" data-toast hidden></div>
 
 <!-- Modal de convite -->
 <div class="modal-conv" data-modal hidden>
@@ -155,16 +165,16 @@
   </div>
 </div>
 
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779630027638"></script>
-<script src="../../../scripts/nucleo/Notificacoes.js?v=1779630027638"></script>
-<script src="../../../scripts/componentes/MenuLateral.js?v=1779630027638"></script>
-<script src="../../../scripts/componentes/MenuTopo.js?v=1779630027638"></script>
-<script src="pagina.js?v=1779630027638"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779631365789"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779631365789"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779631365789"></script>
+<script src="pagina.js?v=1779631365789"></script>
 
 </body>
 </html>

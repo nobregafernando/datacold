@@ -82,7 +82,9 @@ class PaginaSensor {
     this.graficos = {};          // chave -> Chart (re-usados entre refreshes)
     this._tipoGraficoAtual = null;
     this.autoTimer = null;
-    this.autoIntervalo = 3000;   // auto-refresh a cada 3s (cron gera a cada 10s)
+    this.autoIntervalo = 2000;   // tick "leve" (incidentes + último valor) a cada 2s
+    this.intervaloPesado = 6000; // tick "pesado" (gráficos/tabela) a cada 6s
+    this._ultimoCarregamentoPesado = 0;
     this.carregando = false;
   }
 
@@ -185,12 +187,12 @@ class PaginaSensor {
       b.addEventListener("click", () => {
         this.janela = b.dataset.janela;
         this._marcarJanelaAtiva();
-        this._carregarDados();
+        this._carregarDados(true);  // força pesado — mudou o intervalo
       });
     });
 
     // botão atualizar
-    document.querySelector("[data-acao='atualizar']")?.addEventListener("click", () => this._carregarDados());
+    document.querySelector("[data-acao='atualizar']")?.addEventListener("click", () => this._carregarDados(true));
 
     // banner chave
     document.querySelector("[data-acao='salvar-chave']")?.addEventListener("click", () => this._salvarChave());
@@ -203,6 +205,16 @@ class PaginaSensor {
       if (document.hidden) this._pararAutoRefresh();
       else                 this._armarAutoRefresh();
     });
+
+    // Cross-tab: se a Sala de Controle injetar/cancelar incidente, atualiza JÁ.
+    if ("BroadcastChannel" in window) {
+      try {
+        this._canalSala = new BroadcastChannel("datacold-sala-controle");
+        this._canalSala.onmessage = (ev) => {
+          if (ev?.data?.tipo === "mudanca-incidente") this._carregarDados(true);
+        };
+      } catch {}
+    }
   }
 
   _marcarJanelaAtiva() {
@@ -226,6 +238,10 @@ class PaginaSensor {
 
   _armarAutoRefresh() {
     this._pararAutoRefresh();
+    // Refresh imediato (se o último foi >2s atrás) pra não esperar 3s a toa
+    // quando a aba volta a ficar visível.
+    const desdeUltimo = Date.now() - (this._ultimoCarregamentoEm || 0);
+    if (desdeUltimo > 2000) this._carregarDados();
     this.autoTimer = setInterval(() => this._carregarDados(), this.autoIntervalo);
     document.querySelector("[data-aovivo]")?.classList.remove("pausado");
   }
@@ -288,9 +304,24 @@ class PaginaSensor {
     }
   }
 
-  async _carregarDados() {
+  /**
+   * Refresh em duas pistas:
+   *  - LEVE (default): só incidentes + último ponto. Roda a cada `autoIntervalo`
+   *    (2s). Pinta banner/badge/KPIs/incidentes — tudo que precisa ser instantâneo.
+   *  - PESADO: leve + janela completa de pontos + gráficos/tabela/análise.
+   *    Roda a cada `intervaloPesado` (6s) ou quando forçado (ex.: trocou
+   *    janela, broadcast de incidente, clique em "atualizar").
+   *
+   * O `forcado=true` força um PESADO mesmo dentro da janela leve.
+   */
+  async _carregarDados(forcado = false) {
     if (this.carregando) return;
     if (!this.sensor) return;    // (banner de chave removido — chave padrão hardcoded em ApiBEM)
+
+    const agora = Date.now();
+    const desdePesado = agora - (this._ultimoCarregamentoPesado || 0);
+    const fazerPesado = forcado || desdePesado >= this.intervaloPesado || !this.dados;
+
     this.carregando = true;
     try {
       let inicio = this.janela;
@@ -300,17 +331,52 @@ class PaginaSensor {
         fim    = "-30d";
       }
 
-      // Limite dinâmico baseado na janela escolhida — pra que janelas
-      // grandes (24h, 3d, 7d) NÃO sejam truncadas em 1000 pontos.
-      const limiteDinamico = this._limitePorJanela(inicio);
+      // ----- TICK LEVE: só último ponto + incidentes -----
+      if (!fazerPesado) {
+        const [leve, incidentes] = await Promise.all([
+          this.api.buscarDados(this.sensorId, { inicio: "-5m", fim: "now", limite: 30 }),
+          this.api.incidentesAtivos(this.sensorId),
+        ]);
+        this.incidentesAtivos = incidentes || [];
+        this._renderizarIncidentesAtivos();
+        // Mescla o último ponto novo no this.dados (pra banner/badge enxergar
+        // o mais recente). Não substitui this.dados inteiro — gráficos seguem
+        // com a série completa do último tick pesado.
+        const leveUlt = leve?.points?.[leve.points.length - 1];
+        if (leveUlt && this.dados?.points?.length) {
+          const ultExistente = this.dados.points[this.dados.points.length - 1];
+          if (new Date(leveUlt.time) > new Date(ultExistente.time)) {
+            this.dados.points.push(leveUlt);
+          }
+        }
+        // Re-renderiza só os componentes "live"
+        this._detectarOffline(this.dados);
+        if (this.dados?.points?.length) {
+          this._renderizarLudico(this.dados);
+          this._renderizarKpis(this.dados);
+        }
+        // Atualiza connectivity baseado em incidente ativo
+        const incOff = this.incidentesAtivos.find(i => i.tipo === "gap" || i.tipo === "offline");
+        if (incOff) {
+          const r = incOff.segundos_restantes;
+          this._renderizarConectividade(this.dados, "offline",
+            `Simulação "${incOff.tipo}" disparada pela Sala de Controle · ${r != null ? r + "s restantes" : "ativo"}`);
+        } else if (this.dados) {
+          this._renderizarConectividade(this.dados);
+        }
+        return;
+      }
 
-      // Busca dados e incidentes ativos em paralelo
+      // ----- TICK PESADO: tudo -----
+      // Limite dinâmico baseado na janela escolhida.
+      const limiteDinamico = this._limitePorJanela(inicio);
       const [dados, incidentes] = await Promise.all([
         this.api.buscarDados(this.sensorId, { inicio, fim, limite: limiteDinamico }),
         this.api.incidentesAtivos(this.sensorId),
       ]);
       this.dados = dados;
       this.incidentesAtivos = incidentes || [];
+      this._ultimoCarregamentoPesado = Date.now();
       this._renderizarIncidentesAtivos();
 
       // Hora REAL da última leitura recebida (não a hora atual do navegador).
@@ -376,6 +442,7 @@ class PaginaSensor {
       console.error("carregar dados falhou:", e);
     } finally {
       this.carregando = false;
+      this._ultimoCarregamentoEm = Date.now();
     }
   }
 
@@ -461,12 +528,14 @@ class PaginaSensor {
         btn.disabled = true; btn.textContent = "Cancelando…";
         try {
           await this.api.cancelarIncidente(id);
-          // Remove imediatamente do estado local pra UI não esperar 3s.
+          // Remove imediatamente do estado local pra UI não esperar 2s.
           this.incidentesAtivos = (this.incidentesAtivos || []).filter(
             i => String(i.id) !== id
           );
           this._renderizarIncidentesAtivos();
-          await this._carregarDados();
+          await this._carregarDados(true);
+          // Avisa outras abas (Sala de Controle / outros sensores)
+          try { this._canalSala?.postMessage({ tipo: "mudanca-incidente", t: Date.now() }); } catch {}
         } catch (e) {
           console.error("cancelar incidente falhou:", e);
           btn.disabled = false;
