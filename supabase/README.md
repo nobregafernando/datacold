@@ -40,16 +40,39 @@ Antes do primeiro login real, configure no Dashboard do Supabase
 
 Sem isso, o link que o Supabase envia por e-mail volta como "Invalid Redirect URL".
 
-### Authentication → Email Templates → "Reset Password"
+### Authentication → Email Templates → "Reset Password" (opcional)
 
-Cole o conteúdo de **`supabase/email-template-convite.html`** no editor de
-"Reset Password" (a Supabase usa o mesmo template para o nosso fluxo de
-convite, já que internamente disparamos `/auth/v1/recover`).
+> ⚠ A partir desta versão **o convite NÃO usa mais o template do
+> Supabase** — ele é enviado pela Edge Function `proxy` direto via
+> **Resend** (template HTML embutido em `supabase/functions/proxy/index.ts`,
+> função `montarHtmlConvite`). Isso evita o rate-limit do SMTP padrão
+> Supabase (3 emails/h) e dá controle total do layout.
+>
+> O template no Dashboard só importa se você usar `auth:recover` direto
+> (pelo botão "Esqueci minha senha"). Aí ainda vale colar o conteúdo de
+> **`supabase/email-template-convite.html`** lá.
 
-- **Subject** sugerido: `Você foi convidado para a DataCold`
-- O template já contém todas as variáveis Go (`{{ .ConfirmationURL }}`,
-  `{{ .Email }}`, `{{ .SiteURL }}`) e está com CSS inline para funcionar
-  em Outlook/Gmail.
+### Edge Function "proxy" — secrets obrigatórios
+
+```bash
+supabase secrets set \
+  SB_URL=https://fcverbceppwdbveustvq.supabase.co \
+  SB_ANON_KEY=<SUPABASE_ANON_KEY do .env> \
+  SB_SERVICE_KEY=<SUPABASE_SERVICE_ROLE_KEY do .env> \
+  RESEND_API_KEY=<chave Resend> \
+  RESEND_FROM='DataCold <onboarding@resend.dev>'
+supabase functions deploy proxy --no-verify-jwt
+```
+
+- `SB_SERVICE_KEY` é usada **só** pela ação `auth:admin_criar` (criar
+  usuário sem rate-limit). Validamos server-side que o caller é admin
+  consultando `perfis_usuarios` com o JWT do chamador antes de usar.
+- `RESEND_API_KEY` envia o email do convite. Sem ela, o convite cria a
+  conta mas devolve `convite_enviado: false` (admin pode reenviar via
+  "esqueci minha senha").
+- `RESEND_FROM`: o sandbox `onboarding@resend.dev` **só envia pro dono
+  da conta Resend**. Para envio livre, verifique um domínio em
+  https://resend.com/domains e use `DataCold <noreply@seu-dominio.com>`.
 
 ### Primeiro admin
 

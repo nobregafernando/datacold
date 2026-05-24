@@ -13,9 +13,15 @@
 //  Variáveis de ambiente (configurar via `supabase secrets set ...`):
 //    SB_URL              ex: https://fcverbceppwdbveustvq.supabase.co
 //    SB_ANON_KEY         anon key pública do Supabase
-//    SB_SERVICE_KEY      service_role key (usada SOMENTE em auth:admin_criar,
-//                        que cria usuários sem cair no rate-limit do /signup
+//    SB_SERVICE_KEY      service_role key (usada em auth:admin_criar, que
+//                        cria usuários sem cair no rate-limit do /signup
 //                        anônimo). Nunca exposta ao cliente.
+//    RESEND_API_KEY      chave Resend para enviar email de convite (evita
+//                        rate-limit do SMTP padrão Supabase, 3 emails/h).
+//    RESEND_FROM         remetente (default: "onboarding@resend.dev" =
+//                        sandbox do Resend, só envia pro dono da conta).
+//                        Em produção, configurar pra "noreply@<seu-dominio>"
+//                        após verificar o domínio no Resend.
 //    BEM_API_KEY         chave da BEM Inteligência (não usado hoje, reservado)
 //
 //  Deploy:
@@ -25,6 +31,8 @@
 const SB_URL         = Deno.env.get("SB_URL")          ?? "";
 const SB_ANON_KEY    = Deno.env.get("SB_ANON_KEY")     ?? "";
 const SB_SERVICE_KEY = Deno.env.get("SB_SERVICE_KEY")  ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")  ?? "";
+const RESEND_FROM    = Deno.env.get("RESEND_FROM")     ?? "DataCold <onboarding@resend.dev>";
 
 // CORS — em produção restringe ao domínio Firebase Hosting.
 const ORIGENS_PERMITIDAS = new Set([
@@ -152,11 +160,130 @@ async function tratarAuth(acao: string, payload: any, jwt?: string) {
   return jsonResposta(r.dados, r.status);
 }
 
+// ===========================================================================
+//  Email transacional via Resend
+// ===========================================================================
+
+/**
+ * Template HTML do convite. CSS 100% inline + table layout pra rodar em
+ * Gmail, Outlook (desktop e web), Apple Mail, iOS Mail.
+ *
+ * Cores sólidas em `bgcolor` como fallback pro Outlook (que ignora
+ * background:linear-gradient). Sem <style> tag — Outlook removeria.
+ */
+function montarHtmlConvite(link: string, email: string, siteUrl: string): string {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Bem-vindo à DataCold</title></head>
+<body style="margin:0;padding:0;background:#E6F6FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1D3A;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#E6F6FF" style="background:#E6F6FF;padding:40px 20px;"><tr><td align="center">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" bgcolor="#FFFFFF" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:18px;box-shadow:0 12px 36px rgba(11,29,58,0.10);overflow:hidden;">
+      <!-- Header (gradient + fallback sólido) -->
+      <tr><td bgcolor="#123B7A" style="background:#123B7A;background:linear-gradient(135deg,#0B1D3A 0%,#123B7A 45%,#1E6FD6 100%);padding:36px 40px;text-align:left;">
+        <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8EDBFF;font-weight:700;margin-bottom:8px;">DataCold &middot; plataforma</div>
+        <h1 style="margin:0;font-size:26px;line-height:1.2;color:#FFFFFF;font-weight:800;letter-spacing:-0.01em;">Você foi convidado<br>para a DataCold.</h1>
+      </td></tr>
+      <!-- Corpo -->
+      <tr><td style="padding:36px 40px 24px 40px;font-size:15px;line-height:1.65;color:#0B1D3A;">
+        <p style="margin:0 0 16px;">Olá,</p>
+        <p style="margin:0 0 16px;">Um administrador criou uma conta na <strong style="color:#123B7A;">DataCold</strong> para você (<a href="mailto:${escHtml(email)}" style="color:#1E6FD6;text-decoration:none;">${escHtml(email)}</a>). A DataCold é uma plataforma de telemetria industrial em tempo real — energia, temperatura e portas, monitorados a cada segundo, com inteligência automática que detecta anomalias.</p>
+        <p style="margin:0 0 28px;">Para finalizar o cadastro, defina o seu nome e crie uma senha. <strong>Só você terá acesso à sua senha</strong> — nem mesmo o administrador que enviou o convite vai vê-la.</p>
+        <!-- Botão CTA (gradient + fallback sólido) -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 28px;"><tr>
+          <td bgcolor="#1E6FD6" style="background:#1E6FD6;background:linear-gradient(135deg,#1E6FD6 0%,#00B8F0 100%);border-radius:12px;">
+            <a href="${escHtml(link)}" style="display:inline-block;padding:16px 36px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.01em;">Definir meu acesso &rarr;</a>
+          </td>
+        </tr></table>
+        <!-- Requisitos da senha -->
+        <div style="background:#F4F8FF;border:1px solid #DDE4EF;border-radius:10px;padding:18px 20px;margin:0 0 24px;">
+          <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b86;font-weight:700;margin-bottom:10px;">Requisitos da senha</div>
+          <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.65;color:#0B1D3A;">
+            <li>Mínimo de <strong>10 caracteres</strong></li>
+            <li>Pelo menos 1 letra <strong>maiúscula</strong> e 1 <strong>minúscula</strong></li>
+            <li>Pelo menos 1 <strong>número</strong></li>
+            <li>Pelo menos 1 <strong>caractere especial</strong> (ex: ! @ # $)</li>
+            <li>Sem espaços</li>
+          </ul>
+        </div>
+        <p style="margin:0 0 8px;font-size:13px;color:#5b6b86;">Se o botão não funcionar, copie e cole o link no navegador:</p>
+        <p style="margin:0 0 24px;font-size:12px;color:#1E6FD6;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#F4F8FF;padding:10px 14px;border-radius:8px;border:1px solid #DDE4EF;">${escHtml(link)}</p>
+        <p style="margin:0;font-size:12.5px;color:#5b6b86;line-height:1.55;">Este link expira em algumas horas por segurança. Se ele não funcionar, peça ao administrador para enviar um novo convite. Se você não esperava receber este e-mail, pode ignorá-lo — nenhuma conta será criada sem você definir a senha.</p>
+      </td></tr>
+      <!-- Rodapé -->
+      <tr><td bgcolor="#F4F8FF" style="background:#F4F8FF;padding:20px 40px;border-top:1px solid #DDE4EF;text-align:center;font-size:11.5px;color:#5b6b86;line-height:1.6;">
+        <strong style="color:#0B1D3A;">DataCold</strong> &middot; Monitoramento inteligente de sensores industriais<br>
+        <a href="${escHtml(siteUrl)}" style="color:#1E6FD6;text-decoration:none;">${escHtml(siteUrl)}</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+}
+
+/** Versão texto-puro do convite (fallback pra clientes que não renderizam HTML). */
+function montarTextoConvite(link: string, email: string, siteUrl: string): string {
+  return [
+    "Bem-vindo à DataCold",
+    "",
+    `Um administrador criou uma conta para você (${email}).`,
+    "Para finalizar o cadastro, defina o seu nome e crie uma senha forte.",
+    "Só você terá acesso à sua senha — nem o administrador vai vê-la.",
+    "",
+    "Acesse o link abaixo:",
+    link,
+    "",
+    "Requisitos da senha:",
+    "  - Mínimo de 10 caracteres",
+    "  - Pelo menos 1 letra maiúscula e 1 minúscula",
+    "  - Pelo menos 1 número",
+    "  - Pelo menos 1 caractere especial (ex: ! @ # $)",
+    "  - Sem espaços",
+    "",
+    "Este link expira em algumas horas. Se não funcionar, peça um novo convite.",
+    "",
+    `DataCold · ${siteUrl}`,
+  ].join("\n");
+}
+
+function escHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/**
+ * Envia email via Resend API. Retorna true em sucesso.
+ * Documentação: https://resend.com/docs/api-reference/emails/send-email
+ */
+async function enviarViaResend(opts: { to: string; subject: string; html: string; text: string }): Promise<{ ok: boolean; erro?: string }> {
+  if (!RESEND_API_KEY) return { ok: false, erro: "RESEND_API_KEY não configurada" };
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM,
+        to: [opts.to],
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      return { ok: false, erro: `Resend HTTP ${r.status}: ${t.slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, erro: String((e as Error).message) };
+  }
+}
+
 /**
  * Cria usuário via endpoint admin (sem rate-limit do /signup anônimo) e
- * já dispara o email de definir senha. Quem chama precisa ter JWT de admin
- * — validamos consultando perfis_usuarios via PostgREST com o JWT do
- * usuário. Só então usamos a service_key.
+ * já dispara o email de definir senha via Resend (sem rate-limit SMTP).
+ * Quem chama precisa ter JWT de admin — validamos consultando
+ * perfis_usuarios via PostgREST com o JWT do usuário.
  */
 async function tratarAdminCriar(payload: any, jwt?: string) {
   if (!jwt) return jsonResposta({ erro: "JWT obrigatório" }, 401);
@@ -210,35 +337,83 @@ async function tratarAdminCriar(payload: any, jwt?: string) {
     }),
   });
   const txtCriar = await criar.text();
-  if (!criar.ok) {
-    // Já existe? Retorna erro amigável
-    if (/already (registered|exists)|duplicate/i.test(txtCriar)) {
-      return jsonResposta({ erro: "Este e-mail já tem conta." }, 409);
-    }
-    return jsonResposta({ erro: "Falha ao criar usuário", detalhe: txtCriar }, criar.status);
-  }
-  const criado = JSON.parse(txtCriar);
+  let criado: any = null;
+  let usuarioJaExistia = false;
 
-  // 4) Dispara email de "definir senha" (recovery) com redirect pra /conta/definir/
+  if (!criar.ok) {
+    if (/already (registered|exists)|email_exists|duplicate/i.test(txtCriar)) {
+      // Email já cadastrado — vamos REENVIAR o convite (gera novo link).
+      // Útil quando o admin clica "convidar" 2x ou o link anterior expirou.
+      usuarioJaExistia = true;
+      // Busca o usuário pra pegar o id
+      const buscar = await fetch(
+        `${SB_URL}/auth/v1/admin/users?per_page=200`,
+        { headers: { "apikey": SB_SERVICE_KEY, "Authorization": `Bearer ${SB_SERVICE_KEY}` } },
+      );
+      if (buscar.ok) {
+        const lista = await buscar.json();
+        criado = (lista?.users || []).find((u: any) => u.email?.toLowerCase() === email);
+      }
+      if (!criado) {
+        return jsonResposta({ erro: "Email já cadastrado mas não foi possível recuperar o registro." }, 500);
+      }
+    } else {
+      return jsonResposta({ erro: "Falha ao criar usuário", detalhe: txtCriar }, criar.status);
+    }
+  } else {
+    criado = JSON.parse(txtCriar);
+  }
+
+  // 4) Gera link real via admin/generate_link (sem rate-limit) e envia via
+  //    Resend (também sem o rate-limit de 3 emails/h do SMTP Supabase).
   const redirectTo = String(payload?.redirect_to ?? "https://datacold.web.app/paginas/conta/definir/");
-  const rec = await fetch(`${SB_URL}/auth/v1/recover`, {
+  const siteUrl    = new URL(redirectTo).origin;
+
+  const linkResp = await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: {
-      "apikey": SB_ANON_KEY,
+      "apikey": SB_SERVICE_KEY,
+      "Authorization": `Bearer ${SB_SERVICE_KEY}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ email, redirect_to: redirectTo }),
+    body: JSON.stringify({
+      type: "recovery",
+      email,
+      options: { redirect_to: redirectTo },
+    }),
   });
-  // Mesmo se /recover falhar (rate limit etc.), a conta foi criada — admin
-  // pode reenviar o link via "esqueci minha senha".
-  const recOk = rec.ok;
+  let actionLink = "";
+  if (linkResp.ok) {
+    const linkData = await linkResp.json().catch(() => ({}));
+    actionLink = linkData?.properties?.action_link
+              || linkData?.action_link
+              || "";
+  }
+
+  // 5) Envia via Resend
+  let convite_enviado = false;
+  let erro_envio: string | undefined;
+  if (actionLink) {
+    const env = await enviarViaResend({
+      to: email,
+      subject: "Você foi convidado para a DataCold",
+      html: montarHtmlConvite(actionLink, email, siteUrl),
+      text: montarTextoConvite(actionLink, email, siteUrl),
+    });
+    convite_enviado = env.ok;
+    if (!env.ok) erro_envio = env.erro;
+  } else {
+    erro_envio = "Não foi possível gerar o link de definição de senha.";
+  }
 
   return jsonResposta({
     ok: true,
     email,
     papel: papelNovo,
     id: criado?.id,
-    convite_enviado: recOk,
+    convite_enviado,
+    erro_envio,
+    reenvio: usuarioJaExistia,
   }, 200);
 }
 

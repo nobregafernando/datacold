@@ -9,19 +9,16 @@
 <meta http-equiv="Expires" content="0">
 <script>
 (function(){
-  // 1) Desregistra qualquer Service Worker antigo (PWA residual)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(rs){
       rs.forEach(function(r){ r.unregister(); });
     }).catch(function(){});
   }
-  // 2) Apaga todas as caches da Cache API
   if ('caches' in window) {
     caches.keys().then(function(ks){
       ks.forEach(function(k){ caches.delete(k); });
     }).catch(function(){});
   }
-  // 3) Se detectar build novo, limpa storages voláteis e recarrega forte
   try {
     fetch('/versao.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
@@ -29,7 +26,6 @@
         if (!v || !v.build_id) return;
         var anterior = localStorage.getItem('__build_id');
         if (anterior && anterior !== v.build_id) {
-          // Limpa apenas chaves marcadas como voláteis pra não derrubar sessão
           Object.keys(sessionStorage).forEach(function(k){
             if (k.indexOf('cache:') === 0) sessionStorage.removeItem(k);
           });
@@ -41,52 +37,85 @@
 })();
 </script>
 <!-- BLOCO-SEM-CACHE:FIM -->
-<title>DataCold · Criar conta</title>
+<title>DataCold · Usuários</title>
 
-<link rel="icon" href="/favicon.ico?v=1779580422403" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=1779580422403">
+<link rel="icon" href="/favicon.ico?v=1779582160600" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="https://fcverbceppwdbveustvq.supabase.co/storage/v1/object/public/branding/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="../../../estilos/global.css?v=1779580422403">
-<link rel="stylesheet" href="../../../estilos/nav-publica.css?v=1779580422403">
-<link rel="stylesheet" href="../_conta.css?v=1779580422403">
+<link rel="stylesheet" href="../../../estilos/global.css?v=1779582160600">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuLateral.css?v=1779582160600">
+<link rel="stylesheet" href="../../../scripts/componentes/MenuTopo.css?v=1779582160600">
+<link rel="stylesheet" href="estilo.css?v=1779582160600">
 </head>
 <body>
 
-<header class="nav">
-  <div class="container">
-    <a href="/" class="marca" aria-label="DataCold">
-      <img src="/assets/logo/01-primary-logo.png" alt="DataCold">
-    </a>
-    <nav class="nav-links" aria-label="navegação principal">
-      <a href="/#sensores">Sensores</a>
-      <a href="/#capacidades">Capacidades</a>
-      <a href="/#tecnologia">Tecnologia</a>
-      <a href="/paginas/admin/" class="btn btn-pequeno">← Painel</a>
-    </nav>
-  </div>
-</header>
+<div class="layout-admin">
+  <aside class="menu-lateral" id="menu-lateral" aria-label="navegação principal"></aside>
 
-<div class="conta-fundo" aria-hidden="true"></div>
+  <main class="usuarios-main">
+    <div id="menu-topo"></div>
 
-<main class="conta-wrap">
-  <section class="conta-card">
-    <a href="../../admin/" class="conta-marca">
-      <img src="../../../assets/logo/01-primary-logo.png" alt="DataCold">
-    </a>
+    <header class="usuarios-header">
+      <div>
+        <span class="olho">Administração de acesso</span>
+        <h1>Usuários</h1>
+        <p>Quem tem acesso ao painel e com qual papel.</p>
+      </div>
+      <button class="btn btn-primario btn-grande" data-acao="abrir-convite">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Convidar usuário
+      </button>
+    </header>
 
-    <h1>Convidar usuário</h1>
-    <p class="conta-sub">Você só preenche e-mail e papel. O convidado recebe um link por e-mail e define o próprio nome e senha. <strong>Você nunca verá a senha dele.</strong></p>
+    <section class="usuarios-stats" data-stats>
+      <div class="us-stat">
+        <span class="us-stat-num" data-stat-total>—</span>
+        <span class="us-stat-rotulo">total</span>
+      </div>
+      <div class="us-stat us-stat-admin">
+        <span class="us-stat-num" data-stat-admin>—</span>
+        <span class="us-stat-rotulo">administradores</span>
+      </div>
+      <div class="us-stat us-stat-op">
+        <span class="us-stat-num" data-stat-op>—</span>
+        <span class="us-stat-rotulo">operadores</span>
+      </div>
+    </section>
 
-    <div class="conta-aviso-admin">
-      <strong>Você está logado como:</strong> <span data-admin-info>—</span>
-    </div>
+    <section class="usuarios-lista" data-lista>
+      <div class="usuarios-loading">Carregando usuários…</div>
+    </section>
+  </main>
+</div>
 
-    <form class="conta-form" data-form novalidate>
+<!-- Modal de convite -->
+<div class="modal-conv" data-modal hidden>
+  <div class="modal-conv-overlay" data-fechar-modal></div>
+  <div class="modal-conv-card" role="dialog" aria-modal="true" aria-labelledby="tit-conv">
+    <header class="modal-conv-head">
+      <h2 id="tit-conv">Convidar usuário</h2>
+      <button class="modal-fechar" data-fechar-modal aria-label="Fechar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </header>
+
+    <p class="modal-conv-sub">
+      O convidado recebe um e-mail e define o próprio nome e senha.
+      <strong>Você nunca verá a senha dele.</strong>
+    </p>
+
+    <form class="modal-conv-form" data-form novalidate>
       <label class="campo">
-        <span>E-mail do convidado</span>
+        <span>E-mail</span>
         <input type="email" name="email" autocomplete="off" required maxlength="254" placeholder="convidado@empresa.com">
       </label>
 
@@ -101,32 +130,24 @@
       <div class="conta-erro" data-erro hidden></div>
       <div class="conta-ok"   data-ok   hidden></div>
 
-      <button type="submit" class="btn btn-primario btn-grande completo" data-btn-convidar>Enviar convite</button>
+      <div class="modal-conv-acoes">
+        <button type="button" class="btn btn-ghost" data-fechar-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primario" data-btn-convidar>Enviar convite</button>
+      </div>
     </form>
+  </div>
+</div>
 
-    <div class="conta-info-fluxo">
-      <h3>Como funciona</h3>
-      <ol>
-        <li>O convidado recebe um e-mail com um link da DataCold.</li>
-        <li>Ao clicar, abre uma página interna onde ele define <strong>nome</strong> e <strong>senha forte</strong> (10+ chars, com maiúscula, minúscula, número e símbolo).</li>
-        <li>Os dados ficam salvos em <code>auth.users</code> e <code>perfis_usuarios</code> (espelhados pelo trigger).</li>
-        <li>Após confirmar, ele é redirecionado para o login com o e-mail já preenchido.</li>
-      </ol>
-    </div>
-
-    <div class="conta-links">
-      <a href="../../admin/">← Voltar ao dashboard</a>
-    </div>
-  </section>
-</main>
-
-<script src="../../../scripts/nucleo/ApiBEM.js?v=1779580422403"></script>
-<script src="../../../scripts/nucleo/Usuario.js?v=1779580422403"></script>
-<script src="../../../scripts/nucleo/Sanitizar.js?v=1779580422403"></script>
-<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779580422403"></script>
-<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779580422403"></script>
-<script src="../../../scripts/nucleo/Autenticacao.js?v=1779580422403"></script>
-<script src="pagina.js?v=1779580422403"></script>
+<script src="../../../scripts/nucleo/ApiBEM.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/Usuario.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/Sanitizar.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/ValidadorSenha.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/UtilFormulario.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/Autenticacao.js?v=1779582160600"></script>
+<script src="../../../scripts/nucleo/Notificacoes.js?v=1779582160600"></script>
+<script src="../../../scripts/componentes/MenuLateral.js?v=1779582160600"></script>
+<script src="../../../scripts/componentes/MenuTopo.js?v=1779582160600"></script>
+<script src="pagina.js?v=1779582160600"></script>
 
 </body>
 </html>

@@ -16,6 +16,9 @@ $$;
 
 -- 2) Incidentes ativos (resumo: só sensor_id + tipo) — usado no dashboard
 --    pra colorir os cards com incidente em andamento.
+--    "Ativo" = não removido + janela [inicio, fim) cobre o agora.
+--    Bug anterior: faltava o filtro de fim, então incidentes EXPIRADOS
+--    continuavam aparecendo como ativos (zumbis no dashboard).
 create or replace function listar_incidentes_ativos_resumo()
 returns jsonb language sql security definer stable as $$
   select coalesce(jsonb_agg(jsonb_build_object(
@@ -23,7 +26,9 @@ returns jsonb language sql security definer stable as $$
       'tipo',      tipo
     )), '[]'::jsonb)
   from incidentes
-  where removido_em is null;
+  where removido_em is null
+    and inicio <= now()
+    and (fim is null or fim > now());
 $$;
 
 -- 3) Última leitura por sensor — atalho pra calcular conectividade.

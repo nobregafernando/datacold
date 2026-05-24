@@ -218,6 +218,18 @@ class Autenticacao {
   }
 
   /**
+   * Lista todos os perfis cadastrados (admin only — RLS bloqueia o
+   * resto). Retorna array ordenado por papel (admin primeiro) e nome.
+   */
+  static async listarUsuarios() {
+    return Autenticacao._autenticado(
+      "/rest/v1/perfis_usuarios?select=id,nome,papel,criado_em,atualizado_em&order=papel.asc,nome.asc",
+      null,
+      "GET"
+    );
+  }
+
+  /**
    * Operador completa o convite: recebe o access_token do hash do email,
    * define nome e senha próprios.
    */
