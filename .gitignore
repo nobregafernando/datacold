@@ -7,3 +7,8 @@ __pycache__/
 .venv/
 node_modules/
 .firebase/
+
+# Binários de release (>50MB, estouram limite do GitHub free)
+*.apk
+*.aab
+*.ipa

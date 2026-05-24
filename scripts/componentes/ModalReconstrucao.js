@@ -291,25 +291,42 @@ class ModalReconstrucao {
       timeZone: "America/Sao_Paulo",
     }) : "—";
 
-    // Mini-análise: valor atual vs. média dos pontos recentes do histórico
+    // Mini-análise: valor atual vs. média dos pontos recentes do histórico.
+    //
+    // Otimização crítica: antes a função iterava sobre TODO o histórico
+    // estendido (até 15k pontos × 3 campos = 45k iterações) e usava
+    // Math.min(...arr) / Math.max(...arr) com spread, o que travava o
+    // navegador ao abrir o modal. Agora:
+    //  - Limita aos últimos 500 pontos (contexto "recente" não precisa
+    //    de mais — 500 pts × 3s = ~25 min de janela, suficiente).
+    //  - Single-pass pra média/min/máx (sem spread).
     const compararContexto = (campos) => {
       if (!Array.isArray(historico) || historico.length < 3) return null;
-      const valoresContexto = [];
-      for (const ponto of historico) {
-        if (ponto?._reconstruido) continue;
-        for (const c of campos) {
-          if (typeof ponto[c] === "number" && Number.isFinite(ponto[c])) valoresContexto.push(ponto[c]);
+      const fatia = historico.length > 500
+        ? historico.slice(historico.length - 500)
+        : historico;
+      let soma = 0, n = 0, min = Infinity, max = -Infinity;
+      for (let i = 0; i < fatia.length; i++) {
+        const ponto = fatia[i];
+        if (!ponto || ponto._reconstruido) continue;
+        for (let j = 0; j < campos.length; j++) {
+          const v = ponto[campos[j]];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            soma += v; n++;
+            if (v < min) min = v;
+            if (v > max) max = v;
+          }
         }
       }
-      if (valoresContexto.length < 3) return null;
-      const media = valoresContexto.reduce((s, x) => s + x, 0) / valoresContexto.length;
-      const min = Math.min(...valoresContexto);
-      const max = Math.max(...valoresContexto);
-      const atual = (() => {
-        const v = campos.map(c => p[c]).filter(x => typeof x === "number" && Number.isFinite(x));
-        if (!v.length) return null;
-        return v.reduce((s, x) => s + x, 0) / v.length;
-      })();
+      if (n < 3) return null;
+      const media = soma / n;
+      // Valor atual: média dos campos do ponto clicado.
+      let somaAtual = 0, nAtual = 0;
+      for (let j = 0; j < campos.length; j++) {
+        const v = p[campos[j]];
+        if (typeof v === "number" && Number.isFinite(v)) { somaAtual += v; nAtual++; }
+      }
+      const atual = nAtual ? somaAtual / nAtual : null;
       return { media, min, max, atual };
     };
 

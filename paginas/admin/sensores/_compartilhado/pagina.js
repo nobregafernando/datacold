@@ -261,15 +261,17 @@ class PaginaSensor {
   }
 
   /**
-   * Tick de RENDER puro — clock-based, NUNCA busca dado. Roda a cada 1s
-   * pra atualizar o que muda com o tempo independente de novas leituras:
-   *   - contador "Última leitura há Xs"
-   *   - badge conectividade (online→instavel→offline)
-   *   - linha morta no gráfico (estende a cada segundo enquanto offline)
-   *   - velocímetros viram "sem sinal" no instante do offline
+   * Tick de RENDER puro — clock-based, NUNCA busca dado. Roda a cada 1s.
    *
-   * Sem isso, quando o sensor para de mandar dado a UI ficava congelada
-   * no último estado conhecido — usuário tinha que F5 pra ver o offline.
+   * REGRA DE OURO: NÃO chamar nada caro aqui (gráfico, reconstrutor,
+   * downsample, Chart.js update). Re-renderizar gráfico a 1Hz trava a aba.
+   *
+   * Apenas:
+   *   - contador "Última leitura há Xs" e badge online→instavel→offline
+   *   - lúdico/KPIs SOMENTE em transição de estado (não a cada tick)
+   *
+   * Gráfico + linha morta são re-renderizados pelo fetch tick a cada 3s —
+   * a linha morta cresce em saltos de ~3s, o que é imperceptível.
    */
   _tickRender() {
     if (!this.dados?.points?.length) return;
@@ -277,7 +279,7 @@ class PaginaSensor {
       const estavaOffline = !!this._estaOffline;
       this._detectarOffline(this.dados);
 
-      // Conectividade: respeita incidente forçado da Sala de Controle
+      // Conectividade — barato (só innerHTML de pill + texto).
       const incOff = this.incidentesAtivos?.find(i => i.tipo === "gap" || i.tipo === "offline");
       if (incOff) {
         const r = incOff.segundos_restantes;
@@ -287,21 +289,14 @@ class PaginaSensor {
         this._renderizarConectividade(this.dados);
       }
 
-      // Lúdico (velocímetros) — se estado mudou ou sempre quando offline
-      // pra estender o "tempo offline" no overlay
-      if (this._estaOffline) {
+      // Lúdico/KPIs: em transição de estado OU quando chegou ponto novo
+      // via Realtime (flag setada no _receberPontoRealtime). Throttle 1Hz —
+      // velocímetros tem animação canvas custosa, não pode rodar a 3Hz.
+      const transicaoOffline = this._estaOffline !== estavaOffline;
+      if (transicaoOffline || this._novoPontoRealtime) {
+        this._novoPontoRealtime = false;
         this._renderizarLudico(this.dados);
         this._renderizarKpis(this.dados);
-      } else if (estavaOffline) {
-        // Voltou online → atualiza pra remover overlays "sem sinal"
-        this._renderizarLudico(this.dados);
-        this._renderizarKpis(this.dados);
-      }
-
-      // Re-renderiza gráfico (com linha morta crescendo) quando offline.
-      // Quando online não precisa — o tick de fetch a cada 3s faz isso.
-      if (this._estaOffline) {
-        this._renderizarGraficos(this.dados);
       }
     } catch (e) {
       console.warn("[tickRender]", e);
@@ -426,32 +421,24 @@ class PaginaSensor {
     }
   }
 
-  /** Converte a row crua da tabela pro formato que o front usa em points
-   *  ({ time, ...campos }) e injeta no this.dados.points + re-renderiza. */
+  /** Converte a row crua do INSERT pro formato { time, ...campos } e
+   *  empurra no this.dados.points. NÃO re-renderiza aqui — o tickRender
+   *  (1s) detecta a mudança e atualiza o que for barato. Re-render direto
+   *  no push handler trava a aba quando vêm vários eventos seguidos. */
   _receberPontoRealtime(row) {
     if (!row || !this.dados?.points) return;
     const pt = { time: row.momento };
     Object.keys(row).forEach(k => {
       if (!["id", "sensor_id", "momento", "criado_em"].includes(k)) pt[k] = row[k];
     });
-    // Dedupe: se já temos exatamente esse timestamp, ignora.
+    // Dedupe: se já temos exatamente esse timestamp (ou mais novo), ignora.
     const ult = this.dados.points[this.dados.points.length - 1];
     if (ult && new Date(ult.time).getTime() >= new Date(pt.time).getTime()) return;
     this.dados.points.push(pt);
     // Cap defensivo: cadência de 3s × 30d = 864k pts no pior caso.
-    // Tira os mais antigos pra não estourar memória.
     if (this.dados.points.length > 50000) this.dados.points.splice(0, 5000);
-    // Re-renderiza componentes "live" — gráfico fica pro próximo tick pesado
-    // pra não custar Chart.js a cada 3s (mas o gauge/KPI/conectividade sim).
-    try {
-      this._detectarOffline(this.dados);
-      this._renderizarLudico(this.dados);
-      this._renderizarKpis(this.dados);
-      this._renderizarConectividade(this.dados);
-      this._renderizarLatencia(this.dados);
-    } catch (e) {
-      console.warn("[realtime] render falhou:", e);
-    }
+    // Marca pro próximo tickRender atualizar gauge/KPIs (1× máx, não a 3Hz).
+    this._novoPontoRealtime = true;
   }
 
   _fecharRealtime() {
@@ -546,13 +533,16 @@ class PaginaSensor {
       this._renderizarLudico(this.dados);
       this._renderizarKpis(this.dados);
       this._renderizarGraficos(this.dados);
-      this._renderizarTabela(this.dados);
       this._renderizarLatencia(this.dados);
-      this._renderizarAnalise(this.dados);
-      // _detectarAlertasLocais foi desligado: o baseline dos sensores é
-      // saudável agora; anomalias chegam pela Sala de Controle (incidentes
-      // manuais), não por detecção automática a cada refresh.
-      // this._detectarAlertasLocais(this.dados);
+      // Tabela + análise são caras (loop por todos os pontos + DOM grande).
+      // Roda a cada 3 fetches (~9s) — esses dados não mudam tão rápido
+      // que justifique a 3s. Sem isso a aba trava com sensores grandes
+      // (extrusora tem 9 séries: 3 fases × corrente/tensão/FP).
+      this._contadorFetch = (this._contadorFetch || 0) + 1;
+      if (this._contadorFetch % 3 === 0 || forcado) {
+        this._renderizarTabela(this.dados);
+        this._renderizarAnalise(this.dados);
+      }
     } catch (e) {
       this._renderizarConectividade(null, "erro", e.message);
       const ehAuth = /401|403|chave|key/i.test(e.message);
@@ -1519,6 +1509,24 @@ class PaginaSensor {
    * `chart.update('none')` evita o flash de animação a cada refresh —
    * as linhas crescem suavemente como uma serpente em vez de piscar.
    */
+  /**
+   * Charts que ficam AO VIVO por padrão. Os demais (tensão, FP, potência)
+   * abrem PAUSADOS — o usuário ativa um por um se quiser. Isso evita
+   * travamento em PCs lentos quando a página tem 4+ gráficos atualizando
+   * a cada 3s simultaneamente.
+   */
+  _chartAoVivoDefault(chave) {
+    return chave === "corrente" || chave === "temperatura" || chave === "porta";
+  }
+
+  _chartAoVivo(chave) {
+    const sid = this.sensor?.id || "x";
+    const v = sessionStorage.getItem(`__chart_aovivo_${sid}_${chave}`);
+    if (v === "1") return true;
+    if (v === "0") return false;
+    return this._chartAoVivoDefault(chave);
+  }
+
   _upsertChart(chave, parent, titulo, labels, datasets, opts = {}) {
     // Snapshot pro Exportador (PDF/XML/CSV). Salvamos a cada chamada — tanto
     // na criação quanto no update — pra que o botão sempre exporte o estado
@@ -1527,6 +1535,9 @@ class PaginaSensor {
 
     const existente = this.graficos[chave];
     if (existente) {
+      // Chart pausado: ignora updates do auto-refresh. Mantém visualização
+      // congelada no último estado. Usuário ativa clicando "▶ Ao vivo".
+      if (!this._chartAoVivo(chave) && !this._forcarUpdateChart) return;
       existente.data.labels = labels;
       datasets.forEach((novo, i) => {
         const ds = existente.data.datasets[i];
@@ -1574,15 +1585,24 @@ class PaginaSensor {
     // prefs — sem isso, "corrente em barras" no extrusora_1 vazaria pro
     // extrusora_2/3 e todos os outros sensores de energia.
     const sensorId = this.sensor?.id || "x";
-    const keyFases = `__chart_fases_${sensorId}_${chave}`;
-    const keyTipo  = `__chart_tipo_${sensorId}_${chave}`;
+    const keyFases  = `__chart_fases_${sensorId}_${chave}`;
+    const keyTipo   = `__chart_tipo_${sensorId}_${chave}`;
+    const keyAoVivo = `__chart_aovivo_${sensorId}_${chave}`;
     const expandido = sessionStorage.getItem(keyFases) === "1";
     const tipoSalvo = sessionStorage.getItem(keyTipo) === "bar" ? "bar" : "line";
+    const aoVivo    = this._chartAoVivo(chave);
     const toggleFasesHtml = opts.mostrarToggleFases
       ? `<button type="button" class="chart-toggle-fases" data-chart-toggle="${chave}" aria-pressed="${expandido}">
            ${expandido ? "↑ Ocultar fases" : "↓ Ver fases A/B/C"}
          </button>`
       : "";
+    const svgPlay = `<svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><path d="M1 1l7 4-7 4z" fill="currentColor"/></svg>`;
+    const toggleAoVivoHtml = `
+      <button type="button" class="chart-toggle-aovivo ${aoVivo ? "ativo" : "pausado"}"
+              data-chart-aovivo="${chave}" aria-pressed="${aoVivo}"
+              title="${aoVivo ? "Clique pra pausar atualização em tempo real" : "Clique pra ativar atualização em tempo real"}">
+        ${aoVivo ? `<span class="chart-aovivo-dot"></span>Ao vivo` : `${svgPlay}<span>Ativar ao vivo</span>`}
+      </button>`;
     const svgBarras = `<svg class="chart-toggle-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2"  y="9" width="2.4" height="5"  rx=".4" fill="currentColor"/><rect x="6.8" y="6" width="2.4" height="8"  rx=".4" fill="currentColor"/><rect x="11.6" y="3" width="2.4" height="11" rx=".4" fill="currentColor"/></svg>`;
     const svgLinha  = `<svg class="chart-toggle-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><polyline points="1.5,12 5,8 8.5,10 12,5 14.5,7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const toggleTipoHtml = `
@@ -1603,13 +1623,55 @@ class PaginaSensor {
       <header class="chart-bloco-head">
         <h4>${titulo}</h4>
         <div class="chart-bloco-acoes">
+          ${toggleAoVivoHtml}
           ${toggleFasesHtml}
           ${toggleTipoHtml}
           ${exportHtml}
         </div>
       </header>
-      <div class="chart-wrap"><canvas></canvas></div>`;
+      <div class="chart-wrap">
+        <canvas></canvas>
+        <button type="button" class="chart-overlay-ativar" data-chart-overlay="${chave}" hidden>
+          ${svgPlay}
+          <span>Clique pra atualizar em tempo real</span>
+        </button>
+      </div>`;
+    if (!aoVivo) {
+      wrap.classList.add("chart-bloco-pausado");
+      wrap.querySelector(`[data-chart-overlay="${chave}"]`)?.removeAttribute("hidden");
+    }
     parent.appendChild(wrap);
+
+    // Overlay grande do centro do chart pausado — atalho pra ativar sem ter
+    // que procurar o botão pequeno do header.
+    wrap.querySelector(`[data-chart-overlay="${chave}"]`)?.addEventListener("click", () => {
+      wrap.querySelector(`[data-chart-aovivo="${chave}"]`)?.click();
+    });
+
+    // Liga o toggle Ao vivo / Pausado.
+    const btnAoVivo = wrap.querySelector(`[data-chart-aovivo="${chave}"]`);
+    btnAoVivo?.addEventListener("click", () => {
+      const eraAoVivo = this._chartAoVivo(chave);
+      sessionStorage.setItem(keyAoVivo, eraAoVivo ? "0" : "1");
+      const novoAoVivo = !eraAoVivo;
+      btnAoVivo.className = `chart-toggle-aovivo ${novoAoVivo ? "ativo" : "pausado"}`;
+      btnAoVivo.setAttribute("aria-pressed", String(novoAoVivo));
+      btnAoVivo.title = novoAoVivo
+        ? "Clique pra pausar atualização em tempo real"
+        : "Clique pra ativar atualização em tempo real";
+      btnAoVivo.innerHTML = novoAoVivo
+        ? `<span class="chart-aovivo-dot"></span>Ao vivo`
+        : `${svgPlay}<span>Ativar ao vivo</span>`;
+      wrap.classList.toggle("chart-bloco-pausado", !novoAoVivo);
+      const overlay = wrap.querySelector(`[data-chart-overlay="${chave}"]`);
+      if (overlay) overlay.toggleAttribute("hidden", novoAoVivo);
+      // Quando ATIVA, força um update imediato pra mostrar dados atuais
+      // (em vez de esperar o próximo refresh automático).
+      if (novoAoVivo) {
+        this._forcarUpdateChart = true;
+        try { this._renderizarGraficos(this.dados); } finally { this._forcarUpdateChart = false; }
+      }
+    });
 
     // Liga os 3 botões de export. Single handler delega pelo data-export.
     wrap.querySelectorAll("[data-export]").forEach(btn => {
